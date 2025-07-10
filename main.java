@@ -72,6 +72,16 @@ public class Main {
 
         int result = add(1, 2); 
         System.out.println("덧셈 결과: " + result);
+
+          // ==== Person.java ====
+          // 객체 생성 (new 키워드 사용)
+      
+          Person p1 = new Person("홍길동", 20);
+          Person p2 = new Person("김철수", 25);
+      
+          // 메서드 호출
+          p1.introduce();
+          p2.introduce();
     }
 
     // main 밖에 선언
