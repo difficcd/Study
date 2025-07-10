@@ -28,15 +28,25 @@ main 은 약속된 이름이다.
 운영체제는 문자열을 전달하기 때문에 String 으로 지정힌 것
 */
 
+
+
 import java.util.Scanner;
+import java.util.ArrayList;
 // Scanf 기능은 Scanner Class를 import 하여 사용
 
-
 public class Main {
-
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         // 입력 객체 (Scanner 객체) 생성
+
+        ArrayList<String> list = new ArrayList<String>();
+        // 버전이 높으면 new ArrayList<>(); 로도 쓸 수 있음
+      
+        list.add("apple");
+        System.out.println(list.get(0));
+        // ArrayList 는 C++ 의 벡터 클래스와 비슷하다.
+      
+        String s = list.get(0); // 값이므로 직접 변수에 넣을 수도 있음
 
         // next : 공백 전까지 문자열 입력 
         // nextInt/Double.. 이런 식으로 특정 자료형 입력
