@@ -8,7 +8,7 @@ chat gpt 학습적 용도로만 활용 & gemini 활용법 학습
 WEEK 1   
 7.8 Java, Scala 설치 완료 (+gemini CLI 설치)   
 7.9 Java 입출력, 변수, 기본개념 학습 및 gemini CLI 사용시도   
-7.10   
+7.10~11 (skip_)
   
 https://velog.io/@remon/개발-기본-지식-Node.js란    
 https://velog.io/@dnjstjdgus03/GeminiCLI  
