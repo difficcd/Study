@@ -213,6 +213,49 @@ int main() {
   printf("%d", sum);
 }
 
+// 10845번 큐 : 독서실 가기전에 잠깐 연습
+#include <stdio.h>
+#include <string.h>
+
+void push(int tmp, int* queue, int* back){
+  back++; // 참조 호출로 받아온 back 증가
+  queue[*back] = tmp; // 증가한 위치에 값 삽입
+}
+void pop(int, int*){
+  
+}
+
+int main() {
+  int cmd_count, tmp;
+  int front=0, back=0;
+  char cmd[10]; 
+  int queue[10000]; // FIFO
+  // 명령의 수 N (1 ≤ N ≤ 10,000)
+
+  scanf("%d", &cmd_count);
+  
+  for(int i=0; i<cmd_count; i++) {
+  // C에서 문자열 받기
+  // scanf("%s", str); => 공백종료&OV위험
+
+
+  
+    fgets(cmd, sizeof(cmd), stdin); // 표준, 위험 적음
+    if (strcmp(cmd, "push")){
+      scanf("%d", &tmp); 
+      push(tmp, queue, &back);
+     
+    }
+
+    
+
+    
+  }
+  
+}
+
+
+
 
 
 
