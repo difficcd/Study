@@ -59,9 +59,6 @@ import java.util.Scanner;
 public class Main {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
-        StringBuilder sb = new StringBuilder("hello");
-        
-
         String s = sc.nextLine();
         StringBuilder str = new StringBuilder(s);
       // StringBuilder : Java 문자열 쉽게 수정하게 해 줌 
@@ -118,7 +115,45 @@ public class Main {
     }
 }
 
+// 1978번 : 소수 찾기 간단한 연습
 
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        int N = sc.nextInt();
+        int[] num = new int[N]; // int num[N] java식 선언 (C++유사)
+        int[] cnt = new int[N];
+        int count = 0;
+
+        // 반복 입력 예제
+        for (int i = 0; i < N; i++) {
+            num[i] = sc.nextInt();
+            cnt[i] = 0; // cnt 초기화
+        }
+
+        for (int j = 0; j < N; j++) {
+            if (num[j] == 1)
+                continue; // 1은 소수가 아님..
+            else {
+                for (int k = 1; k <= num[j]; k++)
+                    if ((num[j] % k) == 0) // 나누어떨어지면
+                        cnt[j]++;
+            } // 해당 num 수의 cnt 증가
+        }
+
+        for (int i = 0; i < N; i++)
+            if (cnt[i] == 2)
+                count++;
+
+        System.out.println(count);
+
+        sc.close();
+
+    }
+}
 
 
 
