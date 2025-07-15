@@ -41,6 +41,7 @@ public class Main {
   }
 }
 
+
 /* 원래 내가 생각한 로직 메모
   
   24 시간, 60 분 => 분으로 환산하는 방법
@@ -49,4 +50,75 @@ public class Main {
 
   단, 2884번은 조건이 달라서 틀림으로 처리되었다.
  */
+
+
+// 1152번 단어 수 세기 (문자열연습)
+
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        StringBuilder sb = new StringBuilder("hello");
+        
+
+        String s = sc.nextLine();
+        StringBuilder str = new StringBuilder(s);
+      // StringBuilder : Java 문자열 쉽게 수정하게 해 줌 
+      // 문자열 수정 수단이 없어 새로 문자열을 만들어야 해서 비효율 
+      // setCharAt을 제공
+      
+        int num = 0;
+
+        if (s.charAt(0) == ' ') {
+            if (s.charAt(s.length() - 1) == ' ') {
+                str.setCharAt(s.length() - 1, 'a')
+                  // String변수.length() => 문자열 길이
+                  // setCharAt(대체할 위치, 대체할 문자)
+                num--; 
+            } else
+                str.setCharAt(0, 'a');
+        } else if (s.charAt(s.length() - 1) == ' ')
+            str.setCharAt(s.length() - 1, 'a');
+        else
+            num++;
+
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == ' ')
+                num++;
+        }
+
+        System.out.println(num);
+
+        sc.close();
+
+    }
+}
+
+// 로직이 너무 중구난방하고 더러움 : 아래는 개선코드
+
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        String s = sc.nextLine().trim(); // 앞뒤 공백 제거
+
+        if (s.isEmpty()) {
+            System.out.println(0); // 비었으면 0 출력
+        } else {
+            String[] words = s.split("\\s+"); // 이스케이프+\s :공백
+            //words: 나눠진 단어들을 담는 문자열 배열(String[])
+            
+            // \\s+ 공백(스페이스, 탭, 줄바꿈 등)을 1개 이상
+            System.out.println(words.length);
+        }
+
+        sc.close();
+    }
+}
+
+
+
+
 
