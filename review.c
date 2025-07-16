@@ -246,14 +246,83 @@ int main() {
       push(tmp, queue, &back);
      
     }
-
-    
-
     
   }
   
 }
 
+// 18258 큐 2 (동적할당 추가)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define SIZE 10000
+
+// 자리 부족시 동적할당
+void push(int tmp, int **queue, int *back, int *size) {
+    if (*back >= *size) {
+        int new_size = (*size) * 2;
+        int *tmp_ = (int *)realloc(*queue, new_size * sizeof(int));
+        *queue = tmp_;
+        *size = new_size;
+    }
+    (*queue)[*back] = tmp;
+    (*back)++;
+}
+
+void pop(int **queue, int *front, int back) {
+  if (back - *front == 0)
+    printf("-1\n");
+  else {
+    printf("%d\n", (*queue)[*front]);
+    (*queue)[*front] = 0; // 값을 0으로 초기화
+    *front += 1; // 위치 이동
+  }
+}
+
+int main() {
+  int cmd_count, tmp, size=SIZE;
+  int front = 0, back = 0;
+  char cmd[10];
+  int *queue = (int *)malloc(size * sizeof(int));
+  // 처음에는 SIZE 로 크기지정
+
+  scanf("%d", &cmd_count);
+
+  for (int i = 0; i < cmd_count; i++) {
+
+    scanf("%s", cmd);
+
+    if (strcmp(cmd, "push") == 0) {
+      scanf("%d", &tmp);
+      push(tmp, &queue, &back, &size);
+    } else if (strcmp(cmd, "pop") == 0)
+      pop(&queue, &front, back);
+    else if (strcmp(cmd, "size") == 0)
+        printf("%d\n", back - front);
+    else if (strcmp(cmd, "empty") == 0) {
+      if (back - front  == 0)
+        printf("1\n");
+      else
+        printf("0\n");
+    }
+
+    else if (strcmp(cmd, "front") == 0) {
+      if (back - front == 0)
+        printf("-1\n");
+      else
+        printf("%d\n", queue[front]);
+    } else if (strcmp(cmd, "back") == 0) {
+      if (back - front == 0)
+        printf("-1\n");
+      else {
+        if (back != 0)
+          printf("%d\n", queue[back - 1]);
+        else
+          printf("%d\n", queue[SIZE - 1]);
+      }
+    }
+  }
+}
 
 
 
