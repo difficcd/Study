@@ -156,4 +156,51 @@ public class Main {
 }
 
 
+// 1676번 : 팩토리얼 0의개수 (수학,로직)
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        int N = sc.nextInt();
+        int cntF=0;
+        int cntT=0;
+        
+        
+        // 10 => 10 (5 2) => 2
+        // 20 => 20 (15 12) 10 (5 2) => 4
+        // 25 => (25 22) 2*10 (15 12) 10 (5 2)
+        // 적립식으로 count => 5의 배수는 n개, 2의 배수는 m개
+
+        // 10 9 8 7 6 => 8 나누면 2가 3개인거임 
+        
+        for(int i=N; i>0; i--) {
+        	int j = i;
+        	while(j % 5 == 0) {
+        		cntF++;
+        		j = j/5; 
+        	}
+        	
+        	int k = i;
+        	while(k % 2 == 0) {
+        		cntT++;
+        		k = k/2; 
+        	}
+        }
+
+        int result;
+        
+        if(cntF>cntT) result = cntT;
+        else if(cntT>cntF) result = cntF;
+        else result = cntT;
+        // java 의 Math.min() 쓰면 빠르다 : 기본 제공해줌!
+        
+        System.out.println(result);
+
+        sc.close();  
+
+    }
+}
+
 
