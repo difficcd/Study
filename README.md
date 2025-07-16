@@ -11,7 +11,10 @@ WEEK 1
 7.8 Java, Scala 설치 완료 (+gemini CLI 설치)   
 7.9 Java 입출력, 변수, 기본개념 학습 및 gemini CLI 사용시도   
 7.12 C 백준 3문 & Java 기본기는 C++ 기본지식*백준으로 커버하며 스프링부트 시작 준비  
-7.16 백준 java / C & 스프링부트 시작  
+7.16 백준 java / C & 스프링부트 시작    
+* 환경설정만 어느정도 해둠. 시간이 늦어 본격 시작하진 않았음  
+* leeow1214 gpt 보고 이어서 학습 (*eclipse 의존성 학습 & mysql 사용준비)  
+* 백준 풀때 오답 쓰면서 풀기  
 
 **JDK = Java Development Kit = 자바로 개발할 수 있게 해주는 툴 모음집    
 구성요소 : JRE(자바 런타임 환경), javac(컴파일러 : java->class), java(실행기) 등  
