@@ -10,16 +10,16 @@ chat gpt 학습적 용도로만 활용 & gemini 활용법 학습
 WEEK 1   
 7.8 Java, Scala 설치 완료 (+gemini CLI 설치)   
 7.9 Java 입출력, 변수, 기본개념 학습 및 gemini CLI 사용시도   
-7.12 C 백준 3문 & Java 기본기는 C++ 기본지식*백준으로 커버하며 스프링부트 시작 준비
-7.16 백준 java / C & 스프링부트 시작
+7.12 C 백준 3문 & Java 기본기는 C++ 기본지식*백준으로 커버하며 스프링부트 시작 준비  
+7.16 백준 java / C & 스프링부트 시작  
 
-**JDK = Java Development Kit = 자바로 개발할 수 있게 해주는 툴 모음집  
+**JDK = Java Development Kit = 자바로 개발할 수 있게 해주는 툴 모음집    
 구성요소 : JRE(자바 런타임 환경), javac(컴파일러 : java->class), java(실행기) 등  
 JRE = 자바 프로그램 실행 / JDK = 자바 프로그램 개발 & 실행   
 
 
-https://namu.wiki/w/이클립스(통합%20개발%20환경)
-https://velog.io/@remon/개발-기본-지식-Node.js란    
+https://namu.wiki/w/이클립스(통합%20개발%20환경)   
+https://velog.io/@remon/개발-기본-지식-Node.js란      
 https://velog.io/@dnjstjdgus03/GeminiCLI  
 
 * https://namu.wiki/w/Java/문법    
