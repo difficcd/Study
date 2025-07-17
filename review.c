@@ -1,6 +1,5 @@
 #include <stdio.h>
 
-
 // 10818 최소 최대 간단히 복습
 int maxnum(int *, int);
 int minnum(int *, int);
@@ -37,49 +36,6 @@ int minnum(int *num, int size) {
       min = num[i];
   return min;
 }
-
-
-// 2562 9개의 수 중 최대값과 그 인덱스
-// flag = 0 으로 설정해서 오답이 있었음 => 로직을 섬세하게 짜서 미연에 오류 방지include <stdio.h>
-
-
-// 10818 최소 최대 간단히 복습
-int maxnum(int *, int);
-int minnum(int *, int);
-
-int main() {
-  int size;
-  scanf("%d", &size);
-
-  int num[size];
-
-  for (int i = 0; i < size; i++)
-    scanf("%d", &num[i]);
-
-  int max = maxnum(num, size);
-  int min = minnum(num, size);
-
-  printf("%d %d", min, max);
-
-  return 0;
-}
-
-int maxnum(int *num, int size) {
-  int max = num[0];
-  for (int i = 1; i < size; i++)
-    if (max < num[i])
-      max = num[i];
-  return max;
-}
-
-int minnum(int *num, int size) {
-  int min = num[0];
-  for (int i = 1; i < size; i++)
-    if (min > num[i])
-      min = num[i];
-  return min;
-}
-
 
 // 2562 9개의 수 중 최대값과 그 인덱스
 // flag = 0 으로 설정해서 오답이 있었음 
@@ -213,7 +169,7 @@ int main() {
   printf("%d", sum);
 }
 
-// 10845번 큐 : 독서실 가기전에 잠깐 연습
+// 10845번 큐 
 #include <stdio.h>
 #include <string.h>
 
@@ -325,8 +281,102 @@ int main() {
 }
 
 
+// 34056번 : 콘서트 (해결 중)
+#include <stdio.h>
+#include <stdlib.h>
+
+/*
+1~N 번 방음벽
+i번 방음벽 = Di 만큼의 소음 흡수 가능
+콘서트 위치 = c, c+1번 방음벽 사이
+x 의 소음 콘서트가 c~c+1 사이에 열렸을 때
+c번 방음벽이 흡수하는 소음은 min(Dc, x)
+c흡수 못 하면 c-1번 방음벽으로 간다. (c+1 는 c+2)
+
+어떤 방음벽이 흡수한 소음이 x면
+보강후 k번 방음벽이 흡수할 수 있는 소음은, Dk+x
+*흡수한 소음의 양만큼 방음벽을 보강
+
+첫줄 입력 = 방음벽 수
+두줄 입력 = 소음의 크기
+셋째줄 작업 수 
+1 c x=> c~c+1 사이 x 콘서트 방음벽 보강 (x 크기는 1~10^9)
+2 c => 해당 방음벽의 소음 측정
+*/
+
+void concert(int** D,int c, int x){
+  // c part
+  while((*D)[c] < x) {  
+    if(c > 1){
+     (*D)[c] = 0; 
+      c--;
+    }
+  }   
+  if(((*D)[c] > x) (*D)[c] -= x;
+
+  // c+1 part
+
+}
+
+int getcapa(){
+  
+}
 
 
+
+int main(){
+  int *D; // 방음벽이 흡수 가능한 소음
+  int N, Q;
+  int input, c, x;
+
+  scanf("%d", &N);
+  D = (int*)malloc(N*sizeof(int));
+  for(int i=0; i<N; i++)
+    scanf("%d", &D[i]);
+  
+  scanf("%d", &Q);
+  for(int j=0; j<Q; j++){
+    scanf("%d", &input);
+    if(input == 1){
+      scanf("%d %d",&c, &x);
+      concert(&D, c-1, x); 
+    }
+    else if(input == 2){
+      scanf("%d", &c);
+      
+    }
+  }
+
+  free(D);
+  
+
+}
+
+
+// 1094 막대기 (살짝컨닝함)
+
+#include <stdio.h>
+int main() {
+
+  int X, cnt = 0;
+  int arr[7] = {64, 32, 16, 8, 4, 2, 1}; // 이부분만 컨닝
+  int count[7] = {0};
+  scanf("%d", &X);
+
+  for (int i = 0; i < 7; i++) {
+
+    if ((X / arr[i]) >= 1) {
+      count[i] = X / arr[i];
+      X = X % arr[i];
+    }
+  }
+
+  for (int i = 0; i < 7; i++) {
+    if (count[i] == 1)
+      cnt++;
+  }
+  printf("%d", cnt);
+}
 
 
 
