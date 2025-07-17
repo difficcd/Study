@@ -379,4 +379,86 @@ int main() {
 }
 
 
+// 34056 콘서트 : 다 구현해두고
+// 오타검수 & 자료형 범위문제만 gpt 도움받음
+// 1~10^9 범위의 정수 => long long 사용 : 64비트(10^18까지 커버)
+// long long 은 lld 로 받는다.
+
+/*
+1~N 번 방음벽
+i번 방음벽 = Di 만큼의 소음 흡수 가능
+콘서트 위치 = c, c+1번 방음벽 사이
+x 의 소음 콘서트가 c~c+1 사이에 열렸을 때
+c번 방음벽이 흡수하는 소음은 min(Dc, x)
+c흡수 못 하면 c-1번 방음벽으로 간다. (c+1 는 c+2)
+
+어떤 방음벽이 흡수한 소음이 x면
+보강후 k번 방음벽이 흡수할 수 있는 소음은, Dk+x
+*흡수한 소음의 양만큼 방음벽을 보강
+
+첫줄 입력 = 방음벽 수
+두줄 입력 = 소음의 크기
+셋째줄 작업 수
+1 c x=> c~c+1 사이 x 콘서트 방음벽 보강 (x 크기는 1~10^9)
+2 c => 해당 방음벽의 소음 측정
+*/
+
+// 1 1 2 * 1 1 에 5이면 => 2 2 4 * 2 2 (capa 초과..)
+
+#include <stdio.h>
+#include <stdlib.h>
+
+void concert(long long **D, int c, long long x, int N) {
+  long long cx = x, cpx = x;
+  int lc = c, rc = c + 1;
+
+  // c part
+  while ((*D)[lc] < cx && lc > -1) {
+    cx -= (*D)[lc];
+    (*D)[lc] *= 2;
+    lc--;
+  }
+  if ((*D)[lc] >= cx && lc > -1 && cx > 0) {
+    (*D)[lc] += cx;
+  };
+
+  // c+1 part
+  while ((*D)[rc] < cpx && rc < N) {
+    cpx -= (*D)[rc];
+    (*D)[rc] *= 2;
+    rc++;
+  }
+  if ((*D)[rc] >= cpx && rc < N && cpx > 0) {
+    (*D)[rc] += cpx;
+  };
+}
+
+int main() {
+  long long *D, x; // 방음벽이 흡수 가능한 소음
+  int N, Q;
+  int input, c;
+
+  scanf("%d", &N); // N 입력
+
+  D = (long long *)malloc(N * sizeof(long long));
+
+  for (int i = 0; i < N; i++)
+    scanf("%lld", &D[i]); // Di
+
+  scanf("%d", &Q); // Q 입력
+
+  for (int j = 0; j < Q; j++) {
+    scanf("%d", &input);
+    if (input == 1) {
+      scanf("%d %lld", &c, &x);
+      concert(&D, c - 1, x, N);
+    }
+    if (input == 2) {
+      scanf("%d", &c);
+      printf("%lld\n", D[c - 1]);
+    }
+  }
+
+  free(D);
+}
 
