@@ -15,6 +15,8 @@ WEEK 1
 * 환경설정만 어느정도 해둠. 시간이 늦어 본격 시작하진 않았음  
 * leeow1214 gpt 보고 이어서 학습 (*eclipse 의존성 학습 & mysql 사용준비)  
 * 백준 풀때 오답 쓰면서 풀기  
+7.17 늦잠자서 백준 위주로 함. 환경설정에 문제생겨서 이어가는중...
+  https://solved.ac/problems?sort=level&direction=asc&levelStart=6&levelEnd=11&t=1752748723111   
 
 **JDK = Java Development Kit = 자바로 개발할 수 있게 해주는 툴 모음집    
 구성요소 : JRE(자바 런타임 환경), javac(컴파일러 : java->class), java(실행기) 등  
