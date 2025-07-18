@@ -55,6 +55,104 @@ int main() {
   
     for (int i = 0; i < n; i++)
         printf("%d\n", arr[i]);
-
     return 0;
+}
+
+
+
+// 1497번 : 기타콘서트 (적어둔대로 구현)
+
+#include <stdio.h>
+#include <stdlib.h>
+/* 
+11100 
+00010
+11001 
+00011 => 나머지 두 자리를 효율적으로 메움
+=> 남은 0의 위치를 모두 고려하는 로직 필요
+10000
+
+1이 제일많은걸 기준으로
+0인 인덱스에 1이 들어있는 거 기준
+*/
+
+int N, M;
+
+// M 이 비트 수 
+void getguitarN(int bitinfo[][M]){
+  int cnt[N]; 
+  int zero[N][M];
+  int idx[M];
+
+  for(int i=0; i<N; i++){ // 초기화
+    cnt[i] = 0;
+    for(int j=0; j<N; j++)
+      zero[i][j] = 0; 
+    // 1이면 0인 곳, j가 인덱스.
+  }
+  
+  for(int i=0; i<N; i++){
+    for(int j=0; j<M; j++){
+      if(bitinfo[i][j] == 0){
+        zero[i][j] = 1; // 0의 개수 계산
+      }
+      else cnt[i]++; // 1의 개수 계산
+    }
+  }
+
+  int max = cnt[0], maxidx;
+  for(int i=1; i<N; i++){
+    if(max < cnt[i]){
+      max = cnt[i]; 
+      maxidx = i; 
+      // 1이 가장 많은 행(N)
+    }
+  }
+
+  // maxidx(N) 을 기준으로, bitinfo 를 탐색
+  // => zero == 1 인 자리를 idx 에 저장한다.
+  // idx 배열에 저장된 부분에 1이 가장 많은 새로운 N을 탐색한다
+  // 새로운 N과 비트마스킹 and 연산
+  // 다시 zero == 1 인 자리를 idx 에 저장한다.
+  
+  for(int i=0; i<N; i++){
+    for(int j=0; j<M; j++)
+      if(i != maxidx){
+        
+      }
+  }
+  
+};
+  
+int main() {
+scanf("%d %d", &N, &M);
+char guitar[55];
+char info[55];
+int bitinfo[55][55]; 
+
+  for (int i = 0; i < 55; i++)
+    for (int j = 0; j < 55; j++)
+        bitinfo[i][j] = -1; // 빈 곳은 -1로 초기화
+    
+  
+  for (int i = 0; i < N; i++) {
+      scanf("%s %s", guitar, info); 
+      for (int j = 0; j < M; j++) {
+          if (info[j] == 'Y')
+              bitinfo[i][j] = 1;
+          else
+              bitinfo[i][j] = 0;
+      }
+  }
+  
+  // 출력 확인
+  for (int i = 0; i < N; i++) {
+      for (int j = 0; j < M; j++) {
+          printf("%d ", bitinfo[i][j]);
+      }
+      printf("\n");
+  }
+  
+  getguitarN(bitinfo);
+  
 }
