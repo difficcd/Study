@@ -61,135 +61,6 @@ int main() {
 
 
 // 1497번 : 기타콘서트 (적어둔대로 구현)
-
-#include <stdio.h>
-#include <stdlib.h>
-/* 
-11100 
-00010
-11001 
-00011 => 나머지 두 자리를 효율적으로 메움
-=> 남은 0의 위치를 모두 고려하는 로직 필요
-10000
-
-1이 제일많은걸 기준으로
-0인 인덱스에 1이 들어있는 거 기준
-*/
-
-int N, M;
-
-// M 이 비트 수 
-void getguitarN(int bitinfo[][M]){
-  int cnt[N]; 
-  int zero[N][M];
-  int idx[M];
-
-  for(int i=0; i<N; i++){ // 초기화
-    cnt[i] = 0;
-    for(int j=0; j<N; j++)
-      zero[i][j] = 0; 
-    // 1이면 0인 곳, j가 인덱스.
-  }
-  
-  for(int i=0; i<N; i++){
-    for(int j=0; j<M; j++){
-      if(bitinfo[i][j] == 0){
-        zero[i][j] = 1; // 0의 개수 계산
-      }
-      else cnt[i]++; // 1의 개수 계산
-    }
-  }
-
-  int max = cnt[0], maxidx;
-  for(int i=1; i<N; i++){
-    if(max < cnt[i]){
-      max = cnt[i]; 
-      maxidx = i; 
-      // 1이 가장 많은 행(N)
-    }
-  }
-
-  // maxidx(N) 을 기준으로, bitinfo 를 탐색
-  // => zero == 1 인 자리를 idx 에 저장한다.
-  // idx 배열에 저장된 부분에 1이 가장 많은 새로운 N을 탐색한다
-  // 새로운 N과 비트마스킹 and 연산
-  // 다시 zero == 1 인 자리를 idx 에 저장한다.
-  
-  for(int i=0; i<N; i++){
-    for(int j=0; j<M; j++)
-      if(i != maxidx){
-        
-      }
-  }
-  
-};
-  
-int main() {
-scanf("%d %d", &N, &M);
-char guitar[55];
-char info[55];
-int bitinfo[55][55]; 
-
-  for (int i = 0; i < 55; i++)
-    for (int j = 0; j < 55; j++)
-        bitinfo[i][j] = -1; // 빈 곳은 -1로 초기화
-    
-  
-  for (int i = 0; i < N; i++) {
-      scanf("%s %s", guitar, info); 
-      for (int j = 0; j < M; j++) {
-          if (info[j] == 'Y')
-              bitinfo[i][j] = 1;
-          else
-              bitinfo[i][j] = 0;
-      }
-  }
-  
-  // 출력 확인
-  for (int i = 0; i < N; i++) {
-      for (int j = 0; j < M; j++) {
-          printf("%d ", bitinfo[i][j]);
-      }
-      printf("\n");
-  }
-  
-  getguitarN(bitinfo);
-  
-}
-
-
-
-// 1497번 : 기타콘서트 (적어둔대로 구현)
-// 최적해를 보장하지 않는 탐욕적 선택 for (int i = 0; i < 55; i++)
-    for (int j = 0; j < 55; j++)
-        bitinfo[i][j] = -1; // 빈 곳은 -1로 초기화
-    
-  
-  for (int i = 0; i < N; i++) {
-      scanf("%s %s", guitar, info); 
-      for (int j = 0; j < M; j++) {
-          if (info[j] == 'Y')
-              bitinfo[i][j] = 1;
-          else
-              bitinfo[i][j] = 0;
-      }
-  }
-  
-  // 출력 확인
-  for (int i = 0; i < N; i++) {
-      for (int j = 0; j < M; j++) {
-          printf("%d ", bitinfo[i][j]);
-      }
-      printf("\n");
-  }
-  
-  getguitarN(bitinfo);
-  
-}
-
-
-
-// 1497번 : 기타콘서트 (적어둔대로 구현)
 // 최적해를 보장하지 않는 탐욕 알고리즘을 사용했기에 오답으로 처리되었음
 // 알고리즘 공부 후 다시 도전
 
@@ -386,6 +257,150 @@ int main() {
   }
 
   getguitarN(N, M, bitinfo);
+}
+
+
+// 기타콘서트 개선 1차 코드
+#include <stdio.h>
+#include <string.h>
+
+#define MAXN 10
+#define MAXM 50
+
+int N, M;
+char name[55];
+char playable[55];
+int guitar_bitmask[MAXN];
+
+int max_song_count = 0;
+int min_guitar_count = -1;
+
+int count_bits(int bit) {
+    int count = 0;
+    while (bit) {
+        count += bit & 1;
+        bit >>= 1;
+    }
+    return count;
+}
+
+int main() {
+    scanf("%d %d", &N, &M);
+
+    for (int i = 0; i < N; i++) {
+        scanf("%s %s", name, playable);
+        int bit = 0;
+      
+        for (int j = 0; j < M; j++) { 
+            if (playable[j] == 'Y') {
+                bit |= (1 << j);
+            }
+        }
+        guitar_bitmask[i] = bit;
+    }
+
+    // 기타 조합을 모든 부분집합 (1 ~ 2^n -1 )로 확인
+    // 기타 자체를 나타내는 것. (g1 g2 g3 => 111 )
+    for (int mask = 1; mask < (1 << N); mask++) {
+        int combined = 0;
+        int guitar_count = 0;
+
+        for (int i = 0; i < N; i++) 
+            if (mask & (1 << i)) 
+                combined |= guitar_bitmask[i];
+                guitar_count++; 
+            
+        int song_count = count_bits(combined);
+
+        if (song_count > max_song_count) { 
+            max_song_count = song_count; 
+            min_guitar_count = guitar_count;
+        } 
+        else if (song_count == max_song_count) {
+            if (min_guitar_count == -1 || guitar_count < min_guitar_count)
+                min_guitar_count = guitar_count;
+        }
+    }
+
+    if (max_song_count == 0) {
+        printf("-1\n");
+    } else {
+        printf("%d\n", min_guitar_count);
+    }
+
+    return 0;
+}
+
+
+
+// 내가 새로 개선한 코드
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+int N, M;
+
+void getguitarN(int N, int M, int bitinfo[10]) {
+  int res[M];
+  // 모든 부분집합에 대해 => 111
+  // N번째 자리가 1인 경우의 combine 결과를 = bit[m] 봐야 한다. 
+  // for i 문으로 
+  // 001 010 100 011 101 110 ...
+  // 즉,,, 001 부터 111 까지 mask 가 동작. 
+  // N=3 인 경우 2^3-1 까지... 즉, 2^N -1 까지 비트마스킹 해줘야 함
+
+  // 각각의 bitinfo[i] i행의 기타가 연주할 수 있는 곡 정보를 가지고 있음
+  // 어떻게 해야 i 행의 기타를 선택하는 알고리즘이 될까?
+  // 간단하게 flag 로 해결할 수 있나?
+  
+  for (int mask=1; mask<(1<<N); mask++){
+      
+      for(int i=0; i<N; i++){
+          if(mask & (1<<i))
+      }
+    
+  }
+  
+
+  
+  
+}
+
+int main() {
+  scanf("%d %d", &N, &M);
+  char guitar[55];
+  char info[55];
+  int bitinfo[10][55];
+  int demi[10];
+
+  for(int j=0; j<M; j++)
+    demi[j] = 0;
+
+  for (int i = 0; i < N; i++) {
+    scanf("%s %s", guitar, info);
+    for (int j = 0; j < M; j++) {
+      if (info[j] == 'Y')
+        bitinfo[i][j] = 1;
+      else
+        bitinfo[i][j] = 0;
+    }
+  }
+  
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < M; j++)
+      printf("%d ", bitinfo[i][j]);
+    printf("\n");
+  }
+  printf("\n");
+
+  // 문자열 => 이진수 결과를 정수로 변환하면 간편
+  for (int i = 0; i < N; i++) 
+    for (int j = 0; j < M; j++){
+      demi[i] += bitinfo[i][j] * pow(2,j);
+    }
+
+  
+
+  getguitarN(N, M, *bitinfo);
 }
 
 
