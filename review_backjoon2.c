@@ -339,31 +339,83 @@ int main() {
 #include <math.h>
 int N, M;
 
-void getguitarN(int N, int M, int bitinfo[10]) {
-  int res[M];
-  // 모든 부분집합에 대해 => 111
-  // N번째 자리가 1인 경우의 combine 결과를 = bit[m] 봐야 한다. 
-  // for i 문으로 
-  // 001 010 100 011 101 110 ...
-  // 즉,,, 001 부터 111 까지 mask 가 동작. 
-  // N=3 인 경우 2^3-1 까지... 즉, 2^N -1 까지 비트마스킹 해줘야 함
+void getguitarN(int N, int M, int demi[10]) {
+  int res[1<<N]; // 2^N 
+  int max;  
+  int flag=0;
 
-  // 각각의 bitinfo[i] i행의 기타가 연주할 수 있는 곡 정보를 가지고 있음
-  // 어떻게 해야 i 행의 기타를 선택하는 알고리즘이 될까?
-  // 간단하게 flag 로 해결할 수 있나?
+  for(int i=1; i<(1<<N); i++)
+    res[i] =0;
   
+  for(int i=0; i<N; i++)
+    if(demi[i] == 0)
+      flag++;
+  
+  
+  // #001 #010 011 #100 101 110 111
   for (int mask=1; mask<(1<<N); mask++){
-      
-      for(int i=0; i<N; i++){
-          if(mask & (1<<i))
+
+    
+    // 각 자리수를 조사해서 1이면 해당 행과 비트마스킹...
+    // 5면 5와 비트마스킹. 이 부분은 잘 됨
+
+    // mask 와 행을 어떻게 연결 시킬지가 중요
+    // 101 은 실제로는 c&a 를 택하는 걸 원하지만
+    // c 가 011 에 대응하기에 불가능..
+    // i+1 행은 2^(i) 에 대응하도록 만들어야 함.
+    // 1행은 1, 2행은 2, 3행은 4, 4행은 8...
+    // i행 = 2^(i)
+
+    // 111 & 010 => 2행에 대해서 demi[i
+    // 해당 mask 에다가 demi 와 연산시킴...
+    // mask = 4 인 경우
+    // 3개의 행에 대해서..
+    // 100 & 001 (i=0)
+    // 100 & 010 (i=1)
+    // 100 & 100 (i=2)
+    // => 세 번째 경우에만, res[4] |= demi[2] 실행.
+    // 세 번째 행만 선택해서 mask 된 res 에 저장되어야 함.
+
+    
+    for(int i=0; i<N; i++) // 모든 행에 대해 탐색
+      if (mask & (1<<i)){ // 해당하는 행만 마스킹 연산
+        res[mask] |= demi[i];
       }
     
   }
+
+  max = res[1];
+  int index = 1;
+  for(int i=1; i<(1<<N); i++)
+    if(max < res[i]){
+      max = res[i];
+      index = i;
+    }
+
+  int max_count = 0;
+
+  int temp = index;
+  
+  if (index != 1) {
+      for(int i=(N-1); i>0; i--){
+        if(temp >= (1<<i)){
+          temp -= (1<<i);
+          max_count++;
+        }
+      }
+  }
+
+  if (temp == 1)
+    max_count++;
   
 
-  
+  if(flag == N) printf("-1");
+  else printf("\n%d", max_count);
+
   
 }
+
+
 
 int main() {
   scanf("%d %d", &N, &M);
@@ -372,7 +424,7 @@ int main() {
   int bitinfo[10][55];
   int demi[10];
 
-  for(int j=0; j<M; j++)
+  for(int j=0; j<N; j++)
     demi[j] = 0;
 
   for (int i = 0; i < N; i++) {
@@ -384,23 +436,94 @@ int main() {
         bitinfo[i][j] = 0;
     }
   }
-  
-  for (int i = 0; i < N; i++) {
-    for (int j = 0; j < M; j++)
-      printf("%d ", bitinfo[i][j]);
-    printf("\n");
-  }
-  printf("\n");
 
   // 문자열 => 이진수 결과를 정수로 변환하면 간편
   for (int i = 0; i < N; i++) 
     for (int j = 0; j < M; j++){
-      demi[i] += bitinfo[i][j] * pow(2,j);
+      demi[i] += bitinfo[i][j] * (1<<j);
     }
 
   
 
-  getguitarN(N, M, *bitinfo);
+  getguitarN(N, M, demi);
 }
 
+// 위 코드는 스스로 생각함 거의
+// 아래 코드는 개선 코드. 가장 큰 문제점은 long 을 안쓴거였음 (1<<N 이라 2^N 라서, long demi를 써야했음)
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+int N, M;
+
+void getguitarN(int N, int M, int demi[10]) {
+    int max_songs = -1;
+    int min_guitars = 10;
+
+    for (int mask = 1; mask < (1 << N); mask++) {
+      int temp = 0;
+      int count = 0;
+      
+      for (int i = 0; i < N; i++) {
+        if (mask & (1 << i)) {
+          temp |= demi[i]; 
+          count++;          
+        }
+      }
+
+      int song_count = 0;
+      
+      for (int b = 0; b < M; b++) {
+        if (temp & (1 << b))
+          song_count++; // 연주가능곡수 판단
+      }
+
+      if (song_count > max_songs) {
+        max_songs = song_count; // 최대곡수 갱신
+        min_guitars = count; // 기타 수 갱신
+      } 
+      else if (song_count == max_songs) { // 같은 경우에는
+        if (count < min_guitars) // 기타 수가 적은경우로 갱신
+          min_guitars = count; 
+      }
+    }
+
+    if (max_songs == 0)
+      printf("-1\n");
+    else
+      printf("%d\n", min_guitars);
+  }
+
+
+
+int main() {
+  scanf("%d %d", &N, &M);
+  char guitar[55];
+  char info[55];
+  int bitinfo[10][55];
+  int demi[10];
+
+  for(int j=0; j<N; j++)
+    demi[j] = 0;
+
+  for (int i = 0; i < N; i++) {
+    scanf("%s %s", guitar, info);
+    for (int j = 0; j < M; j++) {
+      if (info[j] == 'Y')
+        bitinfo[i][j] = 1;
+      else
+        bitinfo[i][j] = 0;
+    }
+  }
+
+  // 문자열 => 이진수 결과를 정수로 변환하면 간편
+  for (int i = 0; i < N; i++) 
+    for (int j = 0; j < M; j++){
+      demi[i] += bitinfo[i][j] * (1<<j);
+    }
+
+  
+
+  getguitarN(N, M, demi);
+}
 
