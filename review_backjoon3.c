@@ -3,6 +3,10 @@ https://www.acmicpc.net/problem/11279
 https://www.acmicpc.net/problem/1158
   요세푸스 => 0724 ok
    + hwp 참고 & 프로젝트 진행
+  
+  https://www.acmicpc.net/problem/5177
+  https://www.acmicpc.net/problem/5186
+  **
 
 // 1158번 요세푸스 : 순환 로직 복습 필수!!!
   #include <iostream>
@@ -185,5 +189,40 @@ int main() {
 }
 
 
+// 1312 번 : 소수
+#include <iostream>
+using namespace std;
+
+int main() {
+
+ int A, B;
+ unsigned long long  N;
+
+  cin >> A >> B >> N;
+  
+  unsigned long long T;
+ int temp=1, count=0;
+
+ int NN=N;
+  
+  N = A%B;
+  T = N*10 / B;
+  
+  while(temp){
+    if(count == NN-1) {
+      temp=0;
+      cout << T;
+      break;
+    }
+    
+    N = N*10 - T*B;
+    T = N*10 / B;
+    
+    count++;
+  }
+
+
+}
+// GPT 보고 개선
 
 
