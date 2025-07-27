@@ -1,7 +1,8 @@
 https://www.acmicpc.net/problem/11279 
  0726 최대 힙
-https://www.acmicpc.net/problem/1158
-  요세푸스 => 0724 ok
+https://namu.wiki/w/%EC%A0%95%EB%A0%AC%20%EC%95%8C%EA%B3%A0%EB%A6%AC%EC%A6%98#s-4.4.2
+  정렬 알고리즘 학습하기! ~8월 첫째주까지.
+  JAVA 프로젝트를 위한 시간 마련 포함
    + hwp 참고 & 프로젝트 진행
   
   https://www.acmicpc.net/problem/5177
