@@ -204,3 +204,71 @@ public class Main {
 }
 
 
+// 9421번, 소수상근수
+// Java 에서 해시테이블 & 소수 로직 복습
+// i*i 로 하는게 sqrt 로 하는 것보다 정확함. sqrt 는 다소 오차범위가 존재하고 불안정함.
+
+import java.util.Scanner;
+import java.util.HashSet;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        int N= sc.nextInt();
+        
+        spone_num(N);
+
+        sc.close();
+
+    }
+
+    public static void spone_num(int N){
+        
+        for(int i=1; i <= N; i++) {
+            HashSet<Integer> list = new HashSet<Integer>();
+
+            String str = String.valueOf(i);
+            list.add(i); // 스스로가 다시 나오는 경우도 loop
+
+            
+            while(true) {
+                int sum = 0;
+                
+                for(int j=0; j<str.length(); j++){
+                    int num = str.charAt(j) - '0';
+                    sum += num * num; // 끝나면 한 개 출력하는거임
+
+                }
+                str = String.valueOf(sum); 
+                
+                if (sum == 1 && is_prime(i)) {
+                    System.out.println(i);
+                    break;
+                }
+                
+                if (list.contains(sum))
+                    break;
+                
+                else list.add(sum);    
+            }
+        
+            
+        }
+        
+    }
+    public static boolean is_prime(int N){
+        boolean prime =true;
+        
+        if (N != 1){
+            for (int i=2; i*i <=N; i++){
+                int tmp = N;
+                if(tmp % i == 0)
+                    prime = false;
+            }
+        }
+        else prime = false;
+        
+        return prime;
+    }
+}
