@@ -227,3 +227,45 @@ int main() {
 // GPT 보고 개선
 
 
+
+// 1620번 포켓몬마스터 (딕셔너리 구현)
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <string>
+using namespace std;
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(0); // 입출력 최적화
+
+    int N, M;
+    cin >> N >> M;
+
+    vector<string> s(N);
+    unordered_map<string, int> m;
+    // 벡터의 활용법**
+    // s(N) 처럼 크기를 미리 지정해서 선언하면
+    // 아래와 같이 바로 s[i] 에 값을 받을 수 있다!
+
+    for(int i = 0; i < N; i++) {
+        cin >> s[i];
+        m[s[i]] = i; 
+    }
+
+    for(int i = 0; i < M; i++) {
+        string input;
+        cin >> input;
+
+        if (isdigit(input[0])) {
+            int num = stoi(input);
+            cout << s[num - 1] << "\n";
+        } else {
+            cout << m[input] + 1 << "\n";
+        }
+    }
+
+    return 0;
+}
+
+
