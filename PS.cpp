@@ -26,16 +26,15 @@ void hanoi_top(int N, int from, int to, int via){
         count ++;
     }
     else {
-        hanoi_top(N-1, from, via, to); // 위의값 임시로 옮김
+        hanoi_top(N-1, from, via, to); // 3232.. 자리 지정 (L)
         
-        v[to].push_back(v[from].back()); // 수 저장
+        v[to].push_back(v[from].back()); //V
         v[from].pop_back(); // 제거
         result.push_back(from+1); 
         result.push_back(to+1);
         
         count ++;
-        hanoi_top(N-1, via, to, from); // 옮긴 값 복원
-        // N-1 을 via => to 로 이동
+        hanoi_top(N-1, via, to, from); // 큰 수 위에 작은 수 올리기 (R)
     }
 
 }
@@ -59,4 +58,53 @@ int main() {
             cout << "\n";
     }
 }
+
+
+
+
+// 피보나치 수열
+#include <iostream>
+#include <vector>
+using namespace std;
+
+vector<pair<int, int>> v;
+
+
+void fibonacci(int n) {
+
+  // 5이면 f(4), f(3), f(2) 만들어야 함
+  // 2 3 4 5" 끝. 2부터 시작.
+  
+  
+  for (int i=2; i<=n; i++){
+    v[i].first = v[i-1].first + v[i-2].first;
+    v[i].second = v[i-1].second + v[i-2].second;
+  }
+  
+  cout << v[n].first << " " << v[n].second << "\n";
+}
+
+int main(){
+
+  int N, M;
+  cin >> N;
+
+  // 0 개수, 1 개수 입력
+  // v[0] = f(0)
+  
+  v.push_back({1,0}); // f(0)
+  v.push_back({0,1}); // f(1)
+
+  for (int i=0; i<40; i++)
+    v.push_back({0,0}); // 나머지 공간할당
+  
+  for(int i=0; i<N; i++){
+    cin >> M;
+    fibonacci(M);
+  }
+}
+
+
+
+
 
