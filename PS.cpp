@@ -105,6 +105,34 @@ int main(){
 }
 
 
+#include <iostream>
+#include <vector>
+using namespace std;
+
+// 리스트를 활용한 피보나치 수열 구현
+
+int main(){
+
+  vector<long long> v(3);
+  int N; cin >> N;
+  
+  v[0] = 1;
+  v[1] = 0;
+  v[2] = 1;
+
+  for(int i=2; i<=N; i++){
+  v[0] = v[1];
+  v[1] = v[2];
+  v[2] = v[0] + v[1];
+  }
+
+  cout << v[2];
+
+}
+
+// 1788번 피보나치 수의 확장
+// 큰 수를 나머지 처리하기  
+// 음수까지 피보나치 수 확장하기
 
 
 
