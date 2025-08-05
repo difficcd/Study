@@ -133,6 +133,48 @@ int main(){
 // 1788번 피보나치 수의 확장
 // 큰 수를 나머지 처리하기  
 // 음수까지 피보나치 수 확장하기
+#include <iostream>
+#include <vector>
+#define MAX 1000000000
+using namespace std;
+
+int main(){
+
+  vector<long long> v(3);
+  int N; cin >> N; 
+  // 절댓값이 1,000,000 이내
+
+  if(N==0) cout << "0\n0\n";  
+  else if(N<0) {
+    if(N % 2 == 0) cout << "-1\n";
+    else cout << "1\n";
+    N = -N;
+  }
+  else cout << "1\n";
+  
+  
+  v[0] = 1; v[1] = 0; v[2] = 1;
+
+  for(int i=2; i<=N; i++){
+  if(v[1] > MAX) v[0] = v[1] - MAX;
+  else v[0] = v[1];
+    
+  if(v[2] > MAX) v[1] = v[2] - MAX;
+  else v[1] = v[2];
+    
+  if(v[0]+v[1] > MAX) v[2] = v[0] + v[1] - MAX;
+  else v[2] = v[0] + v[1];
+    
+  }
+
+  if(N!=0) cout << v[2];
+  
+
+}
 
 
+
+
+https://www.acmicpc.net/problem/2086 
+// 피보나치 확장문제****
 
