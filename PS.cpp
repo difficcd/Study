@@ -174,7 +174,82 @@ int main(){
 
 
 
+// 2086번 : 피보나치 수의 합
+// # 피보나치 수를 행렬로 구하기
+// # 분할 정복으로 제곱함수 구현하기 (log N)
+// # 피보나치 합의 공식
 
-https://www.acmicpc.net/problem/2086 
-// 피보나치 확장문제****
+#include <iostream>
+#include <vector>
+#define MAX 1000000000
+using namespace std;
+
+typedef vector<vector<long long>> matrix;
+// 벡터 안에 벡터를 넣어 행렬 구현
+
+const long long MOD = MAX; 
+
+// 2x2 행렬 곱셈
+matrix multiply_2(matrix &a, matrix &b) {
+    matrix res = {{0, 0}, {0, 0}};
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 2; j++)
+            for (int k = 0; k < 2; k++)
+                res[i][j] = (res[i][j] + a[i][k] * b[k][j]) % MOD;
+    return res;
+}
+
+// 2x1 행렬 곱셈
+matrix multiply_1(matrix &a, matrix &b) {
+    matrix temp = {{0},{0}};
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 2; j++)
+            temp[i][0] += (b[j][0] * a[i][j]) % MOD;
+    return temp;
+}
+
+
+// 2x2 행렬 n 지수곱 a^n 구현
+// 분할 정복을 이용한 빅오 logN 복잡도의 거듭제곱 함수 power
+// 알고리즘 강의 참조. F(n) = F(n/2) +C
+matrix power(matrix a, long long n) {
+    matrix res = {{1, 0}, {0, 1}}; // 단위행렬
+    while (n > 0) {
+        if (n % 2 == 1) res = multiply_2(res, a);
+        a = multiply_2(a, a);
+        n /= 2;
+    }
+    return res;
+}
+
+int main(){
+
+  vector<long long> v(3);
+  unsigned long long a, b; 
+  unsigned long long F_a, F_b, sum;
+  cin >> a >> b; 
+
+  matrix M = {{1, 1}, {1, 0}};
+  matrix N = {{1},{0}};
+  matrix result ={{0},{0}};
+
+
+ // 1 1 2 3 5 8 
+
+  matrix res = power(M, a); // a+1
+  result = multiply_1(res, N);
+  F_a = result[0][0];
+
+  res = power(M, b+1); // b+2
+  result = multiply_1(res, N);
+  F_b = result[0][0];
+
+  sum = (F_b - F_a + MOD) % MOD;
+  // 피보나치 합의 공식 F(b+2) - F(a+1)
+  // ex ) 2 3 5 8 13  에서 2+3+4 = 13-3 = 10
+      
+  cout << sum;
+  
+
+}
 
