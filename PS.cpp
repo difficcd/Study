@@ -253,3 +253,250 @@ int main(){
 
 }
 
+
+//  10830번 행렬 제곱 
+// (1) 메모리 누수, C++ 스타일 파괴.. 등 문제가 많은 내 원본 코드
+#include <iostream>
+#define NUM 1000
+using namespace std;
+
+int N;
+
+
+
+// NxN 행렬끼리의 행렬 곱 정의
+int** multiply_N(int** A, int** B){
+
+    int ** temp; 
+    temp = (int**)malloc(sizeof(int*) * N);
+    for(int i=0; i<N; i++)
+        temp[i] = (int*)malloc(sizeof(int)*N);
+
+    for(int i=0; i<N; i++)
+        for(int j=0; j<N; j++)
+             temp[i][j] = 0; // 초기화
+
+
+    for(int i=0; i<N; i++)
+        for(int j=0; j<N; j++)
+            for(int k=0; k<N; k++)
+                temp[i][j] = (temp[i][j] + A[i][k] * B[k][j]) % NUM;
+
+    return temp;
+}
+
+
+int** power(int** A, long long M){
+
+    int ** I; // N x N 단위행렬 
+    I = (int**)malloc(sizeof(int*) * N);
+    for(int i=0; i<N; i++)
+        I[i] = (int*)malloc(sizeof(int)*N);
+
+    // temp 단위행렬로 초기화
+    for(int i=0; i<N; i++)
+        for(int j=0; j<N; j++){
+            if(i == j) I[i][j] = 1;
+            else I[i][j] = 0;
+        }
+
+
+    while(M > 0){
+        if(M % 2 == 1) I = multiply_N(I, A);
+        A = multiply_N(A,A); // A = A * A
+        M /= 2;
+    }
+
+    return I;
+}
+
+int main(){
+    int **matrix;
+
+    cin >> N;
+    long long M; cin >> M;
+
+    matrix = (int**)malloc(sizeof(int*) * N);
+
+    for(int i=0; i<N; i++)
+        matrix[i] = (int*)malloc(sizeof(int)*N);
+
+    for(int i=0; i<N; i++)
+        for(int j=0; j<N; j++)
+            cin >> matrix[i][j];
+
+    matrix = power(matrix, M);
+
+    for(int i=0; i<N; i++){
+        for(int j=0; j<N; j++){
+             cout << matrix[i][j];
+            if(j != N-1) cout << " ";
+        }
+        if(i != N-1) cout <<"\n";
+    }
+
+
+}
+
+
+
+// (2) 1차 개선 : 메모리 관리 개선 코드
+
+
+#include <iostream>
+#define NUM 1000
+using namespace std;
+
+int N;
+
+void delete_M(int** mat) {
+    for (int i = 0; i < N; ++i)
+        delete[] mat[i];
+    delete[] mat;
+}
+
+// NxN 행렬 곱
+int** multiply_N(int** A, int** B) {
+    int** temp = new int*[N];
+    for (int i = 0; i < N; ++i)
+        temp[i] = new int[N];
+
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < N; ++j)
+            temp[i][j] = 0;
+
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < N; ++j)
+            for (int k = 0; k < N; ++k)
+                temp[i][j] = (temp[i][j] + A[i][k] * B[k][j]) % NUM;
+
+    return temp;
+}
+
+int** power(int** A, long long M) {
+
+    int** B = new int*[N];
+    for (int i = 0; i < N; ++i) {
+        B[i] = new int[N];
+        for (int j = 0; j < N; ++j)
+            B[i][j] = A[i][j];
+    }
+
+
+    int** I = new int*[N];
+    for (int i = 0; i < N; ++i)
+        I[i] = new int[N];
+
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < N; ++j)
+            I[i][j] = (i == j) ? 1 : 0;
+
+    while (M > 0) {
+        if (M % 2 == 1) {
+            int** temp = multiply_N(I, B);
+            delete_M(I);
+            I = temp;
+        }
+        int** temp = multiply_N(B, B);
+        delete_M(B);
+        B = temp;
+        M /= 2;
+    }
+
+    return I;
+}
+
+int main() {
+    cin >> N;
+    long long M;
+    cin >> M;
+
+    int** matrix = new int*[N];
+    for (int i = 0; i < N; ++i)
+        matrix[i] = new int[N];
+
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < N; ++j)
+            cin >> matrix[i][j];
+
+    int** result = power(matrix, M);
+
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            cout << result[i][j];
+            if (j != N - 1) cout << " ";
+        }
+        if (i != N - 1) cout << "\n";
+    }
+
+    delete_M(result);
+    delete_M(matrix);
+}
+
+
+// (3) vector로 개선
+// ** N x N 행렬을 vector 로 받는 방법
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+constexpr int MOD = 1000;
+using Matrix = vector<vector<int>>;
+
+int N;
+
+// 단위행렬 반환
+Matrix identity(int size) {
+    Matrix I(size, vector<int>(size, 0));
+    for (int i = 0; i < size; ++i)
+        I[i][i] = 1;
+    return I;
+}
+
+// 두 행렬 곱셈 (결과를 새로 생성)
+Matrix multiply(const Matrix& A, const Matrix& B) {
+    Matrix result(N, vector<int>(N, 0));
+    for (int i = 0; i < N; ++i)
+        for (int k = 0; k < N; ++k)
+            for (int j = 0; j < N; ++j)
+                result[i][j] = (result[i][j] + A[i][k] * B[k][j]) % MOD;
+    return result;
+}
+
+// 행렬 거듭제곱 (분할 정복)
+Matrix power(Matrix base, long long exp) {
+    Matrix result = identity(N);
+    while (exp > 0) {
+        if (exp % 2 == 1)
+            result = multiply(result, base);
+        base = multiply(base, base);
+        exp /= 2;
+    }
+    return result;
+}
+
+int main() {
+    long long M;
+    cin >> N >> M;
+
+    Matrix A(N, vector<int>(N));
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < N; ++j)
+            cin >> A[i][j];
+
+    Matrix result = power(A, M);
+
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            cout << result[i][j];
+            if (j != N - 1) cout << ' ';
+        }
+        cout << '\n';
+    }
+}
+
+// https://www.acmicpc.net/problem/13246
+// 13246 행렬 제곱 합은
+// 도저히 야매로는 못풀겟으니 vector 나 python 을 활용해서 나중에 풀어보자 
+
