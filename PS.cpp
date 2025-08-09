@@ -497,6 +497,126 @@ int main() {
 }
 
 // https://www.acmicpc.net/problem/13246
-// 13246 행렬 제곱 합은
+// 13246 행렬 제곱 합은 나중에 도전해보기.
+
+// 이진 탐색 코드 ( 1920 수 찾기 )
+// 초기 코드
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+vector<int> v;
+
+void binarysearch(int N, int start, int end){
+  int mid=0;
+  int size = end - start + 1;
+
+  if (size == 2) {
+    if(v[start] == N || v[end] == N) cout << "1\n";
+    else cout << "0\n"; // 모두 탐색함
+    return;
+  }
+    
+  else if(size % 2 == 0) mid = start + size / 2 - 1;
+  else mid = start + size / 2;
+
+  
+  
+  if(v[mid] == N) {
+    cout << "1\n"; // 발견
+    return;
+  }
+  else {
+    if(N > v[mid])
+      binarysearch(N, mid, end);
+    else
+      binarysearch(N, 0, mid);
+  }
+}
+
+int main(){
+  int N; cin >> N;
+  int temp;
+  
+  for (int i=0; i<N; i++){
+    cin >> temp;
+    v.push_back(temp);
+  }
+
+  // 이진탐색 전 정렬
+  sort(v.begin(), v.end());
+
+  int M; cin >> M;
+  
+  for(int i=0; i<M; i++){
+    cin >> temp;
+    binarysearch(temp, 0, v.size()-1);
+  }
+
+  
+}
+
+// 개선 코드 (시간 초과 개선)
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+vector<int> v;
+
+void binarysearch(int N, int start, int end) {
+    if (start > end) { // 찾지 못함
+        cout << "0\n";
+        return;
+    }
+
+    int mid = (start + end) / 2;
+
+    if (v[mid] == N) {
+        cout << "1\n";
+        return;
+    } 
+    else if (N > v[mid]) {
+        binarysearch(N, mid + 1, end);
+    } 
+    else {
+        binarysearch(N, start, mid - 1);
+    }
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int N; cin >> N;
+    int temp;
+
+    for (int i = 0; i < N; i++) {
+        cin >> temp;
+        v.push_back(temp);
+    }
+
+    sort(v.begin(), v.end());
+
+    int M; cin >> M;
+    for (int i = 0; i < M; i++) {
+        cin >> temp;
+        binarysearch(temp, 0, v.size() - 1);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 // 도저히 야매로는 못풀겟으니 vector 나 python 을 활용해서 나중에 풀어보자 
 
