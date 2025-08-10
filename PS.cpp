@@ -608,7 +608,74 @@ int main() {
 }
 
 
+// 1654번 : 랜선 자르기 
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
 
+vector<int> v;
+int N;
+
+// 참조가 훨씬 빠름!
+// 큰 데이터를 매개변수로 넘길 때는 무조건 const & 로 넘기자.
+long long Sum(const vector<int>& v, int len){
+  long long sum = 0;
+  
+  for(int i=0; i<v.size(); i++)
+    sum += v[i] / len;
+  return sum; // len 일때 막대의 개수
+}
+
+
+// N개의 막대로 만들어야 함
+void bin_search(long long start, long long end){
+
+  long long result=0;
+  
+  while(start <= end) {
+    long long mid = start + (end - start) / 2;
+    
+     if(Sum(v, mid) >= (long long)N) {
+       result = mid;
+       start = mid + 1;
+     }
+     else end = mid - 1;
+  }
+
+  cout << result << "\n";
+  
+}
+
+
+int max_search(){
+    int max=v[0];
+
+    for(int i=1; i<v.size(); i++)
+      if(max < v[i])
+        max = v[i];
+
+    return max;
+}
+
+
+
+int main() {
+  ios::sync_with_stdio(false); 
+  cin.tie(nullptr);
+  
+  int K; cin >> K >> N;
+  
+  for(int i=0; i<K; i++){
+    int temp; cin >> temp;
+    v.push_back(temp);
+  }
+  
+  int max = max_search();
+
+  bin_search(1, (long long)max);
+  
+}
 
 
 
