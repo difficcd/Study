@@ -42,3 +42,32 @@ int main() {
 
     inorder(root); // 3 4 5 7
 }
+
+
+// 1629 번 곱셈 : 분할정복 복습과 오버플로 처리
+#include <iostream>
+using namespace std;
+
+int C;
+
+long long power(long long A, long long B){
+  
+  if(B == 1) return A % C;
+  else {
+    long long temp = power(A, B/2);
+    temp = (temp * temp) % C;
+    
+    if (B % 2 == 0) return temp;
+    else return (temp * (A % C)) % C;
+  }
+}
+
+
+int main(){
+  long long A, B;
+
+  cin >> A >> B >> C;
+  cout << power(A,B);
+  
+  
+}
