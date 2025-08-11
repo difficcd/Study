@@ -1,5 +1,6 @@
 // 트리 구현 연습!
 // C++ 으로 BST LVR순회 구현하기
+// https://www.acmicpc.net/problem/24479 풀기위해 ㄱㄱ
 
 #include <iostream>
 using namespace std;
