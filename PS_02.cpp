@@ -71,3 +71,79 @@ int main(){
   
   
 }
+
+
+// 10434번 행복한 소수
+// 소수상근수 가볍 복습
+
+import java.util.Scanner;
+import java.util.HashSet;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        
+        int P= sc.nextInt();
+        
+        for(int i=1; i<=P; i++){
+            int number= sc.nextInt();
+            System.out.print(number);
+            System.out.print(" ");
+            
+            int N= sc.nextInt();
+            System.out.print(N);
+            System.out.print(" ");
+            
+            if(N != 1) happy_num(N);
+            else System.out.println("NO");
+        }
+
+        sc.close();
+
+    }
+
+    public static void happy_num(int N){
+        HashSet<Integer> list = new HashSet<Integer>();
+
+        String str = String.valueOf(N);
+        list.add(N);
+
+        while(true) {
+            int sum = 0;
+            for(int j=0; j<str.length(); j++){
+                int num = str.charAt(j) - '0';
+                sum += num * num;
+            }
+            str = String.valueOf(sum);
+
+            if (sum == 1 && is_prime(N)) { // 먼저 1 체크
+                System.out.println("YES");
+                break;
+            }
+            if (list.contains(sum)) { // 방문했으면 무한루프 방지
+                System.out.println("NO");
+                break;
+            }
+            list.add(sum);
+        }
+    }
+
+    
+    public static boolean is_prime(int N){
+        boolean prime =true;
+
+        if (N != 1){
+            for (int i=2; i*i <=N; i++){
+                int tmp = N;
+                if(tmp % i == 0)
+                    prime = false;
+            }
+        }
+        else prime = false;
+
+        return prime;
+    }
+    
+
+}
+
