@@ -147,3 +147,109 @@ public class Main {
 
 }
 
+
+// DFS 와 BFS
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <stack>
+
+using namespace std;
+vector<int> out;
+
+void dfs(int start, vector<vector<int>>& adjList, vector<bool>& visited) {
+    stack<int> s;
+    s.push(start);
+
+    while (!s.empty()) {
+        int v = s.top();
+        s.pop();
+        
+        if (visited[v]) continue;  
+        visited[v] = true;
+
+        out.push_back(v);
+
+        vector<int> neighbors = adjList[v];
+        
+        sort(neighbors.rbegin(), neighbors.rend()); 
+        // stack : 역순 정렬
+        
+        for (int neighbor : neighbors) {
+            if (!visited[neighbor]) {
+                s.push(neighbor);
+            }
+        }
+    }
+
+    for (int i=0; i<out.size(); i++){
+        if(i==out.size()-1) cout << out[i];
+        else cout << out[i] << " ";
+    }
+    out.clear();
+}
+
+
+void bfs(int start, vector<vector<int>>& adjList, vector<bool>& visited) {
+    queue<int> q;
+    visited[start] = true;   
+    // 시작점 방문 처리
+    q.push(start);
+
+    while (!q.empty()) {
+        int v = q.front();
+        q.pop();
+
+        out.push_back(v);
+
+        vector<int> neighbors = adjList[v];
+        
+        sort(neighbors.begin(), neighbors.end()); 
+        
+        for (int neighbor : neighbors) {
+            if (!visited[neighbor]) {
+                visited[neighbor] = true;  
+                q.push(neighbor);
+            }
+        }
+    }
+
+    for (int i=0; i<out.size(); i++){
+        if(i==out.size()-1) cout << out[i];
+        else cout << out[i] << " ";
+    }
+    out.clear();
+    
+}
+
+
+int main() {
+    int V, E, start;
+    cin >> V >> E >> start;
+
+    vector<vector<int>> adjList(V + 1);
+
+
+    for (int i = 0; i < E; i++) {
+        int v1, v2;
+        cin >> v1 >> v2;
+        adjList[v1].push_back(v2);
+        adjList[v2].push_back(v1);
+    }
+
+    vector<bool> visited(V + 1, false);
+
+    dfs(start, adjList, visited);
+    cout << endl;
+
+    fill(visited.begin(), visited.end(), false);
+
+    bfs(start, adjList, visited);
+    cout << endl;
+
+    return 0;
+}
+
+
+
