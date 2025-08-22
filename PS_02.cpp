@@ -252,4 +252,63 @@ int main() {
 }
 
 
+// 1012 번 유기농 배추 해결도중.
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int M, N;
+// 지렁이 : 상하좌우 네 방향 이동 가능
+// 요소들의 연결 여부이므로, DFS 활용
+
+// 밭을 행렬로 보고 노드화 (x,y) => node[x][y] = 1
+// 인접한지의 여부는 상하좌우 좌표관계로 판단한다 (인접여부 판단함수)
+// 인접하면 visited 처리해주고, 시작 노드 기준 모든 노드가 visited 되면 다음 노드로 넘어가는 구조
+
+
+void warm_count(int (&node)[N][M]){
+
+// while( 모든 노드가 방문될 때까지 (새 노드를 방문 : count 증가, 노드 개수 K와 비교) )
+  
+  // (0,0) 부터 (1,*), (2,*) 순회하며 방문되지 않은 1인 노드 찾기 (노드=좌표쌍)
+  // 1인 노드 발견했으면, 인접한 노드가 존재하는지 확인하기 (좌표 매개변수로 보내기)
+
+  // 인접노드는 is_adjacent 함수로 판별하기.
+  
+  // 인접한 노드 방문하기 (visited true)
+  // 해당 인접한 노드를 기준으로 다시 탐색하기
+  
+}
+
+
+
+void is_adjacent(){
+  
+}
+
+
+
+
+int main(){
+  int T, K; cin >> T;
+
+  int X, Y; 
+
+  vector<vector<int>> node;
+  
+  for(int i=0; i<T; i++){ 
+    
+      cin >> M; cin >> N; // 땅 크기
+      cin >> K; // 좌표 수
+
+      for(int j=0; j<K; j++){
+        cin >> X; cin >> Y;
+        node[X].push_back(Y);
+      }
+    
+  }
+  
+}
+
 
