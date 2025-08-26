@@ -176,4 +176,39 @@ int main() {
 }
 
 
+// 요세푸스 간단히 복습
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main(){
+  int N, K; 
+  cin >> N;
+  cin >> K;
+
+  vector<int> v, res;
+
+  for(int i=1; i<=N; i++)
+    v.push_back(i);
+
+
+  int idx = K-1;
+
+  cout << "<";
+  
+  for(int i=0; i<N; i++){
+
+    if (i == N-1) cout << v[idx];
+    else cout << v[idx] << ", ";
+
+    res.push_back(v[idx]);
+    v.erase(v.begin()+idx);
+    if(!v.empty()) idx = (idx + K - 1) % v.size();
+  }
+  
+  cout << ">";
+
+
+}
 
