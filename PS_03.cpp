@@ -212,3 +212,92 @@ int main(){
 
 }
 
+
+// 1874번 : 스택 수열
+#include <iostream>
+using namespace std;
+
+int temp;
+int flag=0, cnt=0;
+
+void push(int *(&stack), int &value, int &top, char* (&result)){
+  stack[top] = value;
+  top++;
+  result[cnt] = '+'; cnt++;
+}
+
+void pop(int *(&stack), int &top, char* (&result)){
+  stack[top-1] = 0;
+  top--;
+  result[cnt] = '-'; cnt++;
+}
+
+
+// 0 1 2 3 4
+// 1 2 3
+
+// top 은 다음 삽입할 위치 idx
+
+void execute(int *(&arr), int *(&stack), int &top, int n, char *(&result)){
+    for(int i=1; i<n; i++){
+      
+      if(arr[i] == stack[top-1])
+        pop(stack, top, result);
+        
+      else if(arr[i] > stack[top-1]){
+        for(int j=temp+1; j<=arr[i]; j++){
+          
+          push(stack, j, top, result); 
+          
+          if(j == arr[i]) temp = arr[i];
+          if(arr[i] == stack[top-1]) pop(stack, top, result);
+        }
+      }
+      else {
+        cout << "NO"; 
+        flag=1;
+        break;
+      }
+      
+    }
+}
+
+
+void print_res(char* (&result)){
+  for(int i=0; i<cnt; i++)
+    cout << result[i] << "\n";
+}
+
+
+
+int main(){
+  int n, top=0;
+
+  cin >> n;
+  
+  int* arr = new int[n];
+  int* stack = new int[n];
+  char* result = new char[n*2];
+
+  
+  for(int i=0; i<n; i++)   cin >> arr[i];
+  for(int j=1; j<=arr[0]; j++) push(stack, j, top, result);     
+  
+  // top : idx
+  // stack[0] = 1, stack[1] = 2, ...
+
+  top = arr[0];
+  temp = arr[0];
+  
+  pop(stack, top, result);
+  execute(arr, stack, top, n, result);
+  if(!flag) print_res(result);
+  
+
+  delete[] arr;
+  delete[] stack;
+  delete[] result;
+  
+}
+
+
