@@ -333,3 +333,96 @@ int main(){
 }
 
 
+// 7576 토마토 
+#include <iostream>
+#include <vector>
+#include <tuple>
+#include <queue>
+using namespace std;
+
+
+int N, M, H;
+
+vector<tuple<int, int, int>> adjacent(tuple<int, int, int> v){
+  //x+1 x-1, y+1 y-1, z+1, z-1 (3d)
+
+  int x = get<0>(v);
+  int y = get<1>(v);
+  int z = get<2>(v);
+
+  vector<tuple<int, int, int>> adj;
+
+  if(x+1 < N) adj.push_back({x+1,y,z});
+  if(x-1 >= 0) adj.push_back({x-1,y,z});
+  if(y+1 < M) adj.push_back({x,y+1,z});
+  if(y-1 >= 0) adj.push_back({x,y-1,z});
+  if(z+1 < H) adj.push_back({x,y,z+1});
+  if(z-1 >= 0) adj.push_back({x,y,z-1});
+
+  return adj;
+}
+
+
+// ** start : {x, y, z}
+int BFS_tomato(vector<vector<vector<int>>> &box, vector<tuple<int,int,int>> start, int zero){
+
+  int result = 0;
+  int ripecnt = 0;
+
+  queue<tuple<int,int,int>> q; 
+  for(tuple<int,int,int> i : start) q.push(i); 
+  // box(start) : 이미 visited(=1)
+
+  while(!q.empty()){
+    tuple<int,int,int> v = q.front(); 
+    q.pop();
+
+    int x = get<0>(v);
+    int y = get<1>(v);
+    int z = get<2>(v);
+
+    for(tuple<int,int,int> i : adjacent(v)){
+      int adj_x = get<0>(i);
+      int adj_y = get<1>(i);
+      int adj_z = get<2>(i);
+
+      if(box[adj_x][adj_y][adj_z] == 0){
+        box[adj_x][adj_y][adj_z] = box[x][y][z] + 1;
+        zero--; // 값이 변경될 때만 새로운 토마토가 익는 것
+        q.push({adj_x, adj_y, adj_z});
+        result = max(result, box[adj_x][adj_y][adj_z]);
+      }
+    }
+  }
+
+  if(zero!=0) return -1; 
+  if(result == 0) return 0; 
+  return result - 1;
+}
+
+
+
+int main(){
+  int zero=0;
+  vector<tuple<int,int,int>> start;
+
+  cin >> N >> M >> H;
+  vector<vector<vector<int>>> box(N, vector<vector<int>>(M, vector<int>(H, 0)));
+  // box[N][M][H], EX box[1][2][3] : 4층 박스의 (1,2) 좌표
+
+  for(int k=0; k<H; k++){
+    for(int j=0; j<M; j++){
+      for (int i=0; i<N; i++){
+        cin >> box[i][j][k];
+        if(box[i][j][k] == 1) start.push_back({i,j,k});
+        if(box[i][j][k] == 0) zero++; 
+      }
+    }
+  }
+
+
+  int result = BFS_tomato(box, start, zero); // {x, y, z}
+   cout << result;
+}
+
+
