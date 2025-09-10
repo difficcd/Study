@@ -92,3 +92,77 @@ public class Main {
 
 
 
+// Open sw 대비를 위한 자바 문법 정리
+import java.util.Scanner;
+import java.util.ArrayList;
+// Scanf 기능은 Scanner Class를 import 하여 사용
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        
+        ArrayList<String> list = new ArrayList<String>();
+
+        list.add("apple");
+        System.out.println(list.get(0));
+
+        String input = sc.nextLine(); 
+        int num_ = sc.nextInt(); // 정수 입력
+        System.out.println(input + num_);
+
+        sc.close(); 
+        // 자원 정리 (I/O resource 는 GC 외 범위)
+
+
+
+        
+    
+        // 1 )  배열(Array)
+        
+        int[] arr; 
+        arr = new int[5]; 
+        
+        int[] numbers = {1, 2, 3, 4, 5};
+        System.out.println("numbers[0] : " + numbers[0]);
+        // 길이 : numbers.length
+
+        // 2 ) 반복문(Repetition statements)
+
+        for (int i = 0; i < numbers.length; i++) 
+            System.out.println("numbers[" + i + "] = " + numbers[i]);
+
+        for (int num : numbers)  // C 형식 순회 가능
+            System.out.println("값: " + num);
+        
+
+        int i = 0;
+        while (i < numbers.length) {
+            System.out.println("while -> " + numbers[i]);
+            i++;
+        }
+
+
+        int j = 0;
+        do {
+            System.out.println("do-while -> " + numbers[j]);
+            j++;
+        } while (j < numbers.length);
+
+
+        // 3 ) 예외 처리(Exception Handling)
+        // 프로그램 실행 중 오류가 발생했을 때 비정상 종료를 막고 처리하는 방법
+        
+        try {
+            int result = numbers[10]; // 존재하지 않는 인덱스 접근 -> 예외 발생
+            System.out.println("값: " + result);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // 예외 발생 시 실행되는 코드
+            System.out.println("예외 발생: 배열의 범위를 벗어남!");
+        } finally {
+            // 예외 발생 여부와 상관없이 무조건 실행
+            System.out.println("예외 처리 완료!");
+        }
+    }
+}
+
+
