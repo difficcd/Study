@@ -1,5 +1,4 @@
-# PS_study
-
+# PS(예전 백준 풀이) & OpenSW Java 실습내용 정리
 
 https://solved.ac/class/4
 클래스 3~4 가 자료구조에서 익숙한 문제들이 많으니 해당 리스트의 문제들을 차근차근 풀어보도록 하자
