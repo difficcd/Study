@@ -1,6 +1,6 @@
 
 
-// 04~07 (22p ~ p)
+// 04~07 (22p ~ 33p)
 // 이미 아는 내용은 skip
 
 public class Main { 
