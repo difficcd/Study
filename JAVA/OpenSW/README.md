@@ -1,6 +1,13 @@
 
 ### OpenSW 실습내용 정리
 
+[ 자료 ]
+week05 [Class 선언, 상속](https://chanhuiseok.github.io/posts/java-1/)  
+
+  </ br>
+
+
+
 ***
 **시험 공부 : 해당 repository folder 와 hwp 정리본을 통해 공부**  
 **특히, 실습 내용 : 과제내용 & 해당 폴더 단락/목차/개념별 정리 후 하나씩 인출**
