@@ -27,7 +27,6 @@ class Circle{
             this.radius;
         return this.area;
     }
-    
 }
 
 
