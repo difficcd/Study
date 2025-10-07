@@ -50,7 +50,6 @@ class Circle{     // default 접근지정 class
             this.radius;
         return this.area;
     }
-    
 }
 
 
