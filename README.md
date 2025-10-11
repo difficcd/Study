@@ -9,9 +9,4 @@ https://solved.ac/class/4
 * 골드 달성 목표
 * 자료구조 구현 연습 꾸준히
 
-  
-https://www.youtube.com/watch?v=M2mcJvmYpWY&list=PLsMufJgu5932XYejsOwcUDJ2F75f56nrl&index=1
-
-
-
 
