@@ -80,7 +80,6 @@ def delete_bst(key, idx=1):
             # 재귀적으로 그 아래의 중복값 제거 및 정제, 제거완료
             
 
-
 # (4) 출력 함수 (트리 상태 확인)
 def print_tree():
     print([tree[i] for i in range(1, 32)])  # 깊이 5까지만 표시
