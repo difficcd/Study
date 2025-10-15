@@ -9,22 +9,26 @@ tree = [NIL] * MAX_SIZE
 # (1) 탐색 연산
 def search_bst(key, idx=1):
     if idx >= MAX_SIZE or tree[idx] == NIL:
-        return NIL
+        print(f"\nKey {key} not found:")
+        return NIL  #index 초과 (탐색 실패)
     if tree[idx] == key:
-        return idx
+        return idx  #찾은 index 반환 (탐색 성공)
     elif key < tree[idx]:
         return search_bst(key, idx * 2)
+        # key값이 index값보다 작으면 왼쪽 자식으로 내려감
     else:
         return search_bst(key, idx * 2 + 1)
+        # key값이 index값보다 크면(같은값허용X) 오른쪽으로 내려감
+
 
 
 # (2) 삽입 연산
 def insert_bst(key, idx=1):
     if idx >= MAX_SIZE:
-        return
+        return # 꽉 차있으면 종료
     if tree[idx] == NIL:
         tree[idx] = key
-        return
+        return # 첫 삽입
 
     if key < tree[idx]:
         insert_bst(key, idx * 2)
@@ -39,13 +43,13 @@ def insert_bst(key, idx=1):
 def find_min_index(idx):
     while idx * 2 < MAX_SIZE and tree[idx * 2] != NIL:
         idx = idx * 2
+        # 1 2 4 8 ... 확인하며 가장 끝쪽의 index 
     return idx
 
 
 def delete_bst(key, idx=1):
     target = search_bst(key, idx)
     if target is None:
-        print(f"Key {key} not found.")
         return
 
     left = target * 2
@@ -53,6 +57,7 @@ def delete_bst(key, idx=1):
 
     # Case 1: 단말 노드
     if (left >= MAX_SIZE or tree[left] == NIL) and (right >= MAX_SIZE or tree[right] == NIL):
+        # 왼쪽/오른쪽 자식이 없는 경우를 조건으로 가짐
         tree[target] = NIL
 
     # Case 2: 왼쪽 자식만 있는 경우
@@ -68,9 +73,12 @@ def delete_bst(key, idx=1):
     # Case 3: 양쪽 자식 모두 있는 경우
     else:
         succ = find_min_index(right)
-        if succ is not None:
+        if succ is not None:           # = 양쪽 자식이 존재하면    
             tree[target] = tree[succ]
             delete_bst(tree[succ], right)
+            # 지울 노드의 값을 오른쪽 자식 값으로 바꾸고
+            # 재귀적으로 그 아래의 중복값 제거 및 정제, 제거완료
+            
 
 
 # (4) 출력 함수 (트리 상태 확인)
