@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+    <head>
+        <title>Lecture 03</title>
+        <link type="text/css" rel="stylesheet" href="external.css">
+
+        <style>
+            :root {
+                --pink1: rgb(233, 200, 216);
+                --pink2: rgb(189, 74, 115);
+            }
+
+
+            /* Selectors */
+            h2 { 
+                margin: auto; border-radius: 20px;
+                width: 300px; padding: 10px;
+                background-color: var(--pink1);
+            }
+
+            #id_selector { color: var(--pink2); }
+            .class_selector { 
+                height: 250px;
+                border: 20px solid rgb(0, 0, 0);
+                border-radius: 20px;
+            }
+
+            a { color: var(--pink2) }
+            a[target=_blank], h1 { 
+                color: black; 
+                font-weight: bold;
+                font-family: sans-serif;
+            }
+
+            * { text-align: center }
+
+
+            /*Pseudo Selector*/
+            a:link { color: var(--pink2); }
+            a:visited { color: gray; }
+            a:hover { color: white; }
+            a:active { color: var(--pink1); }
+
+            li:nth-child(2) { color: var(--pink2); }
+            li:nth-child(2n+1) { color: rgb(210, 210, 210); font-weight:bold; }
+            p:first-child { background-color: rgb(210,210,210); }
+
+
+            /* Grouping Selector */
+            div p { background-color: var(--pink1); border-radius: 20px;}
+
+            .div_p { 
+                border: 3px solid var(--pink1);
+                border-radius: 20px;
+                width: 300px; 
+                margin: auto; padding: 20px;
+            }
+
+            div > p { color: var(--pink2); }
+            div + p { font-weight: bold; }
+            div ~ p { font-size: 10px; }
+
+
+            /* pseudo-element selector [47p]*/
+            a::before { content: "🩷 "; } 
+
+
+            /* CSS properities */
+            .back {
+                margin: auto;
+                width: 400px; height: 300px; 
+                border: 4px solid var(--pink1);
+                border-radius: 20px;
+                background-repeat: no-repeat;
+                background-image: url("cute.png");
+                background-size: 300px 300px;
+                background-position: center;
+                /* background-attachment: fixed; */
+
+                text-align: center;
+                opacity: 0.6;
+            }
+
+            .text {
+                text-align: center;
+                color: var(--pink2);
+                text-decoration: overline var(--pink1) 3px;
+                /* overline, line-throug, underline */
+                text-transform: uppercase;
+                /* lowercase, capitalize */
+                text-indent: 0px;
+                text-shadow: 5px 5px 5px var(--pink1);
+
+                font-weight: bold;
+                font-size: 2.0em;  /* medium, (1.0, 1.5)em*/
+                font-style: italic;
+
+                /* integrate */
+                font: bold 30px Georgia, serif;
+            }
+
+            /* table */
+            table {
+                margin: auto;
+                border-collapse: collapse;
+                /* collapse, separate */
+            }
+
+            table, td, th {  border: 3px solid var(--pink1); }
+            caption { caption-side: top; }
+            th { padding: 10px; background-color: rgb(241, 208, 227);}
+            td { padding: 10px; background-color: rgb(255, 248, 252);}
+
+            /* LIST */
+            ul { list-style-type : none; }
+                /* circle, square, upper-roman, lower-alpha*/
+
+        </style>
+    </head>
+
+    <body>
+        <header>
+            <h2 class="external">Lecture 03: CSS</h2>
+            <h3 id="id_selector">Game PV</h3>
+        </header>
+
+        <a href="https://www.google.com/">nomal_link</a> &nbsp;&nbsp;      
+        <a href="https://www.google.com/" target="_blank">blank_link</a>
+        <br><br>
+
+        <div class="div_p">
+            <p> Paragraph in div </p>
+            <p> Paragraph in div </p>
+            <section> <p> Paragraph in div but section </p> </section>
+        </div>
+        <p> Paragraph out div1 : No Backgorund! </p>
+        <p> Paragraph out div2 : No Backgorund! </p>
+        <!--  div p: color  |   div + p:  bold   |   div ~ p : size  -->
+
+        <ul>
+            <li> list item 1 </li>
+            <li> list item 2 </li>
+            <li> list item 3 </li>
+            <li> list item 4 </li>
+            <li> list item 5 </li>
+        </ul> <br><br>
+
+
+        <table>
+            <caption> TABLE NAME </caption>
+            <tr>
+                <th colspan="2"> header </th>
+            </tr>
+            <tr>
+                <td>one</td>
+                <td>two</td>
+            </tr>
+        </table> <br><br>
+
+
+
+        <div class="back"> This is DIV </div> <br><br>
+
+        <p class="text"> Text properties </p>
+        <video src="pukey.mp4" class="class_selector" 
+               controls autoplay muted loop></video> <br><br>
+
+        
+
+
+    </body>
+</html>

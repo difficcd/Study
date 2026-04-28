@@ -1,0 +1,152 @@
+
+
+<!-- 필수 요소 : DOCTYPE, html, head, title, body-->
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Lecture 02</title>
+    </head>
+    <style>
+        body{ margin: auto; text-align:center; }
+        table{ margin: auto; text-align:center; }
+    </style>
+
+    <body>
+
+        <!-- header, nav, main, footer-->
+        <header>
+            <h1>Lecture 02</h1> <!-- ~h6까지 존재 -->
+            <p>abcdefg<br> 
+               hijklmnop<br></p>
+        </header>
+        
+        <nav> <hr> </nav>
+
+        <main>
+             <p>
+                <b>bold text: b</b> <br>
+                <i>italic: i</i> <br>
+                <strong>strong: strong == bold</strong> <br>
+                <em>emphasize text == italic</em> <br>
+                <code>It is code  </code> AND  
+                <sup>Superscript: sup  </sup> AND  
+                <sub>Subscript: sub  </sub> <br>
+                <abbr title="World Health Organiztion"> WHO </abbr> <!--hover info-->
+                <bdo dir="rtl"> will go right to left!!! </bdo> <!--direction-->
+            
+                <br> a &nbsp; b
+                <br> a &lt; b || a &gt; b
+                <br> this is ": &quot;
+                <br> this is &: &amp;
+            </p>
+
+
+            <!-- LIST! -->
+            <ul> <!--un_ordered-->
+                <li>list item</li>
+                <li>list item</li>
+            </ul>
+
+            <ol>
+                <li>list item</li>
+                <li>list item</li>
+            </ol>
+
+            
+            <br><a href="https://www.google.com/"> google </a>
+            <br><a href="https://www.google.com/" target="_blank"> google:blank </a>
+            <br><a href="https://www.google.com/" target="_self"> google:self </a>
+            <!-- blank : new web page -->
+
+            <br><img src="cute.png" width="100" alt="cute"> <!-- alt:alternate 대체이름!! -->
+            <br><img src="none.png" width="100" alt="NONe"><br><br>
+
+
+            <!-- table! -->
+            <table border="1">
+                <tr>
+                    <th>This is Header</th>
+                    <th colspan="2">colspan</th>
+                </tr>
+                <tr>
+                    <th rowspan="2">rowspan</th>
+                    <td>R1 TD1</td>
+                    <td>R1 TD2</td>
+                </tr>
+                <tr>
+                    <td>R2 TD1</td>
+                    <td>R2 TD2</td>
+                </tr>
+            </table>
+
+
+            <br> <div style="border: 3px solid rgb(128, 25, 83)">
+                <br><audio src="tokyo.mp3" controls autoplay loop>
+                    listen listen i cant listen
+                </audio>
+            
+            <br><audio controls autoplay loop>
+                    <source src="none.mp3">
+                    listen listen i cant listen
+                </audio>
+
+            <br><video height="250" poster="cute.png"
+                        autoplay muted loop preload="auto" controls>
+                    <source src="pukey.mp4" type='video/mp4'>
+                        See See i cant see
+            </video>
+            <br><br>
+            </div> <br>
+
+            <p> 
+                this is span: 
+                <span style="border: 3px solid rgb(128, 25, 83)"> SPAN!</span> 
+                this is inline: <a href="none" target="_blank"> a inside p</a>
+            </p>
+
+
+            <!-- form -->
+            <form>
+                <label for="fname">First name:</label><br>
+                <input type="text" id="fname" placeholder="placeholder!"><br>
+                  <!-- for == id 맞춰야 묶어짐 -->
+                  <!-- placeholder ! 중요하니 꼭 기억 -->
+
+                <label for="pw">Password:</label><br>
+                <input type="password" id="pw"><br>
+                
+                <input type="submit" value="Login">
+                <input type="reset">
+
+                <br><br>
+            </form>
+
+            <form>
+                <input type="radio" id="male" name="gender">
+                <label for="male">Male</label>
+                <input type="radio" id="female" name="gender">
+                <label for="female">Female</label>
+                <input type="submit" value="Submit">
+
+                <br><br>
+            </form>
+
+            <form action="/action_page.php" method="POST">
+                <!-- 이론과 연결하여 이해! -->
+                <input type="checkbox" id="A" checked>
+                <label for="A">A</label>
+                <input type="checkbox" id="B">
+                <label for="B">B</label>
+                <input type="submit" value="Submit">
+
+                <br><br>
+            </form>
+
+
+        </main>
+       
+         <footer></footer>
+            
+    </body>
+</html>
