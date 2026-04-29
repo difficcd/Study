@@ -1,0 +1,44 @@
+ 
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Lecture 07</title>
+    </head>
+
+
+    <body>
+        <h4> Lecture 07 </h4>
+
+
+        <br><br>
+        <input type="text" id="task" placeholder="Task!">
+        <button onclick="ADDTASK()">ADD!</button>
+        <ol id="LIST"></ol>
+        
+        <script>
+            function ADDTASK(){
+               var x = document.getElementById("task").value;
+               // value 는 항상 문자임
+               var newtask = document.createElement("li");
+               newtask.innerHTML = x;
+               
+               document.getElementById("LIST").appendChild(newtask);
+            }
+        </script>
+
+
+        <textarea id="TEXT" rows="5" cols="40"> </textarea>
+        <p id="COUNT">text: 0</p>
+
+        <script>
+            var input = document.getElementById("TEXT");
+            var count = document.getElementById("COUNT");
+
+            input.addEventListener("input", function() {
+                count.innerHTML = "text: " + input.value.length;
+            })
+
+        </script>
+
+    </body>
+</html>
