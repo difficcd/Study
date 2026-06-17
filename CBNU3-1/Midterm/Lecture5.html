@@ -1,0 +1,193 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+    <head>
+        <title> Lecture 05 </title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+        <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+        <style>
+
+            html{
+                scroll-behavior: smooth;
+            } /* 버튼 눌렀을 때 부드럽게 올라감! */
+
+            body{
+                text-align: center;
+                margin: 20px;
+            }
+
+            .bg-1{
+                background-color: rgb(254, 239, 246);
+                border-radius: 20px;
+            }
+
+            /* 기존 Bootstrap 요소 수정 가능 */
+            .container-fluid {
+                padding: 50px;
+            } 
+
+            .button {
+                background-color: rgb(241, 183, 216); color: black;
+                text-align: center; padding: 5px; margin: auto;
+                border-radius: 5px; border: none;
+                display: inline-block; cursor: pointer; /* cursor */
+            }
+
+            .box {
+                margin:10px;
+                height: 200px;
+                width: 200px;
+                border-radius: 20px;
+                background-color:  rgb(254, 239, 246);
+            }
+
+
+            img{
+                border-radius: 20px;
+            }
+            
+
+            .navbar {
+                padding-top: 15px;
+                padding-bottom: 15px;
+            }
+            .navbar-nav li a:hover { color: rgb(232, 65, 160) !important; }
+
+            .none{display: none;}
+        </style>
+    </head>
+
+
+    <body>
+        <header>
+            <h3> Lecture 05 </h3>
+        </header>
+    
+        <main>
+            <!-- nav -->
+            <nav class="navbar navbar-default">
+                <div class="container">
+                    <div class="navbar-header">
+                        <!-- Collapse BUTTON!! HAMBERGER BUTTON-->
+                            <button type="button" class="navbar-toggle"
+                                    data-toggle="collapse" data-target="#NAVBAR">
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                            </button>
+
+                        <a class="navber-brand" style="font-weight:bold; 
+                           font-size: 20px; color:black;" href="#">NAME!</a>
+                    </div>
+                    <div class="collapse navbar-collapse" id="NAVBAR">
+                        <ul class="nav navbar-nav navbar-right">
+                            <li><a href="#">MENU</a></li>
+                            <li><a href="#">INFO</a></li>
+                            <li><a href="#">MYPAGE</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+
+            <button type="button" class="btn btn-info" data-toggle="collapse"
+                    style="background-color: rgb(241, 183, 216);
+                    border:0;" data-target="#demo">
+                    Collapse CLICK </button>
+            <div id="demo" class="collapse"> HIDDEN CONTENT! </div> <br><br>
+
+
+            <div class="container-fluid text-center bg-1">
+                <!-- text-center 속성 추가 가능 [28p], 내가만든거 추가가능-->
+
+                <h5> container fluid </h5>
+                <img src="cute.png" alt="wine" 
+                     class="img-rounded" style="margin: auto">
+                     <!-- class =  img-circle, img-thumbnail  -->
+                     
+                <!-- <video src="pukey.mp4" autoplay controls loop muted
+                       style="width:70%; border-radius: 20px;
+                       border: 10px solid rgb(0, 0, 0);"></video> -->
+                    
+            </div> <br><br>
+
+
+            <!-- Bootstrap buttons -->
+            <div class="container">
+                <button type="button" class="btn">BASIC</button>
+                <button type="button" class="btn btn-default">DEFAULT</button>
+                <!-- primary, success, info, warning, danger, link 등 [45p] -->
+
+                <button class="button">MYBTN</button> <br><br>
+
+                <a href="#" class="btn btn-default btn-lg">
+                    <span class="glyphicon glyphicon-search" 
+                          style="display: inline-block; height: 5px;"> SEARCH
+                    </span>
+                </a>
+            </div>
+
+            <!-- BootStrap Grid & img:responsive -->
+            <div class="container-fluid text-center" style="margin:auto;">
+                <div class="row">
+                    <div class="col-sm-4">
+                        <img src="cute.png" alt="image"
+                             width="200" height="200" class="img-responsive">
+                    </div>
+                    <div class="col-sm-4"> 
+                        <img src="cute.png" alt="image"
+                             width="200" height="200" class="img-responsive">
+                    </div>
+                    <div class="col-sm-4"> 
+                        <img src="cute.png" alt="image"
+                             width="200" height="200" class="img-responsive">
+                    </div>
+                </div>
+            </div>
+
+        <div class="container-fluid text-center">
+            <h4> <b>TABLE</b> </h4>
+            <table class = "table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th>FIRST</th>
+                        <th>SECOND</th>
+                    </tr>
+                    <tr><td>ONE</td> <td>TWO</td></tr>
+                    <tr style="background-color: rgb(248, 248, 248);">
+                        <td>01</td> <td>02</td>
+                    </tr>
+                    <tr><td>ONE</td> <td>TWO</td></tr>
+                </thead>
+            </table>
+        </div>
+
+        <div class="container-fluid">
+            <h4> <b>FORM</b> </h4>
+            <form>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" class="form-control" id="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="pwd">Password:</label>
+                    <input type="password" class="form-control" id="pwd">
+                </div>
+                
+                <div class="checkbox">
+                    <label><input type="checkbox"> Remeber! </label>
+                </div>
+
+                <button type="submit" class="btn btn-default">submit</button>
+            </form>
+        </div>
+
+        </main>
+    </body> 
+</html>

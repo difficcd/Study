@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Lecture 13: Node.js — 실습</title>
+<style>
+  :root{
+    --blue:#2563eb; --green:#16a34a; --gray:#64748b; --yellow:#d97706;
+    --ink:#1e293b; --soft:#f1f5f9; --line:#e2e8f0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;
+    color:var(--ink); line-height:1.6; margin:0;
+    font-size:11pt;
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:32px 40px;}
+  code,pre{font-family:"Consolas","D2Coding",monospace;}
+  code{background:var(--soft); padding:1px 5px; border-radius:4px; font-size:0.9em; color:#b91c1c;}
+  pre{background:#0f172a; color:#e2e8f0; padding:14px 16px; border-radius:8px;
+      overflow-x:auto; font-size:9.5pt; line-height:1.5;}
+  pre code{background:none; color:inherit; padding:0;}
+  h1,h2,h3{line-height:1.3;}
+  hr{border:none; border-top:1px solid var(--line); margin:26px 0;}
+
+  /* Cover */
+  .cover{text-align:center; padding:90px 0 70px; border-bottom:3px solid var(--ink); margin-bottom:10px;}
+  .cover .tag{display:inline-block; background:var(--soft); color:var(--gray);
+    letter-spacing:.15em; font-size:9pt; padding:5px 12px; border-radius:20px; margin-bottom:18px;}
+  .cover h1{font-size:34pt; margin:0 0 6px;}
+  .cover .sub{color:var(--gray); font-size:13pt;}
+  .cover .lead{max-width:620px; margin:26px auto 0; color:#475569; font-size:10.5pt; text-align:left;
+    background:#f8fafc; border:1px solid var(--line); border-radius:10px; padding:16px 18px;}
+
+  /* Part header */
+  .part{page-break-before:always; margin:34px 0 18px;}
+  .part .pn{color:var(--gray); font-size:10pt; letter-spacing:.1em;}
+  .part h2{font-size:22pt; margin:2px 0 0; border-bottom:3px solid var(--ink); padding-bottom:8px;}
+
+  /* Cards */
+  .card{border-radius:10px; padding:14px 18px; margin:16px 0; border:1px solid var(--line);}
+  .practice{border-left:6px solid var(--blue); background:#eff6ff;}
+  .task{border-left:6px solid var(--green); background:#f0fdf4;}
+  .check{border-left:6px solid var(--yellow); background:#fffbeb;}
+  .concept{border-left:6px solid var(--gray); background:#f8fafc;}
+  .card h3{margin:0 0 8px; font-size:13pt;}
+  .practice h3{color:var(--blue);} .task h3{color:var(--green);} .check h3{color:var(--yellow);}
+  .badge{font-size:8.5pt; font-weight:700; padding:2px 8px; border-radius:20px; color:#fff; vertical-align:middle;}
+  .b-practice{background:var(--blue);} .b-task{background:var(--green);} .b-theory{background:var(--gray);}
+  .pg{color:#94a3b8; font-size:8.5pt; font-family:Consolas,monospace;}
+
+  ul,ol{margin:6px 0 6px; padding-left:22px;}
+  li{margin:3px 0;}
+  .expected-label{font-size:9pt; color:var(--gray); font-weight:700; margin:10px 0 4px;}
+
+  table{border-collapse:collapse; width:100%; margin:12px 0; font-size:10pt;}
+  th,td{border:1px solid var(--line); padding:7px 10px; text-align:left;}
+  th{background:var(--ink); color:#fff; font-weight:600;}
+  tr:nth-child(even) td{background:#f8fafc;}
+
+  .checklist{list-style:none; padding-left:4px;}
+  .checklist li::before{content:"☐ "; color:var(--gray); font-weight:700;}
+  .footer{page-break-before:always; text-align:center; padding-top:80px;}
+  .footer h2{font-size:24pt;}
+  blockquote{margin:10px 0; padding:8px 14px; background:#fff7ed; border-left:4px solid var(--yellow);
+    color:#92400e; border-radius:6px; font-size:10pt;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== COVER ===== -->
+  <div class="cover">
+    <div class="tag">OPEN SOURCE WEB SOFTWARE</div>
+    <h1>Lecture 13: Node.js</h1>
+    <div class="sub">실습 (Practice Worksheet)</div>
+    <div class="lead">
+      이 자료는 강의노트 <b>Lecture 13 (Node.js)</b>의 모든 내용을 <b>직접 구현</b>해 보는 실습 워크시트입니다.<br>
+      각 단원은 <b>① 개념 복습(Practice) → ② 과제(Task) → ③ 예상 결과</b> 순서이며, 과제는 <b>앞 과제 위에 누적</b>됩니다.<br>
+      정답 코드는 싣지 않습니다. 강의 페이지(<code class="pg">[00p]</code>)를 참고해 스스로 채워 넣으세요.
+    </div>
+  </div>
+
+  <!-- ===== 지난 강의 ===== -->
+  <h3>In the Last Lecture (지난 강의 복습)</h3>
+  <ul>
+    <li><b>React</b> — JSX, 컴포넌트, props, Hooks(useState/useEffect/useRef), Virtual DOM</li>
+    <li>이번 강의: 그 React <b>프론트엔드에 데이터를 보내줄 백엔드</b>를 Node.js로 만든다.</li>
+  </ul>
+
+  <!-- ===== PART 1 ===== -->
+  <div class="part"><div class="pn">PART 1</div><h2>Introduction to Node.js <span class="badge b-theory">개념 · 구현 없음</span></h2></div>
+
+  <div class="card concept">
+    <h3>개념 정리 <span class="pg">[1~10p]</span></h3>
+    <ul>
+      <li><b>백엔드</b> = 서버 측. 데이터·로직·인증·DB 통신 담당 <span class="pg">[4p]</span></li>
+      <li><b>Node.js = V8 엔진 + 서버 기능</b> → 브라우저 밖에서 JS 실행 <span class="pg">[5p]</span></li>
+      <li>Node로 할 수 있는 것: 서버 생성 / DB 연결 / 파일 입출력 / 인증 / REST API / React에 데이터 전송 <span class="pg">[6p]</span></li>
+      <li><b>3대 핵심 아이디어</b> <span class="pg">[7p]</span>
+        <ul>
+          <li>비동기(Asynchronous): 한 작업이 끝나길 기다리지 않음</li>
+          <li>논블로킹 I/O(Non-Blocking): 대기 중에도 다음 요청 처리</li>
+          <li>이벤트 드리븐(Event-Driven): 이벤트 발생 시 콜백 실행</li>
+        </ul>
+      </li>
+      <li>내부 동작: <b>V8 → Node API → libuv(이벤트 루프 + 워커 스레드)</b> <span class="pg">[8p]</span></li>
+      <li>적합: I/O 중심(REST API, 로그인, 채팅, 실시간) <span class="pg">[9p]</span></li>
+      <li>부적합: CPU 중심(ML 학습, 영상 인코딩, 대규모 연산) → 단일 스레드 이벤트 루프가 막힘 <span class="pg">[10p]</span></li>
+    </ul>
+  </div>
+  <div class="card check">
+    <h3>✅ 셀프 체크</h3>
+    <ol>
+      <li><code>console.log</code> 두 줄 사이에 <code>fs.writeFile</code>이 있을 때, 출력 순서는? (왜 그런가?)</li>
+      <li>Node.js가 <b>영상 인코딩 서버</b>로 부적합한 이유를 한 문장으로.</li>
+      <li>Chrome과 Node.js의 공통점과 차이점은?</li>
+    </ol>
+  </div>
+
+  <!-- ===== PART 2 ===== -->
+  <div class="part"><div class="pn">PART 2</div><h2>Node.js 생태계 &amp; 코어 모듈</h2></div>
+
+  <div class="card practice">
+    <h3><span class="badge b-practice">PRACTICE 1</span> 프로젝트 셋업 &amp; 코어 모듈 <span class="pg">[11~22p]</span></h3>
+    <ul>
+      <li><code>npm</code> = 패키지 매니저, <code>package.json</code> = 프로젝트 설정(의존성·scripts), <code>node_modules</code> = 설치된 패키지 폴더 <span class="pg">[12~16p]</span></li>
+      <li>코어 모듈(설치 불필요, <code>require</code>만): <b>fs</b>(파일), <b>path</b>(경로), <b>http</b>(서버) <span class="pg">[17p]</span></li>
+      <li><code>fs.writeFile(파일, 내용, 콜백)</code> <span class="pg">[18p]</span> / <code>path.join(__dirname, ...)</code> <span class="pg">[20p]</span> / <code>http.createServer(...).listen(3000)</code> <span class="pg">[22p]</span></li>
+    </ul>
+  </div>
+
+  <div class="card task">
+    <h3>🛠️ <span class="badge b-task">TASK 0</span> 프로젝트 초기화</h3>
+    <b>할 일</b>
+    <ol>
+      <li>작업 폴더에서 <code>npm init -y</code> 실행 → <code>package.json</code> 생성 <span class="pg">[15p]</span></li>
+      <li><code>npm install express</code>, <code>npm install mysql</code> 설치 <span class="pg">[13p, 46p]</span></li>
+      <li><code>package.json</code>의 <code>dependencies</code>에 express, mysql이 잡혔는지 확인 <span class="pg">[16p]</span></li>
+      <li><code>package.json</code>의 <code>"scripts"</code>에 <code>"start": "node server.js"</code> 추가 <span class="pg">[15~16p]</span></li>
+    </ol>
+    <div class="expected-label">예상 결과</div>
+<pre><code>package.json 의 dependencies:
+  "express": "^5.x.x",
+  "mysql":   "^2.x.x"
+node_modules/ 폴더와 package-lock.json 생성됨</code></pre>
+    <b>셀프 체크</b>: <code>node_modules</code>를 깃에 올리면 안 되는 이유? 다시 받으려면? <span class="pg">[14p]</span>
+  </div>
+
+  <div class="card task">
+    <h3>🛠️ <span class="badge b-task">TASK 1</span> 코어 모듈로 "파일 로거 + 기본 서버"</h3>
+    <b>할 일</b> (파일: <code>task1_core.js</code>)
+    <ol>
+      <li><code>fs</code>로 <code>log.txt</code>에 <code>"Server started"</code> 기록 <span class="pg">[18p]</span></li>
+      <li>그 경로를 <code>path.join(__dirname, "log.txt")</code>로 만들기 (하드코딩 금지) <span class="pg">[20p]</span></li>
+      <li><code>http</code> 모듈만으로 포트 3000 서버를 띄우고, 모든 요청에 <code>"Hello from Node.js server"</code> 응답 <span class="pg">[22p]</span></li>
+    </ol>
+    <div class="expected-label">예상 결과</div>
+<pre><code>$ node task1_core.js
+   → log.txt 파일 생성 (내용: Server started)
+브라우저 http://localhost:3000     → Hello from Node.js server
+브라우저 http://localhost:3000/abc → (똑같이) Hello from Node.js server  ← URL 구분 못 함!</code></pre>
+    <div class="expected-label">힌트 (골격)</div>
+<pre><code>const fs = require("fs");
+const path = require("path");
+const http = require("http");
+
+// 1) 로그 파일 경로 만들기
+const logPath = path.join(__dirname, /* TODO */);
+
+// 2) 파일 쓰기 (콜백에서 에러 처리)
+fs.writeFile(logPath, /* TODO */, function (err) {
+  /* TODO */
+});
+
+// 3) 서버 생성
+const server = http.createServer(function (req, res) {
+  /* TODO: res.end(...) */
+});
+server.listen(/* TODO */);</code></pre>
+    <b>셀프 체크</b>: 출력이 "서버 실행" 로그보다 콘솔의 다른 줄이 먼저 찍힐 수 있다. 왜? <span class="pg">[7p]</span>
+  </div>
+
+  <!-- ===== PART 3 ===== -->
+  <div class="part"><div class="pn">PART 3</div><h2>Express.js</h2></div>
+
+  <div class="card practice">
+    <h3><span class="badge b-practice">PRACTICE 2</span> Express 기본 &amp; 라우팅 <span class="pg">[23~28p]</span></h3>
+    <ul>
+      <li>Express = Node 위의 웹 프레임워크. 메서드 검사·URL 매칭·응답 포맷을 자동 처리 <span class="pg">[24~25p]</span></li>
+      <li>최소 구조: <code>require("express")</code> → <code>const app = express()</code> → <code>app.get(...)</code> → <code>app.listen(3000)</code> <span class="pg">[26p]</span></li>
+      <li><code>req</code>(요청 정보) / <code>res</code>(응답: <code>res.send(...)</code>) <span class="pg">[26p]</span></li>
+      <li>라우팅 = URL을 핸들러 함수에 매칭. 정의 순서대로 매칭 <span class="pg">[27~28p]</span></li>
+    </ul>
+  </div>
+
+  <div class="card task">
+    <h3>🛠️ <span class="badge b-task">TASK 2</span> 기본 서버를 Express로 다시 만들기</h3>
+    <b>할 일</b> (파일: <code>server.js</code> — 이후 과제는 모두 이 파일에 누적)
+    <ol>
+      <li>Task1의 raw http 서버를 <b>Express로 교체</b> <span class="pg">[25~26p]</span></li>
+      <li>라우트 3개 구현 <span class="pg">[28p]</span>
+        <ul>
+          <li><code>GET /</code> → <code>"Home Page"</code></li>
+          <li><code>GET /products</code> → <code>"Product List"</code></li>
+          <li><code>GET /users</code> → <code>"User List"</code></li>
+        </ul>
+      </li>
+      <li>서버 시작 시 콘솔에 <code>"Server is running on port 3000"</code> 출력 <span class="pg">[26p]</span></li>
+    </ol>
+    <div class="expected-label">예상 결과</div>
+<pre><code>http://localhost:3000/          → Home Page
+http://localhost:3000/products  → Product List
+http://localhost:3000/users     → User List
+http://localhost:3000/xxx       → (Express 기본) Cannot GET /xxx   ← 이제 URL을 구분함!</code></pre>
+    <b>셀프 체크</b>: raw http 버전(Task1) 대비 코드가 짧아진 이유는? <span class="pg">[25p]</span>
+  </div>
+
+  <div class="card practice">
+    <h3><span class="badge b-practice">PRACTICE 3</span> HTTP 메서드 / URL 파라미터 / 쿼리스트링 <span class="pg">[29~37p]</span></h3>
+    <ul>
+      <li><code>GET</code>(조회) / <code>POST</code>(생성) / <code>PUT</code>(수정) / <code>DELETE</code>(삭제) <span class="pg">[29~32p]</span></li>
+      <li><b>URL 파라미터</b> <code>:id</code> → <code>req.params.id</code> (필수값, 동적 라우트) <span class="pg">[33~35p]</span></li>
+      <li><b>쿼리스트링</b> <code>?key=value</code> → <code>req.query.key</code> (선택값: 검색·필터·정렬) <span class="pg">[36~37p]</span></li>
+    </ul>
+  </div>
+
+  <div class="card task">
+    <h3>🛠️ <span class="badge b-task">TASK 3</span> User/Product API 라우트 확장</h3>
+    <b>할 일</b> (<code>server.js</code>에 추가)
+    <ol>
+      <li><code>GET /users/:id</code> → <code>"User ID is " + id</code> (params) <span class="pg">[34p]</span></li>
+      <li><code>GET /products?category=phone</code> → <code>"Category is phone"</code> (query) <span class="pg">[36p]</span></li>
+      <li><code>POST /login</code> → <code>"Login data received"</code> (본문 처리는 Task4에서) <span class="pg">[30p]</span></li>
+      <li><code>PUT /users/:id</code> → <code>"Update user " + id</code> <span class="pg">[31p]</span></li>
+      <li><code>DELETE /users/:id</code> → <code>"Delete user " + id</code> <span class="pg">[32p]</span></li>
+    </ol>
+    <div class="expected-label">예상 결과</div>
+<pre><code>GET    /users/5                 → User ID is 5
+GET    /products?category=phone → Category is phone
+GET    /products                → Category is undefined   ← 쿼리는 선택값
+POST   /login                   → Login data received
+PUT    /users/7                 → Update user 7
+DELETE /users/7                 → Delete user 7</code></pre>
+    <blockquote>POST/PUT/DELETE는 브라우저 주소창으로 테스트 불가. <b>curl</b> 또는 <b>VS Code REST Client / Postman</b> 사용.<br>
+    예: <code>curl -X POST http://localhost:3000/login</code></blockquote>
+    <b>셀프 체크</b>: <code>:id</code>(params)와 <code>?category=</code>(query)의 차이는? 각각 언제 쓰나? <span class="pg">[33p]</span>
+  </div>
+
+  <div class="card practice">
+    <h3><span class="badge b-practice">PRACTICE 4</span> 미들웨어 &amp; express.json() <span class="pg">[38~41p]</span></h3>
+    <ul>
+      <li>미들웨어 = 요청과 응답 <b>사이</b>에서 실행되는 함수. <code>next()</code>로 다음 단계로 넘김 <span class="pg">[38~39p]</span></li>
+      <li><code>app.use(fn)</code> = 모든 라우트에 적용(로깅·인증·파싱) <span class="pg">[39p]</span></li>
+      <li>React는 데이터를 <b>JSON 텍스트</b>로 보냄 → <code>app.use(express.json())</code>가 파싱해서 <code>req.body</code> 객체로 만듦. 없으면 <code>req.body</code>는 <code>undefined</code> <span class="pg">[40~41p]</span></li>
+    </ul>
+  </div>
+
+  <div class="card task">
+    <h3>🛠️ <span class="badge b-task">TASK 4</span> 로깅 미들웨어 + 로그인 본문 받기</h3>
+    <b>할 일</b> (<code>server.js</code>에 추가)
+    <ol>
+      <li><b>로깅 미들웨어</b>: 모든 요청에 <code>"[로그] METHOD URL"</code> 콘솔 출력 후 <code>next()</code> <span class="pg">[39p]</span></li>
+      <li><code>app.use(express.json())</code> 추가 <span class="pg">[41p]</span></li>
+      <li><code>POST /login</code>을 수정: <code>req.body.email</code>, <code>req.body.password</code>를 콘솔 출력하고 <code>"Login data received from " + email</code> 응답 <span class="pg">[41p]</span></li>
+    </ol>
+    <div class="expected-label">테스트 요청</div>
+<pre><code>curl -X POST http://localhost:3000/login ^
+  -H "Content-Type: application/json" ^
+  -d "{\"email\":\"aziz@cbnu.ac.kr\",\"password\":\"12345\"}"</code></pre>
+    <div class="expected-label">예상 결과</div>
+<pre><code>(서버 콘솔)
+[로그] POST /login (body는 아래처럼 전송)
+
+{
+  "email": "aziz@cbnu.ac.kr",
+  "password": "12345"
+} 
+
+aziz@cbnu.ac.kr
+12345
+
+(응답)
+Login data received from aziz@cbnu.ac.kr</code></pre>
+    <b>셀프 체크</b>: <code>express.json()</code>을 빼면 <code>req.body</code>는 무엇이 되나? 미들웨어에서 <code>next()</code>를 빼면? <span class="pg">[39, 41p]</span>
+  </div>
+
+  <!-- ===== PART 4 ===== -->
+  <div class="part"><div class="pn">PART 4</div><h2>Node.js &amp; MySQL</h2></div>
+
+  <div class="card practice">
+    <h3><span class="badge b-practice">PRACTICE 5</span> DB 개념 &amp; 연결 <span class="pg">[42~52p]</span></h3>
+    <ul>
+      <li>DBMS / 관계형 모델: DB = 테이블(릴레이션)들의 집합, 행=튜플, 열=속성, <b>기본키</b>=중복 없는 식별자 <span class="pg">[43~45p]</span></li>
+      <li>드라이버 설치: <code>npm install mysql</code> → <code>var mysql = require("mysql")</code> <span class="pg">[46p]</span></li>
+      <li>연결: <code>mysql.createConnection({host, user, password, database})</code> → <code>con.connect(cb)</code> <span class="pg">[47, 51p]</span></li>
+      <li>쿼리 실행: <code>con.query(sql, function(err, result){ ... })</code> <span class="pg">[48p]</span></li>
+      <li>DB/테이블 생성: <code>CREATE DATABASE</code>, <code>CREATE TABLE</code> (INT/VARCHAR(n)/DATE/FLOAT) <span class="pg">[49~52p]</span></li>
+    </ul>
+  </div>
+
+  <div class="card task">
+    <h3>🛠️ <span class="badge b-task">TASK 5</span> DB 연결 → 데이터베이스 &amp; 테이블 생성</h3>
+    <blockquote>⚠️ 먼저 본인 MySQL 서버의 <b>user/password</b>를 준비하세요. 연결 설정은 한 곳(<code>con</code>)에 모아 재사용합니다.</blockquote>
+    <b>할 일</b> (<code>server.js</code>에 추가)
+    <ol>
+      <li><code>mysql</code> require 후 <code>con = mysql.createConnection({...})</code> 작성 (처음엔 <code>database</code> 없이) <span class="pg">[47p]</span></li>
+      <li><code>GET /create-database</code> → <code>CREATE DATABASE mydb</code> 실행 후 <code>"Database created"</code> 응답 <span class="pg">[49p]</span></li>
+      <li>연결 설정에 <code>database: "mydb"</code> 추가 <span class="pg">[51p]</span></li>
+      <li><code>GET /create-table</code> → <code>customers</code> 테이블 생성 (<code>id INT PRIMARY KEY</code>, <code>name VARCHAR(255)</code>, <code>address VARCHAR(255)</code>) <span class="pg">[52p]</span></li>
+    </ol>
+    <div class="expected-label">예상 결과</div>
+<pre><code>GET /create-database  → Database created   (콘솔: Connected!)
+GET /create-table     → Table created</code></pre>
+    <div class="expected-label">힌트 (골격)</div>
+<pre><code>var mysql = require("mysql");
+var con = mysql.createConnection({
+  host: "localhost",
+  user: /* TODO */,
+  password: /* TODO */,
+  // database: "mydb"   ← 3단계에서 주석 해제
+});
+
+app.get("/create-table", function (req, res) {
+  con.connect(function (err) {
+    if (err) throw err;
+    var sql = "CREATE TABLE customers (" +
+      /* TODO: id, name, address 정의 */
+      ")";
+    con.query(sql, function (err, result) {
+      /* TODO */
+    });
+  });
+});</code></pre>
+    <b>셀프 체크</b>: 연결 설정에서 <code>database</code>를 빼고 <code>CREATE TABLE</code>을 하면 나는 에러는? <span class="pg">[51p]</span>
+  </div>
+
+  <div class="card practice">
+    <h3><span class="badge b-practice">PRACTICE 6</span> CRUD (INSERT / SELECT / UPDATE / DELETE) <span class="pg">[53~59p]</span></h3>
+    <ul>
+      <li><b>INSERT</b>: <code>INSERT INTO customers (col...) VALUES (val...)</code> <span class="pg">[53p]</span></li>
+      <li><b>SELECT</b>: <code>SELECT [DISTINCT] 컬럼 FROM 테이블 [WHERE][GROUP BY][HAVING][ORDER BY][LIMIT]</code> — SELECT/FROM만 필수, 순서 고정 <span class="pg">[54p]</span>
+        <ul>
+          <li>Node에서 결과 <code>result</code>는 행 객체 배열 → <code>res.send(result)</code>로 JSON 전송 <span class="pg">[55p]</span></li>
+          <li>세 번째 인자 <code>fields</code> = 컬럼 메타데이터(<code>fields[0].name</code>) <span class="pg">[56p]</span></li>
+        </ul>
+      </li>
+      <li><b>WHERE</b>: 조건에 맞는 행만 <span class="pg">[57p]</span> ⚠️ 사용자 입력을 문자열에 직접 합치지 말 것(SQL 인젝션) → <code>?</code> 파라미터 사용</li>
+      <li><b>DELETE</b>: <code>DELETE FROM customers WHERE 조건</code> — WHERE 없으면 전체 삭제 <span class="pg">[58p]</span></li>
+      <li><b>UPDATE</b>: <code>UPDATE customers SET 컬럼=값 WHERE 조건</code> <span class="pg">[59p]</span></li>
+    </ul>
+  </div>
+
+  <div class="card task">
+    <h3>🛠️ <span class="badge b-task">TASK 6</span> customers 테이블 CRUD 완성</h3>
+    <b>할 일</b> (<code>server.js</code>에 추가 — 각 라우트 = 강의 예제 1개)
+    <ol>
+      <li><code>GET /insert-customer</code> → <code>(1, 'Company Inc', 'Highway 37')</code> INSERT, <code>"1 record inserted"</code> <span class="pg">[53p]</span></li>
+      <li><code>GET /customers</code> → <code>SELECT name, address FROM customers</code>, 결과 JSON 응답 <span class="pg">[55p]</span></li>
+      <li><code>GET /customer-field</code> → 같은 SELECT 후 <code>fields[0].name</code>("name") 응답 <span class="pg">[56p]</span></li>
+      <li><code>GET /customers-by-address</code> → <code>WHERE address = 'Park Lane 38'</code> 결과 <span class="pg">[57p]</span></li>
+      <li><code>GET /update-customer</code> → <code>SET address='Canyon 123' WHERE address='Valley 345'</code>, <code>"n record(s) updated"</code> <span class="pg">[59p]</span></li>
+      <li><code>GET /delete-customer</code> → <code>WHERE address='Mountain 21'</code>, <code>"Records deleted: n"</code> <span class="pg">[58p]</span></li>
+    </ol>
+    <div class="expected-label">예상 결과</div>
+<pre><code>GET /insert-customer  → 1 record inserted
+GET /customers        → [{"name":"Company Inc","address":"Highway 37"}]
+GET /customer-field   → name
+GET /update-customer  → 0 record(s) updated   (Valley 345가 없으면 0)
+GET /delete-customer  → Records deleted: 0</code></pre>
+    <b>셀프 체크</b>
+    <ul>
+      <li><code>result.affectedRows</code>는 어떤 값? UPDATE/DELETE에서 왜 유용한가? <span class="pg">[58~59p]</span></li>
+      <li>WHERE 없는 DELETE의 위험성은? <span class="pg">[58p]</span></li>
+    </ul>
+  </div>
+
+  <!-- ===== CAPSTONE ===== -->
+  <div class="part"><div class="pn">CAPSTONE</div><h2>🎯 Customers REST API (전 내용 통합)</h2></div>
+
+  <div class="card task">
+    <blockquote>Part 3(Express·메서드·params·body) + Part 4(MySQL CRUD)를 합쳐 <b>진짜 REST API</b> 하나를 완성합니다.
+    지금까지는 GET으로만 테스트했지만, 여기서는 <b>메서드와 동작을 올바르게 매칭</b>하고 <b>req.body / req.params</b>로 동적 처리합니다.</blockquote>
+    <b>요구사항</b> — <code>customers</code> 테이블 기준
+    <table>
+      <tr><th>메서드</th><th>경로</th><th>동작</th><th>참고</th></tr>
+      <tr><td>GET</td><td><code>/api/customers</code></td><td>전체 조회 (<code>SELECT *</code>)</td><td class="pg">[55p]</td></tr>
+      <tr><td>GET</td><td><code>/api/customers/:id</code></td><td>한 명 조회 (<code>WHERE id = ?</code>)</td><td class="pg">[34, 57p]</td></tr>
+      <tr><td>POST</td><td><code>/api/customers</code></td><td>생성 (<code>req.body</code> INSERT)</td><td class="pg">[41, 53p]</td></tr>
+      <tr><td>PUT</td><td><code>/api/customers/:id</code></td><td>수정 (<code>req.body</code> SET, <code>:id</code> WHERE)</td><td class="pg">[31, 59p]</td></tr>
+      <tr><td>DELETE</td><td><code>/api/customers/:id</code></td><td>삭제 (<code>:id</code> WHERE)</td><td class="pg">[32, 58p]</td></tr>
+    </table>
+    <b>제약 / 도전</b>
+    <ul>
+      <li>사용자 입력은 <b><code>?</code> 플레이스홀더</b>로 전달 (문자열 직접 결합 금지) <span class="pg">[57p]</span><br>
+        예: <code>con.query("SELECT * FROM customers WHERE id = ?", [id], cb)</code></li>
+      <li>모든 요청을 로깅 미들웨어로 남기기 <span class="pg">[39p]</span></li>
+      <li><code>express.json()</code> 적용 <span class="pg">[41p]</span></li>
+    </ul>
+    <div class="expected-label">예상 동작 (요청 → 응답)</div>
+<pre><code>POST   /api/customers  body:{"id":2,"name":"Kim","address":"Seoul"}  → 1 record inserted
+GET    /api/customers                                               → [{id:1,...},{id:2,"name":"Kim",...}]
+GET    /api/customers/2                                             → {id:2,"name":"Kim","address":"Seoul"}
+PUT    /api/customers/2  body:{"address":"Busan"}                   → 1 record updated
+DELETE /api/customers/2                                             → Records deleted: 1</code></pre>
+    <b>도전 셀프 체크</b>
+    <ol>
+      <li>왜 같은 <code>/api/customers/:id</code>라도 GET·PUT·DELETE가 충돌하지 않는가? (라우팅 기준은?)</li>
+      <li><code>?</code> 파라미터가 SQL 인젝션을 막는 원리는?</li>
+      <li>이 API의 응답을 <b>React <code>useEffect</code> + <code>fetch</code></b>(Lec12)로 받아 화면에 뿌리려면 어디를 호출하면 되나?</li>
+    </ol>
+  </div>
+
+  <div class="card check">
+    <h3>📋 최종 제출 / 완성 체크리스트</h3>
+    <ul class="checklist">
+      <li>Task0: <code>package.json</code>에 express·mysql 의존성 + start 스크립트</li>
+      <li>Task1: fs/path/http로 로그 + 기본 서버</li>
+      <li>Task2: Express 라우팅 3종</li>
+      <li>Task3: GET(params·query) / POST / PUT / DELETE</li>
+      <li>Task4: 로깅 미들웨어 + <code>express.json()</code> + <code>/login</code> 본문 처리</li>
+      <li>Task5: DB·테이블 생성</li>
+      <li>Task6: INSERT/SELECT/fields/WHERE/UPDATE/DELETE</li>
+      <li>Capstone: <code>/api/customers</code> REST API (<code>?</code> 파라미터, 메서드 매칭)</li>
+    </ul>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="footer">
+    <div class="pn" style="color:#94a3b8;">Questions?</div>
+    <h2>See you next time! 🙌</h2>
+    <p style="color:#475569;">Part 1 Node 개념 · Part 2 코어 모듈 · Part 3 Express · Part 4 MySQL CRUD<br>— 전부 직접 구현해 보면 완성!</p>
+  </div>
+
+</div>
+</body>
+</html>
