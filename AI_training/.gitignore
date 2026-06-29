@@ -1,0 +1,16 @@
+# 강의자료(저작권) — 절대 업로드 금지
+material/
+
+# Claude Code 로컬 설정 (개인 환경)
+.claude/
+
+# 옵시디언 UI 상태 (기기별 휘발성) — 설정 동기화 원하면 이 줄 지우기
+.obsidian/
+
+# OS 잡파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 외부 클론(저자 저장소) — 별도 클론, 추적 제외
+AI_basic/practice/pytorch-nlp-tutorial/
