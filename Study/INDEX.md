@@ -1,6 +1,6 @@
 ---
 id: index
-title: AI_training 지식베이스 인덱스
+title: Study 지식베이스 인덱스
 tags: [index, map]
 updated: 2026-06-24
 ---

@@ -41,7 +41,7 @@ links: [multi-agent-setup, index]
 우리 **Claude 메모리 시스템이 이미 이 패턴**: `MEMORY.md`(컴팩트 인덱스) + 원자 fact 파일 + frontmatter + `[[links]]`.
 → 이 설계 = 그 방식을 학습 Vault 전체로 확장한 것.
 
-## 6. 적용 후보 (우리 AI_training Vault)
+## 6. 적용 후보 (우리 Study Vault)
 - [ ] 각 노트 상단에 YAML front matter 추가(id/tags/updated)
 - [ ] 루트에 `INDEX.md`(전 노트 1줄 요약) 자동/수동 유지 → AI가 먼저 읽는 지도
 - [ ] 큰 노트는 원자 단위로 분할
