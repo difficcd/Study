@@ -42,7 +42,7 @@ links: [agent-basics, knowledge-base-design]
 - 핵심 = "여러 에이전트 엮기" + **토폴로지(어떻게) / 오케스트레이터(누가 조율) / 프로토콜(어떻게 소통)**
 - 패턴: ① 패널·앙상블(병렬→종합) ② **슈퍼바이저-워커**(위임=AI회사) ③ 파이프라인(Planner→Coder→Critic) ④ 토론(debate)
 - 대표 OSS: MetaGPT·ChatDev(SW회사 역할극), AutoGen·CrewAI·LangGraph(범용)
-- 소통 표준: MCP(도구), A2A(에이전트간) — [[agent-basics|에이전트 기초 §8·§9]]
+- 소통 표준: MCP(도구), A2A(에이전트간) — [[_agent_basics|에이전트 기초 §8·§9]]
 
 ## 6. 오케스트레이터 = 2모드
 - A. **Claude가 직접 조율**(지금, 코드0): Bash로 ollama/gemini 호출·취합
@@ -66,7 +66,7 @@ links: [agent-basics, knowledge-base-design]
   - 오케스트레이터가 작업 분해 → Subagent A/B/C(grader) **spawn**, 각자 **독립 context**, 완료시 **요약만** 반환
   - **Tool 제한으로 역할 강제**(Coder=Read/Write/Bash, Reviewer=Read/Bash)
   - 에이전트 간 정보 전달 = **파일 시스템** 경유
-  - → 우리 "패널 → 슈퍼바이저-워커" 실습과 1:1 매핑. [[agent-basics]] §7 참고.
+  - → 우리 "패널 → 슈퍼바이저-워커" 실습과 1:1 매핑. [[_agent_basics]] §7 참고.
 
 ## 11. codex CLI 설치·합류 (2026-06-25)
 - 설치: `npm i -g @openai/codex` → `codex-cli 0.142.1`. **로그인은 ChatGPT 계정 세션 자동 사용**(브라우저 따로 안 함).
@@ -80,4 +80,4 @@ links: [agent-basics, knowledge-base-design]
   - **`</dev/null` 필수**: 없으면 "Reading additional input from stdin..."에서 **무한 대기**(stdin 파이프가 안 닫혀서). 제일 큰 함정.
   - `-s read-only`(샌드박스) / `--ephemeral`(세션파일 안 남김) / `-c model_reasoning_effort=low`(잡일 속도↑, 검증·코딩엔 생략).
   - 답만 깔끔히: `--output-last-message out.txt` 추가 → 그 파일만 읽기.
-- 이제 자동 코어 4종 완비: **Claude(조율) · ollama(로컬일꾼) · gemini(크로스체크) · codex(코딩)**. [[agent-basics]] §7 매핑대로.
+- 이제 자동 코어 4종 완비: **Claude(조율) · ollama(로컬일꾼) · gemini(크로스체크) · codex(코딩)**. [[_agent_basics]] §7 매핑대로.

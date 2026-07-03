@@ -4,6 +4,9 @@ material/
 # Claude Code 로컬 설정 (개인 환경)
 .claude/
 
+# VSCode 워크스페이스 설정 (기기별 절대경로 포함 — 개인 환경)
+.vscode/
+
 # 옵시디언 UI 상태 (기기별 휘발성) — 설정 동기화 원하면 이 줄 지우기
 .obsidian/
 
@@ -14,3 +17,5 @@ desktop.ini
 
 # 외부 클론(저자 저장소) — 별도 클론, 추적 제외
 AI_basic/practice/pytorch-nlp-tutorial/
+AI_basic/practice/material(AI)/lecture/
+AI_basic/practice/material(AI)/practice/__pycache__/
