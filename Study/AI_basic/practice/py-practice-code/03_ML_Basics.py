@@ -4,6 +4,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+from torch.utils.data import TensorDataset # _04_: 텐서데이터셋
+from torch.utils.data import DataLoader    # _04_: 데이터로더
+from torch.utils.data import Dataset       # _04_: 데이터셋
+
 
 def _01_Linear_Regression():
 
@@ -68,9 +72,7 @@ def _01_Linear_Regression():
                     .format(
                     epoch, nb_epochs, W.item(), b.item(), cost.item()
                 ))
-    
     practice()
-
 
     # optimizer.zero_grad()가 필요한 이유
     def zero_grad():
@@ -85,9 +87,7 @@ def _01_Linear_Regression():
             print('수식을 w로 미분한 값 : {}'.format(w.grad))
             # backward 역방향 미분 한 값을 계속 누적함 
             # 누적값X, 업데이트한 값 기준으로 연산 필요: zero_grad사용
-
     zero_grad()
-
 
     # torch.manual_seed()를 하는 이유
     def manual_seed():
@@ -107,10 +107,9 @@ def _01_Linear_Regression():
         print('랜덤 시드가 3일 때(RE)')
         for i in range(1,3):
             print(torch.rand(1))
-
     manual_seed()
 
-
+    # 자동 미분 이해
     def Autograd():
         w = torch.tensor(2.0, requires_grad=True)
             # requires_grad : w.grad에 w에대한 미분값 저장.
@@ -123,13 +122,11 @@ def _01_Linear_Regression():
 
         # y.backward : y'=2w, w=2.0 => 4.0
         # z.backward : z'=2y'=> 2*4 => 8.0
-    
     Autograd()
 
 
 
 def _02_multiple_linear_regression():
-
     def implement_basic():
         torch.manual_seed(1)
         print('\n')
@@ -306,11 +303,159 @@ def _03_pytorch_linear_regression():
         print("훈련 후 입력이 73, 80, 75일 때의 예측값 :", pred_y) 
 
         print(list(model.parameters())) # 학습 후 W, b 
-
-
-
     _2t_multiple_linear_regression()
 
+    def _3t_class_implementation():
+        class LinearRegressionModel(nn.Module): 
+            # torch.nn.Module을 상속받는 파이썬 클래스
+            def __init__(self): #
+                super().__init__()
+                self.linear = nn.Linear(1, 1) 
+                # 단순 선형 회귀이므로 input_dim=1, output_dim=1.
+
+            def forward(self, x):
+                return self.linear(x)
+    
+        class MultivariateLinearRegressionModel(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = nn.Linear(3, 1) 
+                # 다중 선형 회귀이므로 input_dim=3, output_dim=1.
+
+            def forward(self, x):
+                return self.linear(x)
+        
+
+        torch.manual_seed(1)
+
+        """
+        x_train = torch.FloatTensor([[1], [2], [3]])
+        y_train = torch.FloatTensor([[2], [4], [6]])
+
+        """
+        x_train = torch.FloatTensor([[73, 80, 75],
+                                    [93, 88, 93],
+                                    [89, 91, 90],
+                                    [96, 98, 100],
+                                    [73, 66, 70]]) 
+        y_train = torch.FloatTensor([[152], [185], [180], [196], [142]])
+        
+
+        #### 모델 선택 ####
+        # model = LinearRegressionModel()
+        model = MultivariateLinearRegressionModel()
+
+
+        # optimizer = torch.optim.SGD(model.parameters(), lr=0.01) 
+        optimizer = torch.optim.SGD(model.parameters(), lr=4e-5)
+        # optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) 
+
+        # 전체 훈련 데이터에 대해 경사 하강법을 2,000회 반복
+        nb_epochs = 2000
+        for epoch in range(nb_epochs+1):
+            prediction = model(x_train)
+            cost = F.mse_loss(prediction, y_train) 
+            optimizer.zero_grad()           
+            cost.backward()
+            optimizer.step()
+
+            if epoch % 100 == 0:
+                print('Epoch {:4d}/{} Cost: {:.6f}'.format(
+                    epoch, nb_epochs, cost.item()
+                ))
+    _3t_class_implementation()
+
+
+
+def _04_minibatch_dataloader():
+    def _01t_minibatch():
+        x_train  =  torch.FloatTensor([[73,  80,  75], 
+                                [93,  88,  93], 
+                                [89,  91,  90], 
+                                [96,  98,  100],   
+                                [73,  66,  70]])  
+        y_train  =  torch.FloatTensor([[152],  [185],  [180],  [196],  [142]])
+
+        dataset = TensorDataset(x_train, y_train)
+        dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+
+        model = nn.Linear(3,1)
+        optimizer = torch.optim.SGD(model.parameters(), lr=4e-5) 
+
+        nb_epochs = 20
+        for epoch in range(nb_epochs + 1):
+            for batch_idx, samples in enumerate(dataloader):
+                # print(batch_idx)
+                # print(samples)
+                x_train, y_train = samples
+
+                # H(x) 계산
+                prediction = model(x_train)
+
+                # cost 계산
+                cost = F.mse_loss(prediction, y_train)
+
+                # cost로 H(x) 계산
+                optimizer.zero_grad()
+                cost.backward()
+                optimizer.step()
+
+                print('Epoch {:4d}/{} Batch {}/{} Cost: {:.6f}'.format(
+                    epoch, nb_epochs, batch_idx+1, len(dataloader),
+                    cost.item()
+                    ))
+                
+        # 임의의 입력 [73, 80, 75]를 선언
+        new_var =  torch.FloatTensor([[73, 80, 75]]) 
+        # 입력한 값 [73, 80, 75]에 대해서 예측값 y를 리턴받아서 pred_y에 저장
+        pred_y = model(new_var) 
+        print("훈련 후 입력이 73, 80, 75일 때의 예측값 :", pred_y) 
+    _01t_minibatch()
+
+    def _02t_custom_dataset():
+        # Dataset 상속
+        class CustomDataset(Dataset): 
+            def __init__(self):
+                self.x_data = [[73, 80, 75],
+                            [93, 88, 93],
+                            [89, 91, 90],
+                            [96, 98, 100],
+                            [73, 66, 70]]
+                self.y_data = [[152], [185], [180], [196], [142]]
+
+            # 총 데이터의 개수를 리턴
+            def __len__(self): 
+                return len(self.x_data)
+
+            # 인덱스를 입력받아 그에 맵핑되는 입출력 데이터를 파이토치의 Tensor 형태로 리턴
+            def __getitem__(self, idx): 
+                x = torch.FloatTensor(self.x_data[idx])
+                y = torch.FloatTensor(self.y_data[idx])
+                return x, y
+    
+        dataset = CustomDataset()
+        dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+        model = torch.nn.Linear(3,1)
+        optimizer = torch.optim.SGD(model.parameters(), lr=4e-5) 
+
+        nb_epochs = 20
+        for epoch in range(nb_epochs + 1):
+            for batch_idx, samples in enumerate(dataloader):
+                # print(batch_idx)
+                # print(samples)
+                x_train, y_train = samples
+                prediction = model(x_train)
+                cost = F.mse_loss(prediction, y_train)
+
+                optimizer.zero_grad()
+                cost.backward()
+                optimizer.step()
+
+                print('Epoch {:4d}/{} Batch {}/{} Cost: {:.6f}'.format(
+                    epoch, nb_epochs, batch_idx+1, len(dataloader),
+                    cost.item()
+                    ))
+    _02t_custom_dataset()
 
 
 
@@ -332,7 +477,8 @@ def _pytorch_Autograd_understand():
 
 #_01_Linear_Regression()
 #_02_multiple_linear_regression()
-_03_pytorch_linear_regression()
+#_03_pytorch_linear_regression()
+_04_minibatch_dataloader()
 
 #_pytorch_Autograd_understand()
 
