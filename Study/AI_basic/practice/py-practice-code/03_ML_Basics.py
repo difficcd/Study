@@ -8,6 +8,9 @@ from torch.utils.data import TensorDataset # _04_: 텐서데이터셋
 from torch.utils.data import DataLoader    # _04_: 데이터로더
 from torch.utils.data import Dataset       # _04_: 데이터셋
 
+import numpy as np
+
+
 
 def _01_Linear_Regression():
 
@@ -459,6 +462,68 @@ def _04_minibatch_dataloader():
 
 
 
+def _05_matrixAndtensor_review():
+    def _01t_tensor():
+
+        # 0d tensor = scalar
+        d = np.array(5) 
+        print('텐서의 차원 :',d.ndim) # .ndim = axis(축)의 개수 = 텐서의 차원
+        print('텐서의 크기(shape) :',d.shape)
+
+        # 1d tensor = vector
+        d = np.array([1, 2, 3, 4])
+        print('텐서의 차원 :',d.ndim)
+        print('텐서의 크기(shape) :',d.shape)
+
+        # 2d tensor = matrix
+        d = np.array([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]) #(3x4)
+        print('텐서의 차원 :',d.ndim)
+        print('텐서의 크기(shape) :',d.shape) # shape: (3,4)
+
+        d = np.array([
+                [[1, 2, 3, 4, 5], 
+                [6, 7, 8, 9, 10], 
+                [10, 11, 12, 13, 14]],
+
+                [[15, 16, 17, 18, 19], 
+                [19, 20, 21, 22, 23], 
+                [23, 24, 25, 26, 27]]
+            ])
+        print('텐서의 차원 :',d.ndim)
+        print('텐서의 크기(shape) :',d.shape)
+    _01t_tensor()
+
+    def _02t_calculation_basic():
+
+        # element-wise(요소별) 연산
+        A = np.array([8, 4, 5])
+        B = np.array([1, 2, 3])
+        print('두 벡터의 합 :',A+B)
+        print('두 벡터의 차 :',A-B)
+
+        A = np.array([[10, 20, 30, 40], [50, 60, 70, 80]])
+        B = np.array([[5, 6, 7, 8],[1, 2, 3, 4]])
+        print('두 행렬의 합 :')
+        print(A + B)
+        print('두 행렬의 차 :')
+        print(A - B)
+
+
+        # 벡터 내적 .dot()
+        A = np.array([1, 2, 3])
+        B = np.array([4, 5, 6])
+        print('두 벡터의 내적 :',np.dot(A, B))
+
+        # 행렬곱 .matmul()
+        A = np.array([[1, 3],[2, 4]])
+        B = np.array([[5, 7],[6, 8]])
+        print('두 행렬의 행렬곱 :')
+        print(np.matmul(A, B))
+    _02t_calculation_basic()
+
+
+
+
 
 def _pytorch_Autograd_understand():
     x1 = torch.tensor(2.0, requires_grad=True)
@@ -472,13 +537,14 @@ def _pytorch_Autograd_understand():
 
     print(x1.grad)           # ∂f/∂x1 = cos(x1) + x2
     print(x2.grad)           # ∂f/∂x2 = x1
-
+    
 
 
 #_01_Linear_Regression()
 #_02_multiple_linear_regression()
 #_03_pytorch_linear_regression()
-_04_minibatch_dataloader()
+#_04_minibatch_dataloader()
+_05_matrixAndtensor_review()
 
 #_pytorch_Autograd_understand()
 
