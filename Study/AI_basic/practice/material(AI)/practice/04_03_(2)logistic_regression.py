@@ -8,7 +8,9 @@ x = dataset.iloc[:, [2, 3]].values  # 입력
 y = dataset.iloc[:, 4].values      # 출력
 
 from sklearn.model_selection import train_test_split
-xtrain, xtest, ytrain, ytest = train_test_split(x, y, test_size = 0.25, random_state = 0)
+xtrain, xtest, ytrain, ytest = train_test_split(
+    x, y, test_size = 0.25, random_state = 0
+    )
 
 from sklearn.preprocessing import StandardScaler
 sc_x = StandardScaler()
@@ -35,7 +37,8 @@ from matplotlib.colors import ListedColormap
 # 테스트 세트 데이터를 시각화용 변수로 설정
 X_set, y_set = xtest, ytest
 
-# 그래프의 격자(Meshgrid) 생성: 데이터의 최소~최대 범위를 0.01 간격으로 촘촘하게 채움
+# 그래프의 격자(Meshgrid) 생성
+# : 데이터의 최소~최대 범위를 0.01 간격으로 촘촘하게 채움
 X1, X2 = np.meshgrid(np.arange(start = X_set[:, 0].min() - 1, 
                                stop = X_set[:, 0].max() + 1, step = 0.01),
                      np.arange(start = X_set[:, 1].min() - 1, 
