@@ -40,4 +40,4 @@
 4. **합법·ToS 준수**: 스팸/사기/시세조작/가짜계정/도박 금지. 정당한 경로만.
 5. **전량 로깅**: 에이전트의 모든 행동·근거·지출 기록 → 사후 분석.
 
-_관련: [[04_agent-design/_index]], [[Claude/README]], [[Cloud_basic/_index]](배포 인프라)_
+_관련: [[04_agent-design/_index]], [[Claude/README]], [[Cloud_basic/README]](배포 인프라)_

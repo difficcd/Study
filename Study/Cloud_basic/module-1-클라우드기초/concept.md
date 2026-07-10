@@ -2,7 +2,7 @@
 
 원본 1~2주차 · 상태: 학습중
 
-[[Cloud_basic/_index|← 강의 목차]]
+[[Cloud_basic/README|← 강의 목차]]
 
 ---
 
