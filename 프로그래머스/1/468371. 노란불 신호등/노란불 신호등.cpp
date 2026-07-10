@@ -1,4 +1,4 @@
-#include <string>
+/* #include <string>
 #include <vector>
 #include <iostream>
 
@@ -39,6 +39,50 @@ int solution(vector<vector<int>> signals) {
     }
 
     return answer;
+}
+*/
+
+
+
+#include <vector>
+using namespace std;
+// 개선 코드
+
+long long mygcd(long long a, long long b){ 
+    return b==0 ? a : mygcd(b, a%b);  
+}
+long long mylcm(long long a, long long b){ 
+    return a / mygcd(a,b) * b;  // LCM (유클리드 호제법 RV)
+}
+
+int solution(vector<vector<int>> signals) {
+    long long period = 1;
+    
+    for (auto& s : signals) {
+        long long cycle = s[0] + s[1] + s[2]; // cycle = g+y+r
+        period = mylcm(period, cycle);   
+        // 모든 신호등 주기의 LCM = 진짜 전체 주기
+    }
+
+    // 확인할 시간을 period 로 정확하게 계산 가능 (magic number X)
+    for (long long t = 1; t <= period; t++) {
+        bool allYellow = true;
+        for (auto& s : signals) {
+            long long start = s[0];
+            long long cycle = s[0] + s[1] + s[2];
+            
+            if (t > start) { // 로직은 동일함
+                long long flag = (t - start - 1) % cycle;
+                if (flag >= s[1]) { 
+                    allYellow = false; break; 
+                }
+            } else {
+                allYellow = false; break;
+            }
+        }
+        if (allYellow) return (int)t;
+    }
+    return -1;
 }
 
 
