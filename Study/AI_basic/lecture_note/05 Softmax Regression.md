@@ -1,5 +1,3 @@
-https://wikidocs.net/59425
-
 
 > 이번 챕터에서는 3개 이상의 선택지로부터 1개를 선택하는 문제인 다중 클래스 분류(Multi-Class classification)를 풀기 위한 소프트맥스 회귀에 대해서 학습합니다.
 
@@ -305,10 +303,605 @@ $$cost(W) = -\frac{1}{n} \sum_{i=1}^{n} \sum_{j=1}^{k} y_j^{(i)} \log(p_j^{(i)})
 
 
 # 05-03 소프트맥스 회귀 다양한 방법으로 구현
-https://wikidocs.net/60575
+
+이번 챕터에서는 소프트맥스 회귀의 비용 함수를 직접 구현하여 크로스 엔트로피 함수에 대해서 이해하고, 파이토치로 소프트맥스 회귀를 로우 레벨, 하이 레벨, nn.Module, 클래스를 사용한 방법 등 가능한 한 다양한 방법으로 구현해보겠습니다.
+
+## 1. 소프트맥스 회귀의 비용 함수 구현
+
+앞으로의 모든 실습은 아래의 코드가 이미 진행되었다고 가정합니다.
+
+```python
+import torch
+import torch.nn.functional as F
+```
+
+```python
+torch.manual_seed(1)
+```
+
+### 1) 파이토치로 소프트맥스의 비용 함수 구현하기 (로우-레벨)
+
+소프트맥스 회귀를 구현함에 있어 우선 
+소프트맥스 함수의 비용 함수를 로우-레벨로 구현해봅시다.  
+3개의 원소를 가진 벡터 텐서를 정의하고, 
+이 텐서를 통해 소프트맥스 함수를 이해해보겠습니다.
+
+```python
+z = torch.FloatTensor([1, 2, 3])
+```
+
+이 텐서를 소프트맥스 함수의 입력으로 사용하고, 그 결과를 확인해보겠습니다.
+
+```python
+hypothesis = F.softmax(z, dim=0)
+print(hypothesis)
+```
+
+```python
+tensor([0.0900, 0.2447, 0.6652])
+```
+
+3개의 원소의 값이 0과 1사이의 값을 가지는 벡터로 변환된 것을 볼 수 있습니다. 이 원소들의 값의 합이 1인지 확인해보겠습니다.
+
+```python
+hypothesis.sum()
+```
+
+```python
+tensor(1.)
+```
+
+총 원소의 값의 합은 1입니다. 
+
+이번에는 비용 함수를 직접 구현해보겠습니다. 
+우선 임의의 3 × 5 행렬의 크기를 가진 텐서를 만듭니다.
+
+```python
+z = torch.rand(3, 5, requires_grad=True) # (3,5) 0~1사이 무작위 tensor
+```
+
+이제 이 텐서에 대해서 소프트맥스 함수를 적용합니다. 
+단, << 각 샘플에 대해서 >> 소프트맥스 함수를 적용하여야 하므로 
+두번째 차원에 대해서 소프트맥스 함수를 적용한다는 의미에서 dim=1을 써줍니다.
+
+< 데이터 형식 RV > 
+=> 적용해야 하는 기준은, 각 "열"에 대해! (각 샘플의 특성에 대해서 적용해야 함.)
+```
+              setosa   versicolor  virginica    ← 열(3개) = 클래스
+샘플1(5.1..)  [ 0.7      0.2         0.1  ]      ← 이 행의 합 = 1
+샘플2(4.9..)  [ 0.6      0.3         0.1  ]
+샘플3(5.8..)  [ 0.1      0.8         0.1  ]
+샘플4(6.7..)  [ 0.1      0.2         0.7  ]
+샘플5(5.6..)  [ 0.2      0.1         0.7  ]
+                ↑ 행(5개) = 샘플
+```
+
+```python
+hypothesis = F.softmax(z, dim=1)
+print(hypothesis)
+```
+
+```python
+tensor([[0.2645, 0.1639, 0.1855, 0.2585, 0.1277],
+        [0.2430, 0.1624, 0.2322, 0.1930, 0.1694],
+        [0.2226, 0.1986, 0.2326, 0.1594, 0.1868]], grad_fn=<SoftmaxBackward>)
+```
+
+이제 각 행의 원소들의 합은 1이 되는 텐서로 변환되었습니다. 
+소프트맥스 함수의 출력값은 결국 예측값입니다. 
+즉, 위 텐서는 3개의 샘플에 대해서 5개의 클래스 중 어떤 클래스가 정답인지를 예측한 결과입니다.
+
+이제 각 샘플에 대해서 임의의 레이블을 만듭니다.
+
+```python
+y = torch.randint(5, (3,)).long()
+print(y)
+```
+
+```python
+tensor([0, 2, 1])
+```
+
+이제 각 레이블에 대해서 원-핫 인코딩을 수행합니다.
+
+```python
+# 모든 원소가 0의 값을 가진 3 × 5 텐서 생성
+y_one_hot = torch.zeros_like(hypothesis) 
+y_one_hot.scatter_(1, y.unsqueeze(1), 1)
+```
+
+```python
+tensor([[1., 0., 0., 0., 0.],
+        [0., 0., 1., 0., 0.],
+        [0., 1., 0., 0., 0.]])
+```
+
+위의 연산에서 어떻게 원-핫 인코딩이 수행되었는지 보겠습니다. 우선, torch.zeros_like(hypothesis)를 통해 모든 원소가 0의 값을 가진 3 × 5 텐서를 만듭니다. 
+그리고 이 텐서는 y_one_hot에 저장이 된 상태입니다.
+
+두번째 줄을 해석해봅시다. y.unsqueeze(1)를 하면 (3,)의 크기를 가졌던 y 텐서는 (3 × 1) 텐서가 됩니다. 즉, 다시 말해서 y.unsqueeze(1)의 결과는 아래와 같습니다.
+
+```python
+print(y.unsqueeze(1))
+```
+
+```python
+tensor([[0],
+        [2],
+        [1]])
+```
+
+그리고 scatter의 첫번째 인자로 dim=1에 대해서 수행하라고 알려주고, 
+세번째 인자에 숫자 1을 넣어주므로서 두번째 인자인 y_unsqeeze(1)이 알려주는 위치에 숫자 1을 넣도록 합니다. 
+
+#### scatter 함수
+`scatter` 함수는 원본 텐서(`input`)의 값을 바꾸는 것이 아니라, **특정 인덱스에 따라 값을 채운 새로운 텐서**를 반환합니다. (사실 `scatter_`처럼 뒤에 언더바(`_`)가 붙으면 원본을 직접 수정합니다 = 덮어쓰기 연산)
+**문법:** `input.scatter_(dim, index, src)`
+
+- **`dim`**: 값을 채울 방향 (0은 행 방향, 1은 열 방향).
+- **`index`**: 값을 넣을 위치 정보 (텐서 형태여야 함).
+- **`src`**: 삽입할 값 (숫자 하나이거나 텐서).
+
+=> 쉽게 말하면 특정 index 에 src값을 채워주는 함수.
+
+
+
+앞서 텐서 조작하기 2챕터에서 연산 뒤에 \_를 붙이면 In-place Operation (덮어쓰기 연산)임을 배운 바 있습니다. 이에 따라서 y_one_hot의 최종 결과는 결국 아래와 같습니다.
+
+```python
+print(y_one_hot)
+```
+
+```python
+tensor([[1., 0., 0., 0., 0.],
+        [0., 0., 1., 0., 0.],
+        [0., 1., 0., 0., 0.]])
+```
+
+이제 비용 함수 연산을 위한 재료들을 전부 손질했습니다. 
+소프트맥스 회귀의 비용 함수는 다음과 같았습니다.
+$$cost(W) = -\frac{1}{n} \sum_{i=1}^{n} \sum_{j=1}^{k} y_j^{(i)} \log(p_j^{(i)})$$
+마이너스 부호를 뒤로 빼면 다음 식과도 동일합니다.
+$$cost(W) = \frac{1}{n} \sum_{i=1}^{n} \sum_{j=1}^{k} y_j^{(i)} \times (-\log(p_j^{(i)}))$$
+
+이를 코드로 구현하면 아래와 같습니다. 
+$\sum_{j=1}^{k}$는 sum(dim=1)으로 구현하고, $\frac{1}{n}\sum_{i=1}^{n}$는 mean()으로 구현합니다.
+
+```python
+cost = (y_one_hot * -torch.log(hypothesis)).sum(dim=1).mean()
+print(cost)
+```
+
+```python
+tensor(1.4689, grad_fn=<MeanBackward1>)
+```
+
+### 2) 파이토치로 소프트맥스의 비용 함수 구현하기 (하이-레벨)
+
+이제 소프트맥스의 비용 함수를 좀 더 하이-레벨로 구현하는 방법에 대해서 알아봅시다.
+
+
+#### 2-1) F.softmax() + torch.log() = F.log_softmax()
+
+앞서 소프트맥스 함수의 결과에 로그를 씌울 때는 
+다음과 같이 소프트맥스 함수의 출력값을 로그 함수의 입력으로 사용했습니다.
+
+```python
+# Low level
+torch.log(F.softmax(z, dim=1))
+```
+
+```python
+tensor([[-1.3301, -1.8084, -1.6846, -1.3530, -2.0584],
+        [-1.4147, -1.8174, -1.4602, -1.6450, -1.7758],
+        [-1.5025, -1.6165, -1.4586, -1.8360, -1.6776]], grad_fn=<LogBackward>)
+```
+
+그런데 파이토치에서는 두 개의 함수를 결합한 F.log_softmax()라는 도구를 제공합니다.
+
+```python
+# High level
+F.log_softmax(z, dim=1)
+```
+
+```python
+tensor([[-1.3301, -1.8084, -1.6846, -1.3530, -2.0584],
+        [-1.4147, -1.8174, -1.4602, -1.6450, -1.7758],
+        [-1.5025, -1.6165, -1.4586, -1.8360, -1.6776]], grad_fn=<LogSoftmaxBackward>)
+```
+
+두 출력 결과가 동일한 것을 볼 수 있습니다. 이제 비용 함수를 보겠습니다.
+
+#### 2-2) F.log_softmax() + F.nll_loss() = F.cross_entropy()
+
+앞서 로우-레벨로 구현한 비용 함수는 다음과 같았습니다.
+
+```python
+# Low level
+# 첫번째 수식
+(y_one_hot * -torch.log(F.softmax(z, dim=1))).sum(dim=1).mean()
+```
+
+```python
+tensor(1.4689, grad_fn=<MeanBackward1>)
+```
+
+그런데 위의 수식에서 torch.log(F.softmax(z, dim=1))를 
+방금 배운 F.log_softmax()로 대체할 수 있습니다.
+
+```python
+# 두번째 수식
+(y_one_hot * - F.log_softmax(z, dim=1)).sum(dim=1).mean()
+```
+
+```python
+tensor(1.4689, grad_fn=<MeanBackward0>)
+```
+
+이를 더 간단하게 하면 다음과 같습니다. 
+F.nll_loss()를 사용할 때는 << 원-핫 벡터를 넣을 필요 없이 >>
+바로 실제값을 인자로 사용합니다. => 수식 자체를 포함한 함수인 것.
+
+```python
+# High level
+F.nll_loss(F.log_softmax(z, dim=1), y)
+```
+
+```python
+tensor(1.4689, grad_fn=<NllLossBackward>)
+```
+
+여기서 nll이란 Negative Log Likelihood의 약자입니다. 
+위에서 nll_loss는 F.log_softmax()를 수행한 후에 남은 수식들을 수행합니다. 
+이를 더 간단하게 하면 다음과 같이 사용할 수 있습니다. 
+F.cross_entropy()는 F.log_softmax()와 F.nll_loss()를 포함하고 있습니다.
+
+```python
+# 네번째 수식
+F.cross_entropy(z, y)
+```
+
+```python
+tensor(1.4689, grad_fn=<NllLossBackward>)
+```
+
+- **여기서 잠깐! F.cross_entropy는 비용 함수에 <<소프트맥스 함수까지 포함>>하고 있음을 기억하고 있어야 구현 시 혼동하지 않습니다.**
+
+이제 소프트맥스 회귀를 로우-레벨과 F.cross_entropy를 사용해서 구현해보겠습니다.
+
+#### 2-3) nn.CrossEntropyLoss(): 클래스를 이용한 구현 방식
+
+```python
+nn.CrossEntropyLoss()(z, y)
+```
+
+```python
+tensor(1.4689, grad_fn=<NllLossBackward0>)
+```
+
+**F.cross_entropy()는 함수입니다.**
+
+- 호출할 때마다 F.cross_entropy(입력, 정답) 형태로 사용
+- 매번 << 호출시 필요한 설정을 인자로 전달해야 함 >>
+
+**nn.CrossEntropyLoss()는 클래스입니다.**
+
+- 클래스는 설정값들을 저장할 수 있는 틀(template)
+- 클래스로부터 실제 사용할 수 있는 객체(instance)를 생성해야 함
+- 객체를 만들 때 << 설정값들을 미리 정해두고, 나중에 계속 재사용 가능 >>
+
+위에서 nn.CrossEntropyLoss()(z, y)는 클래스로 객체를 생성함과 동시에 
+바로 호출한 것입니다. 실제로는 아래와 같이 사용하는 경우가 보편적입니다.
+
+```python
+# 1단계: 클래스로 객체 생성
+criterion = nn.CrossEntropyLoss()
+
+# 2단계: 생성된 객체 사용
+loss = criterion(z, y)
+print(loss)
+```
+
+```python
+tensor(1.4689, grad_fn=<NllLossBackward0>)
+```
+
+클래스를 사용하는 주요 이유는 
+<< 설정값을 객체에 저장해두고 나중에 사용할 수 있기 >> = 재사용성 때문입니다.
+
+<< 함수는 매번 호출할 때마다 모든 설정을 인자로 전달해야 하지만, 클래스는 객체를 만들 때 한 번만 설정하면 됩니다. >> 
+이는 코드를 더 깔끔하게 만들어주고, 같은 설정을 반복해서 쓸 때 실수를 줄여줍니다.
+
+```python
+# 손실함수 객체를 한 번만 생성. 이제 호출할때는 무조건 criterion으로만 호출함.
+criterion = nn.CrossEntropyLoss()
+
+# 같은 객체로 여러 번 계산 가능
+loss1 = criterion(z, y)           # 첫 번째 계산
+loss2 = criterion(z, y)           # 두 번째 계산
+
+# 새로운 데이터가 있다면
+z2 = torch.rand(3, 5, requires_grad=True)
+y2 = torch.randint(5, (3,)).long()
+loss3 = criterion(z2, y2)         # 새 데이터로 계산
+```
+
+특별한 설정이 필요한 경우를 살펴보겠습니다. 
+예를 들어 손실값의 평균 대신 합계가 필요한 경우입니다.
+
+```python
+# 평균 대신 합계를 구하는 설정
+# 손실함수 객체를 한 번만 생성. 이제 호출할때는 무조건 criterion으로만 호출함.
+criterion = nn.CrossEntropyLoss(reduction='sum')
+
+# 같은 객체로 여러 번 계산 가능
+loss1 = criterion(z, y)           # 첫 번째 계산
+loss2 = criterion(z, y)           # 두 번째 계산
+
+# 새로운 데이터가 있다면
+z2 = torch.rand(3, 5, requires_grad=True)
+y2 = torch.randint(5, (3,)).long()
+loss3 = criterion(z2, y2)         # 새 데이터로 계산
+```
+
+만약 함수로 같은 작업을 한다면 매번 reduction='sum'을 써줘야 합니다.
+
+```python
+# 함수 방식에서는 매번 설정을 반복해야 함
+loss_sum1 = F.cross_entropy(z, y, reduction='sum')
+loss_sum2 = F.cross_entropy(z2, y2, reduction='sum')  # 설정 반복
+```
+
+- **여기서 잠깐! nn.CrossEntropyLoss()도 F.cross_entropy()와 마찬가지로 비용 함수에 소프트맥스 함수까지 포함하고 있음을 기억하고 있어야 구현 시 혼동하지 않습니다.**
+
+## 2. 소프트맥스 회귀 구현하기 
+
+### 1) 데이터셋 준비
+
+앞으로의 모든 실습은 아래의 과정이 이미 진행되었다고 가정합니다.
+
+필요한 도구들을 임포트합니다.
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+```
+
+```python
+torch.manual_seed(1)
+```
+
+훈련 데이터와 레이블을 텐서로 선언합니다.
+
+```python
+x_train = [[1, 2, 1, 1],
+           [2, 1, 3, 2],
+           [3, 1, 3, 4],
+           [4, 1, 5, 5],
+           [1, 7, 5, 5],
+           [1, 2, 5, 6],
+           [1, 6, 6, 6],
+           [1, 7, 7, 7]]
+y_train = [2, 2, 2, 1, 1, 1, 0, 0]
+x_train = torch.FloatTensor(x_train)
+y_train = torch.LongTensor(y_train)
+```
+
+x_train의 각 샘플은 4개의 특성을 가지고 있으며, 총 8개의 샘플이 존재합니다. y_train은 각 샘플에 대한 레이블인데, 
+여기서는 0, 1, 2의 값을 가지는 것으로 보아 총 3개의 클래스가 존재합니다.
+
+### 2) 소프트맥스 회귀 구현하기(로우-레벨)
+
+이제 x_train의 크기와 y_train의 크기를 확인합니다.
+
+```python
+print(x_train.shape)
+print(y_train.shape)
+```
+
+```python
+torch.Size([8, 4])
+torch.Size([8])
+```
+
+x_train의 크기는 8 × 4이며, y_train의 크기는 8 × 1입니다. 
+그런데 최종 사용할 레이블은 y_train에서 원-핫 인코딩을 한 결과이어야 합니다. 
+클래스의 개수는 3개이므로 y_train에 원-핫 인코딩한 결과는 8 × 3의 개수를 가져야 합니다.
+
+```python
+y_one_hot = torch.zeros(8, 3)
+y_one_hot.scatter_(1, y_train.unsqueeze(1), 1)
+print(y_one_hot.shape)
+```
+
+```python
+torch.Size([8, 3])
+```
+
+y_train에서 원-핫 인코딩을 한 결과인 y_one_hot의 크기는 8 × 3입니다. 
+즉, W 행렬의 크기는 4 × 3이어야 합니다.  
+W와 b를 선언하고, 옵티마이저로는 경사 하강법을 사용합니다. 
+그리고 학습률은 0.1로 설정합니다.
+
+```python
+# 모델 초기화
+W = torch.zeros((4, 3), requires_grad=True)
+b = torch.zeros((1, 3), requires_grad=True)
+# optimizer 설정
+optimizer = optim.SGD([W, b], lr=0.1)
+```
+
+nb_epochs를 1000으로 설정하여 학습을 1000번 반복할 것을 지정합니다.
+
+```python
+nb_epochs = 1000
+for epoch in range(nb_epochs + 1):
+
+    # 가설
+    hypothesis = F.softmax(x_train.matmul(W) + b, dim=1) 
+
+    # 비용 함수
+    cost = (y_one_hot * -torch.log(hypothesis)).sum(dim=1).mean()
+
+    # cost로 H(x) 개선
+    optimizer.zero_grad()
+    cost.backward()
+    optimizer.step()
+
+    # 100번마다 로그 출력
+    if epoch % 100 == 0:
+        print('Epoch {:4d}/{} Cost: {:.6f}'.format(
+            epoch, nb_epochs, cost.item()
+        ))
+```
+
+for 루프 내부에서, 입력 데이터 x_train과 가중치 행렬 W, 그리고 편향 벡터 b를 사용하여 가설(hypothesis)을 계산합니다. 
+이때 소프트맥스 함수(F.softmax)를 사용해 각 클래스에 대한 예측 확률을 구합니다.
+
+그 다음으로 비용 함수(cost)를 계산하는데, 이 비용 함수는 교차 엔트로피 손실 함수와 유사합니다. 원-핫 인코딩된 실제 레이블 y_one_hot과 가설의 로그값을 곱한 뒤, 각 데이터 포인트별 손실을 계산하고 이를 평균내어 최종 비용을 구합니다.
+
+계산된 비용 함수를 최소화하기 위해, 먼저 옵티마이저의 기울기 정보를 초기화합니다. 그런 다음, 비용 함수에 대해 역전파(backward)를 수행하여 가중치와 편향에 대한 기울기를 계산합니다. 마지막으로 옵티마이저의 step()을 호출하여 가중치와 편향을 업데이트합니다.
+
+매 100번째 에포크마다 현재 에포크 번호와 비용 함수 값을 출력하여 학습 진행 상황을 모니터링합니다.
+
+### 3) 소프트맥스 회귀 구현하기(하이-레벨)
+
+이제는 F.cross_entropy()를 사용하여 비용 함수를 구현해보겠습니다. 주의할 점은 F.cross_entropy()는 그 자체로 소프트맥스 함수를 포함하고 있으므로 가설에서는 소프트맥스 함수를 사용할 필요가 없습니다. 위와 동일한 x_train과 y_train을 사용합니다.
+
+```python
+# 모델 초기화
+W = torch.zeros((4, 3), requires_grad=True)
+b = torch.zeros((1, 3), requires_grad=True)
+# optimizer 설정
+optimizer = optim.SGD([W, b], lr=0.1)
+
+nb_epochs = 1000
+for epoch in range(nb_epochs + 1):
+
+    # Cost 계산
+    z = x_train.matmul(W) + b
+    cost = F.cross_entropy(z, y_train)
+
+    # cost로 H(x) 개선
+    optimizer.zero_grad()
+    cost.backward()
+    optimizer.step()
+
+    # 100번마다 로그 출력
+    if epoch % 100 == 0:
+        print('Epoch {:4d}/{} Cost: {:.6f}'.format(
+            epoch, nb_epochs, cost.item()
+        ))
+```
+
+F.cross_entropy()를 사용하는 것 외에는 
+위의 코드와 동일하므로 설명은 생략하겠습니다.
+
+### 4) 소프트맥스 회귀 nn.Module로 구현하기
+
+이번에는 nn.Module로 소프트맥스 회귀를 구현해봅시다. 
+선형 회귀에서 구현에 사용했던 nn.Linear()를 사용합니다. 
+output_dim이 1이었던 선형 회귀때와 달리 
+output_dim은 이제 클래스의 개수여야 합니다.
+
+```python
+# 모델을 선언 및 초기화. 4개의 특성을 가지고 3개의 클래스로 분류. input_dim=4, output_dim=3.
+model = nn.Linear(4, 3)
+```
+
+아래에서 << F.cross_entropy()를 사용할 것이므로 
+따로 소프트맥스 함수를 가설에 정의하지 않습니다. >> (포함됨)
+
+```python
+# optimizer 설정
+optimizer = optim.SGD(model.parameters(), lr=0.1)
+
+nb_epochs = 1000
+for epoch in range(nb_epochs + 1):
+
+    # H(x) 계산
+    prediction = model(x_train)
+
+    # cost 계산
+    cost = F.cross_entropy(prediction, y_train)
+
+    # cost로 H(x) 개선
+    optimizer.zero_grad()
+    cost.backward()
+    optimizer.step()
+
+    # 20번마다 로그 출력
+    if epoch % 100 == 0:
+        print('Epoch {:4d}/{} Cost: {:.6f}'.format(
+            epoch, nb_epochs, cost.item()
+        ))
+```
+
+### 5) 소프트맥스 회귀 클래스로 구현하기
+
+이제 소프트맥스 회귀를 nn.Module을 상속받은 클래스로 구현해봅시다. 
+먼저, SoftmaxClassifierModel 클래스를 정의합니다. 
+이 클래스는 PyTorch의 nn.Module을 상속받아 정의된 신경망 모델입니다. 
+
+클래스의 **init** 메서드에서 nn.Linear를 사용해 입력 차원이 4이고 출력 차원이 3인 선형 계층(Linear layer or nn.Linear)을 정의합니다. 
+여기서 출력 차원이 3인 이유는 모델이 3개의 클래스를 예측하기 때문입니다. forward 메서드는 모델의 순전파(forward) 과정을 정의합니다.
+
+```python
+class SoftmaxClassifierModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.linear = nn.Linear(4, 3) # Output이 3!
+
+    def forward(self, x):
+        return self.linear(x)
+```
+
+모델 인스턴스를 생성하고 SGD 옵티마이저를 설정합니다. 
+옵티마이저는 모델의 파라미터를 입력받아 학습률 0.1로 경사 하강법을 수행합니다.
+
+```python
+model = SoftmaxClassifierModel()
+
+# optimizer 설정
+optimizer = optim.SGD(model.parameters(), lr=0.1)
+```
+
+다음으로, nb_epochs를 1000으로 설정하여 학습을 1000번 반복할 것을 지정합니다. for 루프 내에서 에포크를 순차적으로 실행합니다.
+
+```python
+nb_epochs = 1000
+for epoch in range(nb_epochs + 1):
+
+    # H(x) 계산
+    prediction = model(x_train)
+
+    # cost 계산
+    cost = F.cross_entropy(prediction, y_train)
+
+    # cost로 H(x) 개선
+    optimizer.zero_grad()
+    cost.backward()
+    optimizer.step()
+
+    # 20번마다 로그 출력
+    if epoch % 100 == 0:
+        print('Epoch {:4d}/{} Cost: {:.6f}'.format(
+            epoch, nb_epochs, cost.item()
+        ))
+```
+
+각 에포크에서 모델의 예측값(prediction)을 계산하기 위해, 입력 데이터 x_train을 모델에 입력하여 예측값을 얻습니다. 이 예측값은 아직 소프트맥스 함수를 거치지 않은 상태입니다.
+
+그 다음, F.cross_entropy() 함수를 사용하여 비용 함수 cost를 계산합니다. 이 함수는 소프트맥스 << 활성화 함수와 교차 엔트로피 손실 함수를 결합한 형태 >> 로, 모델의 예측값과 실제 레이블 y_train을 비교하여 비용을 계산합니다.
+
+비용 함수 cost를 최소화하기 위해 옵티마이저의 기울기 정보를 초기화한 후, 역전파를 수행하여 기울기를 계산합니다. 그런 다음, 옵티마이저의 step()을 호출하여 모델의 파라미터를 업데이트합니다.
+
+마지막으로, 매 100번째 에포크마다 현재 에포크 번호와 비용 함수 값을 출력하여 학습 진행 상황을 모니터링합니다. 이를 통해 모델이 점차적으로 학습되고 있는지 확인할 수 있습니다.
 
 # 05-04 소프트맥스 회귀로 MNIST 데이터 분류
-
+https://wikidocs.net/60324
 
 # 용어 정리
 ## ReLU 함수 복습, 사용되는 단계

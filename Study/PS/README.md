@@ -1,22 +1,24 @@
 programmers 자료구조/알고리즘 재활
 
+https://school.programmers.co.kr/learn/challenges?tab=algorithm_practice_kit
+
 
 ## PS 재활 체크리스트 (C++ 문법 → 자료구조 → 알고리즘 → 그래프 → 실전)
 
 ### 0. C++ 문법 재활 (본격 시작 전 하루~이틀)
 
 - [x]  입출력: `cin/cout`
-- [ ]  `vector` 기본 (push_back, size, 순회, 2차원 벡터)
-- [ ]  `string` 다루기 (substr, find, 아스키 변환)
+- [x]  `vector` 기본 (push_back, size, 순회, 2차원 벡터)
+- [x]  `string` 다루기 (substr, find, 아스키 변환)
 - [ ]  `pair`, `tuple`
-- [ ]  함수 기본, 재귀 함수 작성
-- [ ]  참조자(`&`), 포인터 기본 (BST 등에서 필요)
+- [x]  함수 기본, 재귀 함수 작성
+- [x]  참조자(`&`), 포인터 기본 (BST 등에서 필요)
 - [ ]  `sort()`, 커스텀 비교자(comparator) 작성법
 
 ### 1. 기본 자료구조
 
-- [ ]  배열/벡터 활용 (투 포인터 전 단계)
-- [ ]  **스택** — `stack<T>`, 직접 구현도 1번
+- [x]  배열/벡터 활용 (투 포인터 전 단계)
+- [ ]  **스택** — `stack<T>`, << 직접 구현도 1번 >>
 - [ ]  **큐** — `queue<T>`
 - [ ]  **덱** — `deque<T>`
 - [ ]  **우선순위 큐(힙)** — `priority_queue`, 최소힙 만들기(`greater<T>`)
@@ -28,7 +30,7 @@ programmers 자료구조/알고리즘 재활
 - [ ]  **이분 탐색** — 직접 구현 + `lower_bound`/`upper_bound`
 - [ ]  **투 포인터**
 - [ ]  **슬라이딩 윈도우**
-- [ ]  **정렬** — `sort` 활용 + 퀵/합병 직접 구현 복습(이미 해봄)
+- [ ]  **정렬** — `sort` 활용 + 정렬 딥하게 PS (여러 방식으로 정렬)
 
 ### 3. 재귀 & 완전탐색
 

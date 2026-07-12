@@ -175,13 +175,13 @@ std::cout << strlen(arr);    // 이건 가능 (헤더 <cstring> 필요)
 
 문자열을 합치거나, 자르거나, 수정하는 핵심 기능입니다.
 
-|**함수**|**설명**|
-|---|---|
-|`str.append(s)`|문자열 `s`를 뒤에 붙입니다. (`+=` 연산자로 대체 가능)|
-|`str.substr(pos, len)`|`pos` 위치에서 `len` 길이만큼의 부분 문자열을 반환합니다.|
-|`str.replace(pos, len, s)`|`pos` 위치부터 `len`만큼을 `s`로 교체합니다.|
-|`str.insert(pos, s)`|`pos` 위치에 `s`를 삽입합니다.|
-|`str.erase(pos, len)`|`pos` 위치부터 `len`만큼 삭제합니다.|
+| **함수**                     | **설명**                                |
+| -------------------------- | ------------------------------------- |
+| `str.append(s)`            | 문자열 `s`를 뒤에 붙입니다. (`+=` 연산자로 대체 가능)   |
+| `str.substr(pos, len)`     | `pos` 위치에서 `len` 길이만큼의 부분 문자열을 반환합니다. |
+| `str.replace(pos, len, s)` | `pos` 위치부터 `len`만큼을 `s`로 교체합니다.       |
+| `str.insert(pos, s)`       | `pos` 위치에 `s`를 삽입합니다.                 |
+| `str.erase(pos, len)`      | `pos` 위치부터 `len`만큼 삭제합니다.             |
 
 ### 4. 탐색 및 검색
 
@@ -252,6 +252,7 @@ int main() {
 | **정보**    | `size()`             | 현재 들어있는 요소 개수.                   |
 |           | `capacity()`         | 메모리 할당 용량 (실제 수용 가능 개수).         |
 |           | `empty()`            | 비어있으면 `true` 반환.                 |
+|           |                      |                                  |
 
 ### 2. 예시 코드
 
@@ -297,6 +298,91 @@ int main() {
 - **메모리:** `push_back`을 할 때마다 매번 메모리를 재할당하면 느려집니다. 데이터 개수를 미리 안다면 `v.reserve(100);`을 통해 미리 공간을 확보해두는 것이 성능상 매우 좋습니다.
     
 - **반복자(Iterator):** `v.begin()`은 시작 위치, `v.end()`는 끝 다음 위치를 반환합니다. `std::sort(v.begin(), v.end());`처럼 알고리즘과 결합할 때 필수적입니다.
+
+
+### 1. 벡터의 고정 크기 배열 (`vector<int> v[N]`) — 질문하신 방법
+
+가장 직관적인 방법입니다. **"세로 크기는 고정되어 있고, 가로 크기는 마음대로 늘어나는"** 구조입니다. 주로 알고리즘 문제(PS)에서 그래프의 인접 리스트를 구현할 때 정말 많이 씁니다.
+
+C++
+
+```
+#include <iostream>
+#include <vector>
+
+int main() {
+    // 크기가 5인 vector 배열 생성 (v[0]부터 v[4]까지 존재)
+    std::vector<int> v[5];
+
+    // 각각의 벡터에 데이터 추가
+    v[0].push_back(10);
+    v[0].push_back(20);
+    
+    v[1].push_back(30);
+
+    // 출력할 때도 2차원 배열처럼 접근
+    std::cout << v[0][1] << std::endl; // v[0]의 1번째 원소인 20 출력
+
+    return 0;
+}
+```
+
+- **단점:** 한 번 배열 크기를 `[5]`로 정하면 실행 중에 `[6]`, `[7]`로 세로 크기를 늘릴 수 없습니다.
+    
+
+### 2. 2차원 벡터 (`vector<vector<int>> v`) — 가장 추천!
+
+세로 크기와 가로 크기 모두 실행 중에 마음대로 늘리고 줄일 수 있는 **진정한 동적 2차원 구조**입니다. C++에서 여러 개의 벡터를 다룰 때 가장 표준적이고 권장되는 방식입니다.
+
+C++
+
+```
+#include <iostream>
+#include <vector>
+
+int main() {
+    // 1. 완전히 비어있는 2차원 벡터 만들기
+    std::vector<std::vector<int>> v1;
+
+    // 2. 크기를 지정해서 만들기 (5행 0열)
+    std::vector<std::vector<int>> v2(5);
+
+    // 3. 크기와 초기값 지정해서 만들기 (5행 3열을 모두 0으로 초기화)
+    std::vector<std::vector<int>> v3(5, std::vector<int>(3, 0));
+
+    // 사용법은 동일합니다.
+    v3[0].push_back(99); 
+    std::cout << v3[0][3] << std::endl; // 기존 3개 뒤에 push_back 되었으므로 4번째 원소 출력
+    
+    return 0;
+}
+```
+
+### 3. 고정 크기 배열의 현대적 버전 (`array<vector<int>, N>`)
+
+1번 방식(`vector<int> v[5]`)은 C 스타일의 배열이라 가끔 포인터로 오해받거나 안전성 문제가 생길 수 있습니다. 세로 크기가 고정된 벡터 여러 개를 만들고 싶다면 C++ 표준 스타일인 `std::array`를 섞어 쓰는 것이 더 안전합니다.
+
+C++
+
+```
+#include <iostream>
+#include <vector>
+#include <array> // 필수
+
+int main() {
+    // 세로 크기 5로 고정된 벡터 배열
+    std::array<std::vector<int>, 5> v;
+
+    v[0].push_back(10);
+    return 0;
+}
+```
+
+### 💡 한 줄 요약
+
+- **알고리즘 문제 풀 때 세로 크기가 정해져 있다면:** `vector<int> v[100];` (짜기 제일 편함)
+    
+- **세로 크기도 유연하게 늘려야 하거나 실무 코드를 짤 때:** `vector<vector<int>> v;` (가장 안전하고 강력함)
 
 
 # iterator (vector)
@@ -378,4 +464,45 @@ int main() {
 
 요약하자면, **`v.begin()`으로 시작해서 `!= v.end()` 일 때까지 `++it`로 전진하며, 값을 쓸 때는 `*it`를 사용한다!** 이것만 기억하시면 됩니다.
 
+
+# 형변환
+
+| 변환 방향                 | 사용하는 방법                 | 예시                           |
+| --------------------- | ----------------------- | ---------------------------- |
+| **숫자 → 숫자**           | `static_cast<바꿀타입>(변수)` | `static_cast<float>(an_int)` |
+| **숫자 → 문자열**          | `std::to_string(숫자)`    | `to_string(10)` → `"10"`     |
+| **문자열 → 정수(`int`)**   | `std::stoi(문자열)`        | `stoi("5")` → `5`            |
+| **문자열 → 실수(`float`)** | `std::stof(문자열)`        | `stof("3.1")` → `3.1f`       |
+# 기초문법 RV
+## case문
+
+```cpp
+#include <iostream>
+
+int main() {
+    int number = 2;
+
+    // switch(조건을 검사할 변수)
+    switch (number) {
+        case 1:
+            std::string("1번을 선택하셨습니다.");
+            break; // 중요! 실행을 마치고 switch 문을 빠져나갑니다.
+        
+        case 2:
+            std::cout << "2번을 선택하셨습니다." << std::endl;
+            break;
+
+        case 3:
+            std::cout << "3번을 선택하셨습니다." << std::endl;
+            break;
+
+        default: // 위 case 중 맞는 게 하나도 없을 때 실행 (if문의 else 역할)
+            std::cout << "1, 2, 3 외의 다른 숫자입니다." << std::endl;
+            break;
+    }
+
+    return 0;
+}
+```
+# 
 # 
