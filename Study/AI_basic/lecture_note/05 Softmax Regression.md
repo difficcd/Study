@@ -901,7 +901,350 @@ for epoch in range(nb_epochs + 1):
 마지막으로, 매 100번째 에포크마다 현재 에포크 번호와 비용 함수 값을 출력하여 학습 진행 상황을 모니터링합니다. 이를 통해 모델이 점차적으로 학습되고 있는지 확인할 수 있습니다.
 
 # 05-04 소프트맥스 회귀로 MNIST 데이터 분류
-https://wikidocs.net/60324
+
+이번 챕터에서는 MNIST 데이터에 대해서 이해하고, 
+파이토치(PyTorch)로 소프트맥스 회귀를 구현하여 
+MNIST 데이터를 분류하는 실습을 진행해봅시다.
+
+MNIST 데이터는 아래의 링크에 공개되어져 있습니다.  
+링크 : http://yann.lecun.com/exdb/mnist
+
+## 1. MNIST 데이터 이해하기
+
+![](https://static.wikidocs.net/images/page/60324/mnist.png)
+
+MNIST는 숫자 0부터 9까지의 이미지로 구성된 손글씨 데이터셋입니다. 
+이 데이터는 과거에 우체국에서 << 편지의 우편 번호를 인식하기 위해서 >> 만들어진 훈련 데이터입니다. 총 << 60,000개의 훈련 데이터와 레이블, 총 10,000개의 테스트 데이터와 레이블로 구성되어져 있습니다 >>. 
+레이블은 0부터 9까지 총 10개입니다. 
+이 예제는 머신 러닝을 처음 배울 때 접하게 되는 가장 기본적인 예제이기도 합니다.
+
+MNIST 문제는 손글씨로 적힌 숫자 이미지가 들어오면, 
+그 이미지가 무슨 숫자인지 맞추는 문제입니다. (이미지 => 숫자)
+예를 들어 숫자 5의 이미지가 입력으로 들어오면 이게 숫자 5다! 라는 것을 맞춰야 합니다. 이 문제는 사람에게는 굉장히 간단하지만 기계에게는 그렇지가 않습니다.
+
+우선 MNIST 문제를 더 자세히 보겠습니다. 
+각각의 이미지는 아래와 같이 28 픽셀 × 28 픽셀의 이미지입니다.
+
+![209](https://static.wikidocs.net/images/page/60324/mnist_SVbcYYG.png)
+
+이 문제를 풀기 위해 여기서는 28 픽셀 × 28 픽셀 = 784 픽셀이므로, 
+각 << 이미지를 총 784의 원소를 가진 벡터로 만들어줄겁니다. >> 이렇게 되면 총 784개의 특성을 가진 샘플이 되는데, 이는 앞서 우리가 풀었던 그 어떤 문제들보다 
+<< 특성이 굉장히 많은 >> 샘플입니다. (1샘플당 784 feature)
+
+![239](https://static.wikidocs.net/images/page/60324/%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C.png)
+
+784차원의 벡터로 만드는 코드를 미리보기로 보면 아래와 같습니다.
+
+```python
+for X, Y in data_loader:
+  # 입력 이미지를 [batch_size × 784]의 크기로 reshape
+  # 레이블은 원-핫 인코딩
+  X = X.view(-1, 28*28)
+```
+
+위의 코드에서 X는 for문에서 호출될 때는 (배치 크기 × 1 × 28 × 28)의 크기를 가지지만, << view를 통해서 (배치 크기 × 784)의 크기로 변환됩니다. >> 
+
+view 함수 사용법 : 
+```python
+import torch
+
+# 3x2 텐서 생성 (총 6개 요소)
+x = torch.tensor([[1, 2], [3, 4], [5, 6]])
+print(x.shape) # torch.Size([3, 2])
+
+# 2x3 텐서로 변경
+y = x.view(2, 3)
+print(y)
+
+x = torch.rand(4, 4) # 총 16개 요소
+y = x.view(2, -1)    # 2 x (알아서 계산) -> 2 x 8이 됨
+z = x.view(-1, 4)    # -1 x 4 -> 4 x 4가 됨
+
+# ==== view 함수는 메모리 연속을 강제함. reshape()는 알아서 바꿔줌.
+
+# 차원을 바꾼 후 view를 쓰고 싶을 때
+x = torch.randn(2, 3)
+y = x.transpose(0, 1) # 3x2가 됨
+
+# y.view(6) <- 에러 발생 가능성 높음!
+# 안전하게 해결:
+y = y.contiguous().view(6)
+```
+
+
+## 2. 토치비전(torchvision) 소개하기
+
+본격적인 실습에 들어가기에 앞서 
+토치비전(torchvision)이라는 도구를 설명하겠습니다. 
+torchvision은 << 유명한 데이터셋들, 이미 구현되어져 있는 유명한 모델들, 일반적인 이미지 전처리 도구 >> 들을 포함하고 있는 패키지입니다. 
+
+아래의 링크는 torchvision에 어떤 데이터셋들(datasets)과 모델들(models) 그리고 어떤 전처리 방법들(transforms)을 제공하고 있는지 보여줍니다.
+
+링크 : [torchvision — Torchvision 0.28 documentation](https://docs.pytorch.org/vision/stable/index.html)
+
+- **자연어 처리를 위해서는 토치텍스트(torchtext)라는 패키지가 있습니다.**
+
+
+## 3. 분류기 구현을 위한 사전 설정
+
+우선 필요한 도구들을 임포트합니다.
+
+```python
+import torch
+import torchvision.datasets as dsets
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+import torch.nn as nn
+import matplotlib.pyplot as plt
+import random
+```
+
+현재 환경에서 GPU 연산이 가능하다면 GPU 연산을 하고, 그렇지 않다면 CPU 연산을 하도록 합니다.
+
+```python
+USE_CUDA = torch.cuda.is_available() # GPU를 사용가능하면 True, 아니라면 False를 리턴
+device = torch.device("cuda" if USE_CUDA else "cpu") # GPU 사용 가능하면 사용하고 아니면 CPU 사용
+print("다음 기기로 학습합니다:", device)
+```
+
+구글의 Colab에서 '런타임 > 런타임 유형 변경 > 하드웨어 가속기 > GPU'를 선택하면 USE_CUDA의 값이 True가 되면서 '다음 기기로 학습합니다: cuda'라는 출력이 나옵니다. 즉, GPU로 연산하겠다는 의미입니다. 
+(colab 에서 돌리면 => "다음 기기로 학습합니다: cuda" 가 나오는 것을 볼 수 있음.)
+
+반면에 '하드웨어 가속기 > None'을 선택하면 USE_CUDA의 값이 False가 되면서 
+'다음 기기로 학습합니다: cpu'라는 출력이 나옵니다. 즉, CPU로 연산하겠다는 의미입니다.
+
+위의 방법은 앞으로 자주 쓰이게되므로 기억해둡시다.
+(torch.cuda.is_available() :  NVIDIA GPU CUDA 있는지없는지 확인하는거.)
+(NVIDIA의 CUDA 드라이버/sw스택이 GPU의 유무를 확인하는 API를 제공하는 것)
+
+```
+[추가 내용: torch.cuda]
+- **`torch.cuda.device_count()`**: 현재 사용 가능한 GPU가 몇 개인지 숫자로 알려줍니다.
+    
+- **`torch.cuda.get_device_name(0)`**: 0번 GPU의 정확한 이름(예: 'NVIDIA GeForce RTX 3060')을 출력합니다.
+```
+
+
+랜덤 시드를 고정합니다.
+
+```python
+# for reproducibility
+random.seed(777)
+torch.manual_seed(777)
+if device == 'cuda':
+    torch.cuda.manual_seed_all(777)
+```
+
+
+하이퍼파라미터를 변수로 둡니다.
+
+```python
+# hyperparameters
+training_epochs = 15
+batch_size = 100
+```
+
+#### cuda.manual_seed_all, manual_seed, random.seed 뭔 차이?
+##### 1. `random.seed(777)`
+
+- **대상:** 파이썬 기본 `random` 모듈.
+- **범위:** 파이썬 표준 라이브러리인 `random`을 사용하여 생성하는 난수들.
+- **용도:** 데이터 로딩 시 순서를 섞거나, 일반적인 파이썬 리스트에서 무작위 샘플링을 할 때 영향을 줍니다.
+- **주의:** 파이토치의 텐서 연산(가중치 초기화 등)에는 영향을 **주지 않습니다.**
+
+##### 2. `torch.manual_seed(1)`
+
+- **대상:** << CPU에서 생성되는 파이토치 난수. >> 
+- **범위:** `torch.rand()`, `torch.randn()` 등을 호출할 때 생성되는 텐서의 값.
+- **용도:** 딥러닝 모델의 <<< 가중치 초기값을 똑같이 맞추거나 >>>, 학습 데이터 배치를 똑같이 섞을 때 필수적입니다.
+
+##### 3. `torch.cuda.manual_seed_all(777)`
+
+- **대상:** 모든 GPU 장치.
+- **범위:** 시스템에 있는 << **모든 NVIDIA GPU**에서 생성되는 파이토치 난수. >>
+- **용도:** GPU를 여러 개 사용하거나 하나만 사용하더라도, GPU 위에서 돌아가는 파이토치 연산의 난수 값을 고정합니다.
+- **특징:** `torch.manual_seed()`만 쓰면 CPU 연산만 고정될 수 있기 때문에, GPU를 쓴다면 이 함수도 같이 써주는 것이 안전합니다.
+
+
+## 4. MNIST 분류기 구현하기
+
+torchvision.datasets.dsets.MNIST를 사용하여 MNIST 데이터셋을 불러올 수 있습니다.
+
+```python
+# MNIST dataset
+mnist_train = dsets.MNIST(root='MNIST_data/',
+                          train=True,
+                          transform=transforms.ToTensor(),
+                          download=True)
+
+mnist_test = dsets.MNIST(root='MNIST_data/',
+                         train=False,
+                         transform=transforms.ToTensor(),
+                         download=True)
+```
+
+첫번째 인자 root는 MNIST 데이터를 다운로드 받을 경로입니다. 
+두번째 인자 train: (훈련이냐 테스트냐 구분)
+   인자로 True를 주면, MNIST의 훈련 데이터를 리턴받으며 
+   False를 주면 테스트 데이터를 리턴받습니다
+세번째 인자 transform은 현재 << 데이터를 파이토치 텐서로 변환 >> 해줍니다. 
+네번째 인자 download는 해당 경로에 << MNIST 데이터가 없다면 다운로드 받겠다는 의미입니다. >>
+
+이렇게 데이터를 다운로드했다면 앞서 미니 배치와 데이터로드 챕터에서 학습했던 데이터로더(DataLoader)를 사용합니다.
+복습 : [[03 Machine Learning Basics#^dataloader]]
+
+```python
+# dataset loader
+data_loader = DataLoader(dataset=mnist_train,
+                         batch_size=batch_size, # 배치 크기는 100
+                         shuffle=True,
+                         drop_last=True)
+```
+
+이때 DataLoader에는 4개의 인자가 있습니다. 
+첫번째 인자인 dataset은 로드할 대상을 의미하며, 
+두번째 인자인 batch_size는 배치 크기, 
+shuffle은 매 에포크마다 미니 배치를 셔플할 것인지의 여부, 
+<< drop_last는 마지막 배치를 버릴 것인지를 의미합니다. >>
+=>
+- **drop_last를 하는 이유를 이해하기 위해서 1,000개의 데이터가 있다고 했을 때, 배치 크기가 128이라고 해봅시다. 1,000을 128로 나누면 총 7개가 나오고 나머지로 104개가 남습니다. 이때 104개를 마지막 배치로 한다고 하였을 때 128개를 충족하지 못하였으므로 104개를 그냥 버릴 수도 있습니다. 이때 마지막 배치를 버리려면 drop_last=True를 해주면 됩니다. <<< 이는 다른 미니 배치보다 개수가 적은 마지막 배치를 경사 하강법에 사용하여 마지막 배치가 "상대적으로 과대 평가"되는 현상을 막아줍니다. >>> ** 
+
+---
+
+이제 모델을 설계합니다. input_dim은 784이고, output_dim은 10입니다.
+
+```python
+# MNIST data image of shape 28 * 28 = 784
+linear = nn.Linear(784, 10, bias=True).to(device)
+```
+
+to() 함수는 << 연산을 어디서 수행할지 >> 를 정합니다. 
+to() 함수는 모델의 매개변수를 지정한 장치의 메모리로 보냅니다. 
+CPU를 사용할 경우에는 필요가 없지만, GPU를 사용하려면 to('cuda')를 해 줄 필요가 있습니다. << 아무것도 지정하지 않은 경우에는 CPU 연산이라고 보면 됩니다. >>
+
+bias는 편향 << b를 사용할 것인지를 나타냅니다. 기본값은 True이므로 굳이 할 필요는 없지만 명시적으로 True를 해주었습니다. >>
+
+
+
+이제 비용 함수와 옵티마이저를 정의합니다.
+
+```python
+# 비용 함수와 옵티마이저 정의
+criterion = nn.CrossEntropyLoss().to(device) # 내부적으로 소프트맥스 함수를 포함하고 있음.
+optimizer = torch.optim.SGD(linear.parameters(), lr=0.1)
+```
+
+- **앞서 소프트맥스 회귀를 배울 때는 torch.nn.functional.cross_entropy()를 사용하였으나 여기서는 torch.nn.CrossEntropyLoss()을 사용하고 있습니다. 둘 다 파이토치에서 제공하는 크로스 엔트로피 함수로 둘 다 소프트맥스 함수를 포함하고 있습니다. (결과는 동일하지만 재사용성을 위해 class방식 사용)**
+
+```python
+for epoch in range(training_epochs): # 앞서 training_epochs의 값은 15로 지정함.
+    avg_cost = 0
+    total_batch = len(data_loader)
+
+    for X, Y in data_loader:
+        # 배치 크기가 100이므로 아래의 연산에서 X는 (100, 784)의 텐서가 된다.
+        X = X.view(-1, 28 * 28).to(device)
+        # 레이블은 원-핫 인코딩이 된 상태가 아니라 0 ~ 9의 정수.
+        Y = Y.to(device)
+
+        optimizer.zero_grad()
+        hypothesis = linear(X)
+        cost = criterion(hypothesis, Y)
+        cost.backward()
+        optimizer.step()
+
+        avg_cost += cost / total_batch
+
+    print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.9f}'.format(avg_cost))
+
+print('Learning finished')
+```
+
+먼저, training_epochs의 값은 15로 설정되어 있으며, 모델은 총 15번의 에포크 동안 학습됩니다. 
+avg_cost는 에포크 동안의 << 평균 비용 = 각 배치에서의 cost/총묶음수를 누적합시킨 것이 avg_cost. >> 을 저장하는 변수이며, 
+total_batch는 에포크당 수행할 배치(batch) 수를 계산합니다. 
+data_loader는 미니 배치 학습을 위해 데이터를 반복적으로 제공하는 역할을 합니다.
+
+루프 내부에서는 각 배치마다 입력 데이터 X와 레이블 Y를 받아옵니다. 
+이때, X는 이미지 데이터로서 (100, 784) 크기의 텐서로 변환되는데, 
+이는 << 배치 크기 100에 28x28 픽셀의 이미지가 일렬로 펼쳐진 상태(784) >>
+를 나타냅니다.  이 데이터와 레이블 Y는 모델 학습을 위해 지정된 장치(device)로 전송됩니다.
+
+다음으로, 옵티마이저의 기울기 정보를 초기화하고, 
+모델의 가설(hypothesis)을 계산합니다. (지금까지 하던 대로)
+linear(X)는 모델의 순전파(forward) 과정을 수행하여 예측 값을 계산합니다.
+
+그 후, 손실 함수(criterion)를 사용하여 예측 값과 실제 레이블 Y 간의 비용(cost)을 계산합니다. 이 비용은 모델의 성능을 나타내며, 비용이 작을수록 모델의 예측이 실제 값에 가까워집니다.
+
+이후, cost.backward()를 호출하여 역전파(backpropagation)를 수행하고, 기울기를 계산합니다. 그리고 옵티마이저의 step()을 호출하여 모델의 파라미터(가중치와 편향)를 업데이트합니다.
+
+각 배치의 비용을 avg_cost에 누적하여 에포크당 평균 비용을 계산하고, 에포크가 끝날 때마다 현재 에포크 번호와 평균 비용을 출력합니다. 모든 에포크가 종료되면 "Learning finished" 메시지를 출력하여 학습이 완료되었음을 알립니다.
+
+```python
+Epoch: 0001 cost = 0.535468459
+Epoch: 0002 cost = 0.359274209
+Epoch: 0003 cost = 0.331187516
+Epoch: 0004 cost = 0.316578060
+Epoch: 0005 cost = 0.307158142
+Epoch: 0006 cost = 0.300180763
+Epoch: 0007 cost = 0.295130193
+Epoch: 0008 cost = 0.290851474
+Epoch: 0009 cost = 0.287417054
+Epoch: 0010 cost = 0.284379572
+Epoch: 0011 cost = 0.281825274
+Epoch: 0012 cost = 0.279800713
+Epoch: 0013 cost = 0.277808994
+Epoch: 0014 cost = 0.276154339
+Epoch: 0015 cost = 0.274440885
+Learning finished
+```
+
+학습된 모델을 테스트 데이터로 평가하고, 테스트 데이터에서 임의의 이미지를 선택하여 모델이 해당 이미지를 어떻게 예측하는지 시각적으로 확인해보겠습니다.
+
+```python
+# 테스트 데이터를 사용하여 모델을 테스트한다.
+with torch.no_grad(): # torch.no_grad()를 하면 gradient 계산을 수행하지 않는다.
+    X_test = mnist_test.test_data.view(-1, 28 * 28).float().to(device)
+    Y_test = mnist_test.test_labels.to(device)
+
+    prediction = linear(X_test)
+    correct_prediction = torch.argmax(prediction, 1) == Y_test
+    accuracy = correct_prediction.float().mean()
+    print('Accuracy:', accuracy.item())
+
+    # MNIST 테스트 데이터에서 무작위로 하나를 뽑아서 예측을 해본다
+    r = random.randint(0, len(mnist_test) - 1)
+    X_single_data = mnist_test.test_data[r:r + 1].view(-1, 28 * 28).float().to(device)
+    Y_single_data = mnist_test.test_labels[r:r + 1].to(device)
+
+    print('Label: ', Y_single_data.item())
+    single_prediction = linear(X_single_data)
+    print('Prediction: ', torch.argmax(single_prediction, 1).item())
+
+    plt.imshow(mnist_test.test_data[r:r + 1].view(28, 28), cmap='Greys', interpolation='nearest')
+    plt.show()
+```
+
+```python
+Accuracy: 0.8883000016212463
+Label:  5
+Prediction:  5
+```
+
+![](https://static.wikidocs.net/images/page/60324/pred.PNG)
+
+- 평가 모드 활성화: with torch.no_grad(): 블록 내에서는 기울기 계산을 하지 않도록 설정합니다. 이는 모델을 테스트할 때 필요 없는 기울기 계산을 방지하여 메모리와 연산 효율을 높입니다.
+    
+- 테스트 데이터 준비: mnist_test.test_data는 테스트 데이터셋의 이미지 데이터를 포함하며, view(-1, 28 * 28)를 통해 28x28 크기의 이미지를 일렬로 펼쳐 (1, 784) 형태로 변환합니다.(test 샘플중 하나만 뽑아서 테스트해보는 것이니 1x..임) .float() 메서드를 통해 데이터를 실수형으로 변환하고, .<< to(device)로 모델과 동일한 장치(CPU나 GPU)에 배치합니다. >>  mnist_test.test_labels는 해당 데이터셋의 레이블(정답)을 포함합니다. 
+    
+- 모델 예측 및 정확도 계산: linear(X_test)를 통해 테스트 데이터에 대한 모델의 예측을 수행합니다.([[#여러 가지 회귀 복습/구분]]  참조)  
+- torch.argmax(prediction, 1)은 각 이미지에 대해 예측된 클래스 레이블을 반환하며, 이 값이 실제 레이블 Y_test와 동일한지 여부를 correct_prediction 변수에 저장합니다. 이후, correct_prediction.float().mean()를 통해 전체 테스트 데이터셋에 대한 정확도를 계산하고 출력합니다.
+    
+- 임의의 테스트 샘플 예측: random.randint(0, len(mnist_test) - 1)을 사용하여 테스트 데이터셋에서 임의의 샘플을 선택합니다. 선택된 이미지를 모델에 입력하여 예측하고, 실제 레이블(Y_single_data)과 모델의 예측 결과(single_prediction)를 출력합니다.
+    
+- 이미지 시각화: plt.imshow()를 사용하여 선택된 이미지를 시각적으로 보여줍니다. cmap='Greys'는 이미지를 회색조로 표시하고, interpolation='nearest'는 이미지를 확대할 때 보간을 최소화하여 원본의 형태를 유지합니다.
+
+
 
 # 용어 정리
 ## ReLU 함수 복습, 사용되는 단계
@@ -974,3 +1317,132 @@ $\text{출력} = f(w_1x_1 + w_2x_2 + \cdots + b)$
 이 경우, 예측값인  $H(x)$ 의 값이 1이면 오차가 0이므로 당연히 cost는 0이 됩니다. 
 반면, $H(x)$ 가 0으로 수렴하면 cost는 무한대로 발산합니다. 실제값이 0인 경우는 그 반대로 이해하면 됩니다(초록, 1-H(x)의 경우.). 
 이 두 개의 로그 함수를 식으로 표현하면 다음과 같습니다.
+
+## argmax 함수 복습
+
+소프트맥스 회귀의 마지막 출력층(`prediction`)은 보통 10개의 클래스(0~9)에 대한 **확률 분포**를 담고 있습니다.
+
+예를 들어, 숫자 '2'를 입력했을 때 모델의 출력(`prediction`)이 아래와 같다고 해보죠.
+
+```python
+# [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] (각 숫자에 대한 확률)
+tensor([[0.01, 0.02, 0.85, 0.01, 0.05, 
+		 0.02, 0.01, 0.01, 0.01, 0.01]])
+```
+
+여기서 "모델이 예측한 최종 정답"은 무엇인가요? 
+바로 0.85라는 가장 큰 확률값을 가진 '2'입니다.
+
+이때 `torch.argmax(prediction, 1)`을 하면, 10개의 확률값 중에서 **가장 큰 값을 가진 인덱스(위치)인 `2`를 반환**해 줍니다. 즉, "모델이 2번 숫자라고 예측했구나!"를 알기 위해 쓰는 것입니다.
+
+### `torch.argmax(prediction, 1)`의 의미
+=> 1은 dim=1 인 것.
+
+- **`prediction`**: (배치 크기, 10) 형태의 텐서입니다.
+    
+- **`1`**: 1번 dim = 차원(가로 방향)을 보라는 뜻입니다. (각 데이터별로 10개의 확률 중 제일 큰 걸 찾으라는 뜻)
+    
+- **반환값**: 가장 큰 확률을 가진 **위치(인덱스)**.
+
+## 여러 가지 회귀 복습/구분
+
+> linear(X_test) => 선형회귀로 보이는데.. 헷갈리네
+   선형회귀 :  매우단순하게 일차함수 W b 조정
+   로지스틱회귀 : 선그어서 이진분류 하도록 로지스틱함수 (시그모이드)추가  
+   다부류 분류 - 소프트맥스 회귀 : 복잡한 선을 그어야함 : 오차함수도 교차엔트로피가 되고, 소프트맥스함수로 다부류의 회귀값을 총합1로바꿈. 근데 여기서 선형회귀로 W, b 조절하는건 똑같음 => 이라 linear 로 결과값이 나오는거?
+
+
+### 1. 선형 결합($WX+b$)은 "공통 엔진"입니다
+
+질문하신 대로 선형 회귀, 로지스틱 회귀(이진 분류), 소프트맥스 회귀(다중 분류) 모두 **내부 엔진인 $WX+b$는 똑같습니다.**
+
+- **선형 회귀:** $WX+b$의 결과값(연속된 숫자)을 그대로 사용.
+    
+- **이진 분류:** $WX+b$를 통과한 값을 시그모이드(Sigmoid)에 넣어 $0 \sim 1$ 사이의 확률로 변환.
+    
+- **다중 분류:** $WX+b$를 통과한 값을 소프트맥스(Softmax)에 넣어 여러 클래스 확률의 **총합이 1**이 되도록 변환.
+    
+
+그래서 코드에서 `nn.Linear(784, 10)`을 사용하는 이유는, **입력(784)을 받아서 10개의 클래스에 대한 '점수(Logits)'를 만들기 위한 10개의 선형 함수($WX+b$)를 동시에 돌리고 있기 때문**입니다.
+
+### 2. 왜 `linear`라고 부르나요?
+
+네, 정확합니다. `nn.Linear`는 이름 그대로 **선형 연산만 수행**하기 때문입니다.
+
+- `linear(X)`의 결과는 아직 활성화 함수(Softmax)를 거치지 않은 원시 점수(Raw Score)입니다.
+    
+- 이 점수들을 **소프트맥스**라는 껍데기를 씌워 확률로 바꾸느냐, 아니면 그냥 쓰느냐는 그 뒤의 선택입니다.
+    
+
+### 3. 구조적 차이 (왜 이름이 같은가?)
+
+이 부분이 혼동스러우실 텐데, 파이토치 설계상 모델의 가장 바닥에 있는 '행렬 연산기'를 `nn.Linear`라는 클래스로 만들어 두었습니다.
+
+|**모델**|**사용 엔진**|**뒤에 붙는 '껍데기'(활성화 함수)**|
+|---|---|---|
+|**선형 회귀**|`nn.Linear`|없음|
+|**로지스틱 회귀**|`nn.Linear`|`torch.sigmoid`|
+|**소프트맥스 회귀**|`nn.Linear`|`torch.softmax` (혹은 `CrossEntropyLoss` 내부)|
+
+### 결론
+
+"다중 분류인데 왜 `linear`를 쓰지?"라고 생각하시는 게 매우 정상입니다. 하지만 딥러닝에서 **분류는 '선형 연산($WX+b$)으로 점수를 뽑고 + 활성화 함수(Softmax)로 판단'하는 과정**이 한 세트라고 보시면 됩니다.
+
+즉, `linear(X)`는 "우리 모델이 아직 활성화 함수(Softmax)를 통과하기 전의 날것의 상태"라고 보시면 정확합니다!
+
+
+
+## torchvision dsets.MNIST() vs sklearn.datasets.fetch_openml()
+
+
+### 1. `torchvision.datasets.MNIST` (PyTorch 전용)
+
+파이토치 생태계의 표준입니다.
+
+- **형태:** **`torch.Tensor`** 형태로 바로 가져옵니다.
+    
+- **변환(Transform):** `transform=transforms.ToTensor()`를 쓰면 픽셀값을 바로 `0~1` 사이의 실수(float)로 정규화해주고, 텐서 차원도 학습하기 좋은 형태로 알아서 바꿔줍니다.
+    
+- **장점:** `DataLoader`와 찰떡궁합입니다. `.to(device)`로 GPU에 올리거나 배치(batch) 단위로 데이터를 쪼개는 작업이 한 번에 해결됩니다.
+    
+- **추천 상황:** 딥러닝 모델 학습, 신경망 구현, GPU 연산 시.
+    
+
+### 2. `sklearn.datasets.fetch_openml` (데이터 과학/머신러닝 전용)
+
+Scikit-learn에서 사용하는 데이터 로더입니다.
+
+- **형태:** **`numpy` 배열** 혹은 `pandas` 데이터프레임 형태로 가져옵니다.
+    
+- **변환:** 직접 넘파이 배열을 파이토치 텐서로 바꿔주어야 합니다 (`torch.from_numpy()` 등).
+    
+- **장점:** 머신러닝 알고리즘(SVM, Random Forest, KNN 등)을 테스트할 때 매우 편리합니다. 굳이 텐서로 바꿀 필요 없이 바로 알고리즘에 넣으면 되기 때문입니다.
+    
+- **추천 상황:** 전통적인 머신러닝 알고리즘 비교, 데이터 전처리 분석, 모델 없이 데이터만 살펴볼 때.
+    
+
+### 비교 요약표
+
+|**비교 항목**|**torchvision.MNIST**|**sklearn.fetch_openml**|
+|---|---|---|
+|**주요 출력**|**`torch.Tensor`**|**`numpy.ndarray`**|
+|**딥러닝 연동**|즉시 가능 (최적화됨)|추가 변환 필요|
+|**데이터 전처리**|`transforms` 제공|직접 구현 필요|
+|**주 목적**|딥러닝 모델 학습|머신러닝 알고리즘 학습|
+
+### 💡 왜 `torchvision`을 써야 하나요?
+
+질문자님이 지금 하고 계신 `Softmax Regression` 실습 코드에서 만약 `sklearn`으로 데이터를 가져온다면, 아래와 같은 번거로운 작업이 추가됩니다:
+
+1. 데이터를 `numpy`에서 `torch.tensor`로 변환.
+    
+2. `float` 타입으로 캐스팅.
+    
+3. 이미지 차원 조절 (reshape).
+    
+4. 직접 배치 크기만큼 데이터를 슬라이싱해서 `DataLoader`처럼 만드는 루프 구현.
+    
+
+하지만 `torchvision`을 쓰면 이 모든 게 **`DataLoader(mnist_train, batch_size=100, shuffle=True)`** 한 줄로 끝납니다.
+
+**한 줄 결론:** 딥러닝을 하신다면 `torchvision`이 압도적으로 편하고 빠릅니다. 다른 거 고민하지 마시고 지금 쓰시는 방식대로 유지하세요!

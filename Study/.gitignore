@@ -19,3 +19,5 @@ desktop.ini
 AI_basic/practice/pytorch-nlp-tutorial/
 AI_basic/practice/material(AI)/lecture/
 AI_basic/practice/material(AI)/practice/__pycache__/
+
+MNIST_data/
