@@ -7,8 +7,9 @@
 >  API, MCP 등 Claude를 도구로 잘 쓰는 법 익히기
 
 ### 학습 자료
-https://wikidocs.net/book/19104
-https://wikidocs.net/book/19414
+https://wikidocs.net/book/19104 (claude)
+https://wikidocs.net/book/19414 (hermes)
+[Claude_Code External STUDY.pdf](file:///C:/Users/diffi/Desktop/Claude_Code%20%20External%20STUDY.pdf)
 
 ## TODO
 - [ ] 프롬프트 기본기 (역할/맥락/예시/출력형식)

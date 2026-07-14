@@ -23,8 +23,10 @@ https://wikidocs.net/book/2788
 - [ ] 오픈소스 sLLM 파인튜닝 실습 경험
 - [ ] 아주 작은 GPT 코드 읽고 (nanoGPT 예정) 직접 학습 돌려보기
 - [ ] 손으로 만져보며 하이퍼파라미터 실험
+- [ ] 다중 레이블 분류 practice 해보기
 
-_관련: [[Claude/README]] (이 원리가 Claude의 바탕), [[04_agent-design/_index]]_
+
+_관련: [[Claude/README]] (이 원리가 Claude의 바탕)
 
 
 
