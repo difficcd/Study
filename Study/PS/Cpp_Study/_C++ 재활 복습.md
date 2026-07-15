@@ -304,9 +304,7 @@ int main() {
 
 가장 직관적인 방법입니다. **"세로 크기는 고정되어 있고, 가로 크기는 마음대로 늘어나는"** 구조입니다. 주로 알고리즘 문제(PS)에서 그래프의 인접 리스트를 구현할 때 정말 많이 씁니다.
 
-C++
-
-```
+```cpp
 #include <iostream>
 #include <vector>
 
@@ -336,7 +334,7 @@ int main() {
 
 C++
 
-```
+```cpp
 #include <iostream>
 #include <vector>
 
