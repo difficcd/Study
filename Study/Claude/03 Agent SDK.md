@@ -1,9 +1,9 @@
 # Claude Agent SDK
 
-[[README|← Claude 활용법]] · [[Claude Code 동작 방식]]에서 이어짐
+[[claude/README|← Claude 활용법]] · [[01 Claude Code 동작 방식]]에서 이어짐
 
 > 한 줄: **Claude Code를 라이브러리로 포장한 것.**
-> [[Claude Code 동작 방식]]에서 본 하네스(에이전트 루프 + 내장 도구 + 권한 + 세션)를
+> [[01 Claude Code 동작 방식]]에서 본 하네스(에이전트 루프 + 내장 도구 + 권한 + 세션)를
 > 내 프로그램 안에서 `query()` 한 줄로 돌릴 수 있다.
 
 ## 1. 에이전트를 만드는 4가지 방법 (헷갈리기 쉬운 지형도)
@@ -49,7 +49,7 @@ anyio.run(main)
 |---|---|
 | `allowed_tools`, `permission_mode` | 권한 시스템 (`settings.json`의 allowlist) |
 | `system_prompt`, `append_system_prompt` | CLAUDE.md / 시스템 프롬프트 |
-| `mcp_servers` | `claude mcp add` ([[MCP]]) |
+| `mcp_servers` | `claude mcp add` ([[04 MCP]]) |
 | `agents` (서브에이전트 정의) | Agent 도구 / `.claude/agents/` |
 | hooks | 훅 (도구 호출 가로채기) |
 | `cwd`, `max_turns` | 작업 디렉토리, 루프 상한 |
@@ -77,4 +77,4 @@ anyio.run(main)
 - 단, 실행 비용(토큰)과 권한 설계는 내 몫
 
 ---
-_관련: [[MCP]] · [[프롬프트 캐싱]] (에이전트 루프 비용의 핵심) · 공식 문서: code.claude.com/docs/en/agent-sdk_
+_관련: [[04 MCP]] · [[02 프롬프트 캐싱]] (에이전트 루프 비용의 핵심) · 공식 문서: code.claude.com/docs/en/agent-sdk_

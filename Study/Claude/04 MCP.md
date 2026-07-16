@@ -1,9 +1,9 @@
 # MCP (Model Context Protocol)
 
-[[README|← Claude 활용법]] · [[Claude Code 동작 방식]]에서 이어짐
+[[claude/README|← Claude 활용법]] · [[01 Claude Code 동작 방식]]에서 이어짐
 
 > 한 줄: **AI 도구 연결의 표준 규격 — "AI계의 USB-C".**
-> [[Claude Code 동작 방식]]의 도구(Read/Bash 등)는 하네스에 내장된 것이고,
+> [[01 Claude Code 동작 방식]]의 도구(Read/Bash 등)는 하네스에 내장된 것이고,
 > MCP는 **외부의 도구·데이터를 표준 방식으로 꽂는** 프로토콜이다.
 
 ## 1. 왜 필요한가
@@ -78,4 +78,4 @@ client.beta.messages.create(
 - 도구가 많아지면 컨텍스트를 잡아먹는다 — 필요한 서버만 켜두기.
 
 ---
-_관련: [[프롬프트 캐싱]] (도구 목록 변경 = 캐시 전체 무효화) · [[Agent SDK]]_
+_관련: [[02 프롬프트 캐싱]] (도구 목록 변경 = 캐시 전체 무효화) · [[03 Agent SDK]]_
