@@ -664,7 +664,891 @@ XOR 예제에서는 은닉층 1개만으로 문제를 해결할 수 있었지만
 
 
 
+<<<<<<< HEAD
 # 06-03  XOR 문제 구현 - 단층 퍼셉트론, 다층 퍼셉트론
+=======
+# 06-03  XOR 문제 구현 - 단층, 다층 퍼셉트론
+
+이번 챕터에서는 파이토치를 사용해서 단층 퍼셉트론과 다층 퍼셉트론을 각각 구현하여 XOR 문제를 풀어보는 것을 시도해보겠습니다.
+
+## 1. 파이토치로 단층 퍼셉트론 구현하기
+
+우선 필요한 도구를 임포트하고, 
+GPU 연산이 가능할 경우에는 GPU 연산을 할 수 있도록 설정해줍니다.
+
+```python
+import torch
+import torch.nn as nn
+```
+
+```python
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+torch.manual_seed(777)
+if device == 'cuda':
+    torch.cuda.manual_seed_all(777)
+```
+
+### 1) 단층 퍼셉트론을 이용한 XOR 문제 풀기
+
+이제 XOR 문제에 해당되는 입력과 출력을 정의합니다.
+
+```python
+X = torch.FloatTensor([[0, 0], [0, 1], [1, 0], [1, 1]]).to(device)
+Y = torch.FloatTensor([[0], [1], [1], [0]]).to(device)
+```
+
+이제 1개의 뉴런을 가지는 단층 퍼셉트론을 구현해봅시다. 
+단층 퍼셉트론이 처음 소개되었을 때는 계단 함수였지만, 우리는 이미 또 다른 활성화 함수인 시그모이드 함수를 알고 있으므로 시그모이드 함수를 사용해보겠습니다.
+
+```python
+linear = nn.Linear(2, 1, bias=True)
+sigmoid = nn.Sigmoid()
+model = nn.Sequential(linear, sigmoid).to(device)
+```
+
+0 또는 1을 예측하는 이진 분류 문제이므로 
+비용 함수로는 크로스엔트로피 함수를 사용합니다.  
+nn.BCELoss()는 이진 분류에서 사용하는 크로스엔트로피 함수입니다.
+
+```python
+# 비용 함수와 옵티마이저 정의
+criterion = torch.nn.BCELoss().to(device)
+optimizer = torch.optim.SGD(model.parameters(), lr=1)
+```
+
+```python
+for step in range(10001): 
+    optimizer.zero_grad()
+    hypothesis = model(X)
+
+    # 비용 함수
+    cost = criterion(hypothesis, Y)
+    cost.backward()
+    optimizer.step()
+
+    if step % 100 == 0: # 100번째 에포크마다 비용 출력
+        print(step, cost.item())
+```
+
+이제 비용이 줄어드는 과정을 보겠습니다.
+
+```python
+0 0.7273974418640137
+100 0.6931476593017578
+200 0.6931471824645996
+... 중략 ...
+10000 0.6931471824645996
+```
+
+200번 에포크에 비용이 0.6931471824645996가 출력된 이후에는 10,000번 에포크가 되는 순간까지 더 이상 비용이 줄어들지 않습니다. 이는 <<단층 퍼셉트론은 XOR 문제를 풀 수 없기 때문>> 입니다.
+
+### 2) 학습된 단층 퍼셉트론의 예측값 확인하기
+
+총 10,001회 학습한 단층 퍼셉트론의 예측값도 확인해보겠습니다.
+
+```python
+with torch.no_grad():
+    hypothesis = model(X)
+    predicted = (hypothesis > 0.5).float()
+    accuracy = (predicted == Y).float().mean()
+    print('모델의 출력값(Hypothesis): ', hypothesis.detach().cpu().numpy())
+    print('모델의 예측값(Predicted): ', predicted.detach().cpu().numpy())
+    print('실제값(Y): ', Y.cpu().numpy())
+    print('정확도(Accuracy): ', accuracy.item())
+```
+
+with torch.no_grad(): 블록 안에서는 기울기 계산을 비활성화하여 연산 속도를 높이고 메모리 사용을 줄입니다. 여기서는 학습이 아니라 모델의 성능을 평가하는 단계이기 때문에 기울기 계산이 필요하지 않습니다.
+
+먼저, hypothesis = model(X)를 통해 입력 데이터 X에 대한 모델의 예측값을 계산합니다. 이 값은 모델의 출력값으로, 0과 1 사이의 확률을 나타냅니다.
+
+그 다음, predicted = (hypothesis > 0.5).float()를 통해 << 예측값이 0.5를 초과하면 1, 그렇지 않으면 0으로 간주하여 이진 분류를 수행합니다. >>
+이는 모델이 예측한 클래스 레이블입니다.
+
+accuracy = (predicted == Y).float().mean()를 사용하여 모델의 예측값과 실제값 Y를 비교하고, 그 일치하는 비율을 계산하여 정확도를 구합니다.
+
+마지막으로, 모델의 출력값(hypothesis), 모델의 이진 분류 예측값(predicted), 실제값(Y), 그리고 정확도(accuracy)를 출력합니다. 
+각 값은 <<  .detach().cpu().numpy()를 사용해 PyTorch 텐서를 NumPy 배열로 변환하여 출력하기 전에 계산 그래프에서 분리하고 CPU로 옮깁니다.  >> 
+
+```python
+모델의 출력값(Hypothesis):  [[0.5]
+ [0.5]
+ [0.5]
+ [0.5]]
+모델의 예측값(Predicted):  [[0.]
+ [0.]
+ [0.]
+ [0.]]
+실제값(Y):  [[0.]
+ [1.]
+ [1.]
+ [0.]]
+정확도(Accuracy):  0.5
+```
+
+실제값은 0, 1, 1, 0임에도 예측값은 0, 0, 0, 0으로 문제를 풀지 못하는 모습을 보여줍니다.
+
+이번 챕터에서는 파이토치를 사용해서 다층 퍼셉트론을 구현하여 XOR 문제를 풀어보는 것을 시도해보겠습니다.
+
+## 2. 파이토치로 다층 퍼셉트론 구현하기
+
+```python
+import torch
+import torch.nn as nn
+```
+
+GPU 연산이 가능하다면 GPU 연산을 하도록 하고, 랜덤 시드를 고정해줍니다.
+
+```python
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# for reproducibility
+torch.manual_seed(777)
+if device == 'cuda':
+    torch.cuda.manual_seed_all(777)
+```
+
+### 1) 다층 퍼셉트론을 이용한 XOR 문제 풀기
+
+XOR 문제를 풀기 위한 입력과 출력을 정의해줍니다.
+
+```python
+X = torch.FloatTensor([[0, 0], [0, 1], [1, 0], [1, 1]]).to(device)
+Y = torch.FloatTensor([[0], [1], [1], [0]]).to(device)
+```
+
+이제 다층 퍼셉트론을 설계합니다. 
+아래는 입력층, 은닉층1, 은닉층2, 은닉층3, 출력층을 가지는 은닉층이 3개인 인공 신경망입니다.
+
+```python
+model = nn.Sequential(
+          nn.Linear(2, 10, bias=True), 
+	          # input_layer = 2, hidden_layer1 = 10
+          nn.Sigmoid(),
+          nn.Linear(10, 10, bias=True), 
+	          # hidden_layer1 = 10, hidden_layer2 = 10
+          nn.Sigmoid(),
+          nn.Linear(10, 10, bias=True), 
+	          # hidden_layer2 = 10, hidden_layer3 = 10
+          nn.Sigmoid(),
+          nn.Linear(10, 1, bias=True),
+	          # hidden_layer3 = 10, output_layer = 1
+          nn.Sigmoid()
+          ).to(device)
+```
+
+위 인공 신경망을 그림으로 표현하면 아래와 같습니다.
+
+![](https://static.wikidocs.net/images/page/61010/ann.PNG)
+
+이제 비용 함수와 옵타마이저를 선언합니다. 
+nn.BCELoss()는 이진 분류에서 사용하는 크로스엔트로피 함수입니다.
+
+```python
+criterion = torch.nn.BCELoss().to(device)
+optimizer = torch.optim.SGD(model.parameters(), lr=1)  
+			# modified learning rate from 0.1 to 1
+```
+
+### 단층 퍼셉트론과 다층 퍼셉트론에서의 lr 
+
+결론부터 말씀드리면, **단층 퍼셉트론은 $\text{lr}=1$ 같은 무식하게 큰 값을 써도 끄떡없지만, 다층 퍼셉트론(MLP)은 그랬다간 학습이 완전히 망가집니다.**
+
+그 이유를 층(Layer)의 개수와 
+역전파(Backpropagation)의 흐름 관점에서 아주 명쾌하게 정리해 드릴게요.
+
+#### 1. 단층 퍼셉트론에서의 $\text{lr}$ (학습률)
+
+단층 퍼셉트론은 입력층에서 출력층으로 바로 연결되는 아주 단순한 구조입니다.
+
+- **안전핀 존재:** 앞서 짚었듯, 활성화 함수와 교차 엔트로피가 결합한 그라디언트 $\frac{\partial L}{\partial W} = (\hat{y} - y) \cdot x$는 값의 범위가 극도로 제한적이고 안정적입니다.
+
+- **경로가 단 하나:** 입력 데이터가 가중치와 곱해져 출력되는 경로가 << 딱 하나 >> 뿐이라, 오차가 << 왜곡될 여지가 없습니다. >>
+
+- **결론:** 학습의 안정성이 매우 높기 때문에 **$\text{lr} = 1.0$ 또는 심지어 그 이상**을 주어도 
+		가중치가 조금 흔들릴 뿐, 올바른 평면(경계선)을 찾아 결국 수렴해 냅니다.
+
+
+#### 2. 다층 퍼셉트론(MLP)에서의 $\text{lr}$ (학습률)
+
+하지만 은닉층이 생기고 층이 깊어지는 순간, 완전히 다른 세상이 펼쳐집니다. MLP에서는 **$\text{lr}$을 보통 $0.01$, $0.001$ 수준으로 아주 조심스럽게** 낮춰 잡아야 합니다.
+
+##### ① 연쇄 법칙(Chain Rule)에 의한 오차의 왜곡
+
+MLP는 출력층의 오차를 뒤로 전달하는 역전파(Backpropagation)를 사용합니다. 이 과정에서 미분의 연쇄 법칙으로 인해 수많은 가중치와 활성화 함수의 미분값들이 계속해서 곱해집니다.
+
+- 은닉층이 깊어질수록 뒤에서 온 오차 신호가 앞으로 갈 때 **극단적으로 커지거나(Exploding)** 혹은 **사라져 버리는(Vanishing)** 현상이 발생하기 쉽습니다.
+
+- 이 불안정한 흐름 속에 $\text{lr}=1$ 같이 큰 폭의 교정 계수를 곱해버리면 가중치들이 순식간에 안드로메다로 날아가 버립니다 (가중치 폭발).
+
+
+##### ② 나비 효과 (Butterfly Effect)
+
+단층에서는 가중치 하나가 조금 크게 움직여도 그 영향이 즉각적이고 단순합니다. 하지만 MLP에서는 앞 장치(은닉층)의 가중치가 눈꼽만큼만 바뀌어도, 그것이 뒷 장치들을 거치면서 최종 출력값에는 엄청난 파괴적 변화를 일으킵니다.
+
+- 앞 층이 너무 급격하게 변하면 뒤 쪽 층들은 매 스텝마다 완전히 새로 변해버린 우주(입력 분포)를 마주하게 됩니다. (이를 **Internal Covariate Shift**라고 부릅니다.)
+
+- 서로 발맞추어 차근차근 수렴해야 하므로, **모든 층의 변화 속도를 통제하기 위해 $\text{lr}$을 아주 미세하게 설정**해야만 합니다.
+
+##### 요약
+
+|**구분**|**단층 퍼셉트론**|**다층 퍼셉트론 (MLP)**|
+|---|---|---|
+|**권장 $\text{lr}$ 범위**|대략 $0.1 \sim 1.0$ (매우 큼)|대략 $0.01 \sim 0.0001$ (매우 작음)|
+|**오차 전파 경로**|직접 연결 (단순함)|역전파를 통한 다단계 전파 (복잡함)|
+|**큰 $\text{lr}$ 적용 시 결과**|약간의 요동 후 안정적으로 수렴|가중치 발산(NaN 오류), 학습 불가|
+|**안정성 원천**|교차 엔트로피와 데이터의 안정적 결합|없음 (조심스러운 미세 조정과 수동 관리가 필수)|
+
+결국 "XOR을 해결하기 위해 은닉층을 도입한 대가"로, 우리는 더 이상 $\text{lr}=1$ 같은 속 시원한 부스터를 마음대로 쓰지 못하게 된 셈입니다. 대신 짚어주신 SGD의 한계를 극복하기 위해 학습률을 스스로 깎고 다듬어주는 **Adam 같은 똑똑한 옵티마이저**들을 발명하여 이 문제를 우회하게 되었습니다.
+
+
+
+
+
+
+### 그렇다면 여기서는 왜 lr=1 로 잡아도 잘 학습할까?
+
+#### 1. 데이터가 단 '4개'뿐인 우주 (극단적인 단순함)
+
+현재 다루고 있는 XOR 문제의 입력 데이터셋은 아래의 단 4개뿐입니다.
+
+$$\{(0,0), (0,1), (1,0), (1,1)\}$$
+- **좁은 차원의 우주:** 가중치들이 << 헤매야 하는 공간의 차원이 매우 작아서, `lr=1.0`이라는 거대한 보폭으로 성큼성큼 걸어가도 우연히 정답 구덩이(Local Minima)에 쏙 빠지기 아주 쉬운 환경인 것입니다. >> => 문제의 복잡도도 당연히 lr에 기여함. 문제가 복잡할수록 미세하게 이동하면서 최적점을 찾아가야하고, 문제가 단순하면 빨리 이동해도 좋음.
+
+
+#### 2. 시그모이드(Sigmoid)가 오히려 수렴을 돕는 '포화 상태'의 역설
+
+앞서 시그모이드 함수 때문에 가중치가 너무 커지면 
+미분값이 0이 되어 굳어버린다고 말씀드렸습니다.
+
+그런데 XOR 같은 이진 분류(Binary Classification)에서는 
+마지막 예측값이 정확히 `0` 또는 `1`로 극단적으로 갈라져야 합니다.
+
+- 오히려 가중치들이 엄청나게 커져서 시그모이드 결과물이 완전히 `0.9999`나 `0.0001`처럼 양 끝으로 굳어버리는(Saturation) 상태가, XOR 문제에서는 "정답을 아주 강력하고 확실하게 맞추는 상태"가 됩니다. == 단순한 문제라는 것.
+
+- `lr=1.0`으로 가중치를 사정없이 밀어붙인 덕분에, 모델이 아주 빠르게 "이건 확실히 0! 이건 확실히 1!" 하고 굳혀버릴 수 있었던 것이죠.
+
+
+#### 3. 그렇다면 왜 실제 딥러닝 책에서는 "lr=1.0 쓰면 큰일 난다"고 할까요?
+
+만약 데이터가 4개가 아니라 **MNIST 손글씨 데이터 60,000개**가 되고, 이미지를 다루기 위해 입력 차원이 784차원으로 늘어나는 실제 문제라면 이야기가 완전히 달라집니다.
+현실 데이터는 XOR처럼 완전히 극단적인 `0`과 `1`로만 나뉘지 않고, 미세한 경계선(예: 강아지와 고양이의 미묘한 차이)을 찾아야 합니다. 보폭이 `1.0`으로 너무 크면 그 미세한 경계를 인지하지 못하고 계속 지나쳐버려 영원히 학습이 수렴하지 못하고 진동합니다.
+
+#### 결론
+
+> **"질문자님의 모델이 똑똑해서 버틴 것이 맞습니다! 다만, 그 모델이 활약하는 무대(XOR)가 아주 평화롭고 작은 동산이었기 때문입니다."**
+
+이 작은 환경에서는 `lr=1.0`이 오히려 지름길 역할을 해준 셈입니다.
+
+
+
+
+
+### 복잡한 데이터로 미리 실습해보기
+
+그렇다면 이번에는 4개의 점으로 이루어진 단순한 평면을 벗어나, **`lr=1.0`을 주면 가중치가 폭발하거나 학습이 완전히 망가져서 갈팡질팡하는 '현실 매운맛' 데이터셋**을 구현해 보시죠.
+
+파이토치(`torch`)로 직접 생성해서 테스트해 볼 수 있는 **'노이즈가 섞인 소용돌이(Two Spirals) 데이터셋'** 코드입니다.
+
+#### 1. 챌린지 데이터셋: Two Spirals (소용돌이)
+
+이 데이터셋은 평면 상에 두 개의 소용돌이 모양으로 데이터가 얽혀 있습니다. XOR처럼 선형 분리가 불가능할 뿐만 아니라, 곡선의 형태가 매우 복잡하여 은닉층의 가중치들이 아주 미세하고 정교하게 조정되어야만 맞출 수 있습니다.
+
+```Python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+
+# 1. 복잡한 소용돌이 데이터셋 생성 함수
+def make_spirals(n_points=100, noise=0.5):
+    n = np.sqrt(np.random.rand(n_points, 1)) * 780 * (2 * np.pi) / 360
+    d1x = -np.cos(n) * n + np.random.rand(n_points, 1) * noise
+    d1y = np.sin(n) * n + np.random.rand(n_points, 1) * noise
+    
+    # 클래스 0 (첫 번째 소용돌이)
+    X0 = np.hstack((d1x, d1y))
+    y0 = np.zeros((n_points, 1))
+    
+    # 클래스 1 (두 번째 소용돌이, 대칭)
+    X1 = np.hstack((-d1x, -d1y))
+    y1 = np.ones((n_points, 1))
+    
+    X = np.vstack((X0, X1))
+    y = np.vstack((y0, y1))
+    
+    return torch.FloatTensor(X), torch.FloatTensor(y)
+
+# 데이터 400개 생성 (학습용)
+X_train, y_train = make_spirals(n_points=200, noise=0.2)
+```
+
+#### 2. 실험용 신경망 정의
+
+이전에 보여주신 4단계 레이어 중첩 모델과 거의 유사하지만, 복잡한 데이터를 학습할 수 있도록 은닉층의 뉴런 수를 조금 늘린 구조입니다.
+
+```Python
+class ComplexNet(nn.Module):
+    def __init__(self):
+        super(ComplexNet, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(2, 32),
+            nn.Sigmoid(),
+            nn.Linear(32, 32),
+            nn.Sigmoid(),
+            nn.Linear(32, 16),
+            nn.Sigmoid(),
+            nn.Linear(16, 1),
+            nn.Sigmoid()
+        )
+    def forward(self, x):
+        return self.net(x)
+```
+
+#### 3. 끝장 대결: `lr = 1.0` vs `lr = 0.01`
+
+이 코드를 직접 돌려서 두 모델의 최종 손실 값(Loss)과 정확도(Accuracy)가 어떻게 변하는지 눈으로 확인해 보세요.
+
+```Python
+# 장치 설정
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+X_train, y_train = X_train.to(device), y_train.to(device)
+
+# --- [실험 1] lr = 1.0 (무식한 보폭) ---
+model_fast = ComplexNet().to(device)
+criterion = nn.BCELoss()
+optimizer_fast = optim.SGD(model_fast.parameters(), lr=1.0) # <--- lr = 1.0
+
+print("=== [실험 1] lr = 1.0 학습 시작 ===")
+for epoch in range(3001):
+    optimizer_fast.zero_grad()
+    outputs = model_fast(X_train)
+    loss = criterion(outputs, y_train)
+    loss.backward()
+    optimizer_fast.step()
+    
+    if epoch % 1000 == 0:
+        pred = (outputs > 0.5).float()
+        acc = (pred == y_train).float().mean() * 100
+        print(f"Epoch {epoch:4d} | Loss: {loss.item():.4f} | Acc: {acc.item():.2f}%")
+
+print("\n" + "="*40 + "\n")
+
+# --- [실험 2] lr = 0.01 (조심스러운 보폭) ---
+model_slow = ComplexNet().to(device)
+optimizer_slow = optim.SGD(model_slow.parameters(), lr=0.01) # <--- lr = 0.01
+
+print("=== [실험 2] lr = 0.01 학습 시작 ===")
+for epoch in range(3001):
+    optimizer_slow.zero_grad()
+    outputs = model_slow(X_train)
+    loss = criterion(outputs, y_train)
+    loss.backward()
+    optimizer_slow.step()
+    
+    if epoch % 1000 == 0:
+        pred = (outputs > 0.5).float()
+        acc = (pred == y_train).float().mean() * 100
+        print(f"Epoch {epoch:4d} | Loss: {loss.item():.4f} | Acc: {acc.item():.2f}%")
+```
+
+#### 관전 포인트
+
+- **`lr = 1.0` 모델의 폭주:** 초반 몇 스텝 만에 가중치들이 시그모이드의 굳어버리는 영역(0에 가까운 미분값)으로 들어가면서, 손실률(`Loss`)이 어느 순간 딱 멈춘 채 더 이상 떨어지지 않거나 정확도가 `50%` 내외(찍기 수준)에서 요동칠 것입니다.
+    
+- **`lr = 0.01` 모델의 차분한 질주:** 비록 처음에는 느리게 내려가는 것 같아 보이지만, 스텝을 거듭할수록 소용돌이 모양의 곡선을 하나씩 하나씩 정교하게 깎아 나가면서 부드럽게 수렴해 갈 것입니다.
+
+
+=> 이렇게 주기는 줬는데 결과는 달랐음..
+![[Pasted image 20260717115245.png|456]]
+
+
+보면 오히려 lr=1.0 이 더 잘됨
+
+
+=> 제가 드린 소용돌이(Two Spirals) 데이터셋은 딥러닝 초기 역사에서 "웬만한 구조로는 죽었다 깨어나도 학습이 안 되는 극악의 벤치마크 데이터셋"으로 악명이 높았습니다.
+
+- **초고난도 비선형성:** 공간이 아주 꼬여 있어서 가중치들이 엄청나게 먼 거리를 이동하며 복잡한 곡선을 그려야 합니다.
+
+- **`lr = 0.01`이 기어간 이유:** 이 복잡한 지형을 `0.01`이라는 개미 보폭으로 걸어가니, 에포크를 2만 번이나 돌렸음에도 산맥 하나를 채 넘지 못해 지역 최소점(Local Minima)이나 아주 평평한 평지(Saddle Point)에 갇혀 버린 것입니다. 실제로 SGD는 모멘텀이 없어서 평지를 만나면 속도가 거의 제로가 됩니다.
+
+#### `lr = 1.0`이 폭발(발산)하지 않고 수렴해 낸 비결
+
+- 입력 데이터가 소수점 단위 수준(소용돌이 반경을 키웠지만 스케일이 제한됨)이고, 데이터 개수가 여전히 400개 정도로 아주 작아 누적되는 오차의 절대적인 크기가 크지 않았습니다. 덕분에 발산 영역으로 튕겨 나가지 않고 아슬아슬하게 안전선 안에서 수동 제어가 먹힌 것입니다.
+
+---
+### 2번 실험 : 제대로된 lr 비교
+
+**scale=10.0** — 소용돌이 좌표를 10배 키워요. 입력값이 크면 그라디언트도 커져서 lr=1.0이 훨씬 위험해져요.
+
+**8층** — 4층에서 8층으로 늘렸어요. Sigmoid 미분(0.25)이 8번 곱해지면 그라디언트 소실이 훨씬 심해지고, 반대로 가중치가 크면 폭발도 심해져요.
+
+**Mini-batch(32)** — 전체 배치 대신 32개씩 뽑아서 학습해요. 
+배치마다 그라디언트 방향이 달라져서 lr=1.0이 더 불안정해져요.
+
+이 조건에서는 lr=1.0이 NaN 뜨거나 50% 수준에서 못 올라오는 거 볼 수 있을 거예요.
+
+#### 코드 (돌린 코드는 조정 이후 코드 : 06 py 파일 참조)
+
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+
+# ─────────────────────────────────────────
+# 핵심 변경점:
+#   1. 데이터 스케일을 키움 (정규화 X)
+#   2. 층을 8층으로 깊게
+#   3. Mini-batch SGD (batch_size=32)
+# ─────────────────────────────────────────
+
+def make_spirals(n_points=500, noise=0.3, scale=10.0):
+    """scale 파라미터로 데이터 스케일 조정"""
+    n = np.sqrt(np.random.rand(n_points, 1)) * 780 * (2 * np.pi) / 360
+    d1x = (-np.cos(n) * n + np.random.rand(n_points, 1) * noise) * scale
+    d1y = ( np.sin(n) * n + np.random.rand(n_points, 1) * noise) * scale
+    X0 = np.hstack((d1x, d1y));  y0 = np.zeros((n_points, 1))
+    X1 = np.hstack((-d1x, -d1y)); y1 = np.ones((n_points, 1))
+    X = np.vstack((X0, X1)); y = np.vstack((y0, y1))
+    return torch.FloatTensor(X), torch.FloatTensor(y)
+
+
+class DeepNet(nn.Module):
+    """8층 깊은 네트워크 — lr 폭발 조건"""
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(2, 64),  nn.ReLU(),
+            nn.Linear(64, 64), nn.ReLU(),
+            nn.Linear(64, 64), nn.ReLU(),
+            nn.Linear(64, 32), nn.ReLU(),
+            nn.Linear(32, 32), nn.ReLU(),
+            nn.Linear(32, 16), nn.ReLU(),
+            nn.Linear(16, 8),  nn.ReLU(),
+            nn.Linear(8, 1),   nn.Sigmoid(),
+        )
+    def forward(self, x):
+        return self.net(x)
+
+
+def train(lr, epochs=20000, batch_size=32, scale=10.0, seed=42):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    X, y = make_spirals(n_points=500, noise=0.3, scale=scale)
+    X = (X - X.mean(dim=0)) / X.std(dim=0) # 데이터 정규화 (큰 scale 대응)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    X, y = X.to(device), y.to(device)
+
+    model = DeepNet().to(device)
+    criterion = nn.BCELoss()
+    optimizer = optim.SGD(model.parameters(), lr=lr)
+
+    dataset = torch.utils.data.TensorDataset(X, y)
+    loader  = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    print(f"\n{'='*45}")
+    print(f"  lr={lr}  |  층=8  |  scale={scale}  |  batch={batch_size}")
+    print(f"{'='*45}")
+
+    for epoch in range(epochs + 1):
+        model.train()
+        for xb, yb in loader:
+            optimizer.zero_grad()
+            out = model(xb)
+            loss = criterion(out, yb)
+            if torch.isnan(loss):
+                print(f"Epoch {epoch:5d} | Loss: NaN ← 폭발!")
+                return
+            loss.backward()
+            optimizer.step()
+
+        if epoch % 1000 == 0:
+            model.eval()
+            with torch.no_grad():
+                out = model(X)
+                total_loss = criterion(out, y).item()
+                acc = ((out > 0.5).float() == y).float().mean().item() * 100
+            print(f"Epoch {epoch:5d} | Loss: {total_loss:.4f} | Acc: {acc:.1f}%")
+
+
+if __name__ == "__main__":
+    print("\n[실험 1] 데이터 스케일 10배 + 8층 + Mini-batch")
+    print("─ lr=1.0")
+    train(lr=1.0,  scale=10.0)
+    print("\n─ lr=0.01")
+    train(lr=0.01, scale=10.0)
+
+    print("\n\n[실험 2] 스케일 더 키우기 (scale=50)")
+    print("─ lr=1.0")
+    train(lr=1.0,  scale=50.0)
+    print("\n─ lr=0.01")
+    train(lr=0.01, scale=50.0)
+```
+
+Acc = 전체데이터1000개 다 넣어서 모델이 맞힌 백분율 계산하는 것
+(하지만 지금 문제 : 훈련 데이터로 훈련하고 훈련데이터로 검증하고있기는 함 : Acc 과대평가 가능성은 있지만 각잡고 하는 학습이 아니라 lr 보기위한 실험이니 그냥 그대로 둠. 이게 싫으면 다른 학습때처럼 train, test 이렇게 나눠주면 됨 : sklearn.model_selection 임포트해서 split쓰기)
+
+---
+
+#### scale이 뭔지 + 스파이럴 데이터 구조
+
+```python
+n = np.sqrt(np.random.rand(n_points, 1)) * 780 * (2*np.pi) / 360
+```
+
+`n`은 각도예요. 0 ~ 780도 범위인데 sqrt를 씌워서 안쪽에 점이 더 몰리게 해요.
+`n_points=500`이면 500×1 행렬이에요. 점 500개를 만들겠다는 거예요.
+
+```python
+np.random.rand(...)  # → 0~1 사이 랜덤값 500개
+np.sqrt(...)         # → 제곱근 취하기
+× 780 × 2π / 360     # → 각도로 변환 (0 ~ 13.6 라디안)
+```
+
+랜덤값이 없으면 모든 점이 똑같은 각도에 찍혀요. 
+점마다 다른 각도를 주려고 랜덤을 넣는 거예요.
+
+**sqrt를 씌우는 이유** — 0~1 균등분포를 그냥 쓰면 바깥쪽(큰 각도)에 점이 너무 몰려요. 
+sqrt를 씌우면 작은 값들이 커지면서 안쪽에도 점이 고르게 퍼져요.
+
+```
+랜덤값 0.01 → sqrt → 0.1  (안쪽으로 당겨짐)
+랜덤값 0.25 → sqrt → 0.5
+랜덤값 1.00 → sqrt → 1.0  (바깥쪽 그대로)
+```
+
+결과적으로 소용돌이 전체에 점이 고르게 분포하게 돼요.
+
+```python
+d1x = -np.cos(n) * n   # x좌표 = 각도에 비례한 반지름 × cos
+d1y =  np.sin(n) * n   # y좌표 = 각도에 비례한 반지름 × sin
+```
+
+각도가 커질수록 반지름도 커지니까 — 중심에서 바깥으로 나선형으로 퍼지는 모양이 돼요.
+
+
+```python
+* scale   # 전체 좌표에 scale 배 곱하기
+```
+
+<<<< scale=1이면 좌표가 -10 ~ +10 범위, scale=10이면 -100 ~ +100 범위예요. 숫자 크기만 바뀌고 모양은 똑같아요. >>>>
+
+=> 스케일을 10=>50으로 바꾸면?
+MLP 가 더 넓은 범위의 숫자 input 을 처리하게 됨.
+가중치가 같아도 출력값이 크게 차이나게 되는거임. 
+정규화의 필요성이 여기서 나옴. 데이터정규화를 안 하면 발산이 쉬워지는거임
+(숫자의 절댓값이 너무 크니까)
+
+참고로 분산 큰거는 데이터분포가 안좋을때(정규화x 라서 좀 노이즈틱하다그래야하나 그럴때) 
+딸려오는 결과인거지(범위크게잡고 rand돌리면 커짐) 분산자체가 원인은 아님.
+
+
+```python
+X1 = np.hstack((-d1x, -d1y))  # 부호 반전 = 180도 회전
+```
+
+두 번째 소용돌이는 첫 번째를 원점 기준으로 뒤집은 거예요. 그래서 두 소용돌이가 서로 얽혀요.
+
+
+```python
++ np.random.rand(...) * noise  # 노이즈 추가
+```
+
+점들이 완벽한 곡선 위에 있으면 너무 쉬우니까 약간 흐트러뜨리는 거예요.
+
+---
+
+
+#### 결과
+
+일단 처음 돌렸을떄 심각하게 느려서 뭐지 해서 보니까
+Mini-batch DataLoader 오버헤드 때문이라고 함.
+에포크 5000 × 배치 수(1000개 데이터 ÷ 32 = **약 31번**) = 실제 가중치 업데이트 **155,000번**..
+전체 배치면 에포크당 1번인데 Mini-batch는 31번이라 업데이트 횟수가 31배예요.
+**시간**: scale=10, 8층, batch=32, epoch=5000 기준으로 CPU에서 **10~20분** 정도 예상해요.
+
+=> 체감상 10분보단 ㄱㅊ아도 쉽지않아서 그냥 빨리 돌려버림.
+(에포크 2000, 배치는 전체 기준으로 잡고 돌리기)
+
+![[Pasted image 20260717121804.png|251]]  ![[Pasted image 20260717122100.png|274]]
+
+왼쪽은 정규화 하기 전, 오른쪽은 후인데
+둘 다 망하는 방향으로 가서 보니까
+
+
+근본 문제는 **Sigmoid 8층이 너무 깊어서 그라디언트가 에포크 0부터 이미 죽어있는 거**예요. lr이랑 scale이랑 무관하게요.
+
+정규화 추가했는데도 안 되는 이유:
+
+```
+Sigmoid 미분 최댓값 0.25
+8층이면 0.25^8 = 0.000015
+그라디언트가 처음부터 거의 0
+→ lr이 뭐든 업데이트가 안 됨
+```
+
+Sigmoid + 깊은 층 조합 자체가 학습 불가 상태예요.
+#### lr 차이를 제대로 보려면 활성화 함수 바꿔야 해요
+
+```python
+# Sigmoid → ReLU로 교체
+self.net = nn.Sequential(
+    nn.Linear(2, 64),  nn.ReLU(),
+    nn.Linear(64, 64), nn.ReLU(),
+    nn.Linear(64, 64), nn.ReLU(),
+    nn.Linear(64, 32), nn.ReLU(),
+    nn.Linear(32, 32), nn.ReLU(),
+    nn.Linear(32, 16), nn.ReLU(),
+    nn.Linear(16, 8),  nn.ReLU(),
+    nn.Linear(8, 1),   nn.Sigmoid(),  # 마지막만 Sigmoid
+)
+```
+
+ReLU는 미분이 0 아니면 1이라 그라디언트 소실이 없어요. 
+이 상태에서 lr=1.0 vs lr=0.01 비교하면 확실한 차이가 나요.
+=> 생각해보니까 시그모이드를 깊은신경망에서 쓰고있어서 그렇구나;;;;
+
+
+![[Pasted image 20260717123953.png|365]]
+
+그렇게 하고 돌려보면 결과가 대강 이렇게 나와줌.
+보면 lr=1은 그냥 loss 가 안 줄고
+lr=0.01은 아주 천천히지만 loss가 점점 줄어드는 걸 볼 수 있음. acc도 그에 따라서 조금씩 바뀜
+
+
+원본 코드대로 미니배치로 쪼개되 배치사이즈 쪼끔 키워서 256 으로 주고 해보면
+
+![[Pasted image 20260717125024.png|286]]   ![[Pasted image 20260717125038.png|306]]
+
+이렇게 완전히 극명하게 차이가 갈림.
+
+https://playground.tensorflow.org/#activation=tanh&batchSize=10&dataset=spiral&regDataset=reg-plane&learningRate=0.03&regularizationRate=0&noise=0&networkShape=4,2&seed=0.20928&showTestData=false&discretize=false&percTrainData=50&x=true&y=true&xTimesY=false&xSquared=false&ySquared=false&cosX=false&sinX=false&cosY=false&sinY=false&collectStats=false&problem=classification&initZero=false&hideText=false
+
+이런 실습과정을 위 사이트에서 아주 쉽게 볼 수 있음.
+lr도 바꿀 수 있고, 활성화 함수도 바꿀 수 있고, 제약조건, 제약조건비율, 문제 타입까지
+하나하나 직접 돌려볼 필요 없이 시각화된 학습 결과가 나와줌!!
+
+예전에는 이해 없이 했었지만..
+이제 이 사이트의 의의를 이 과정을 통해 이해 할 수 있었음.
+참고로 spiral 은 내 기억에도 남아있을정도로 유명한 데이터셋이다보니 
+dataset에 당연히 들어가있다.
+
+이 조건은 강력한 신경망 + 적합한 lr이라서
+![[Pasted image 20260717125602.png]]
+
+이렇게 아름답게 분류가 잘 됨. (거의 튀는 구간 없이 부드럽게 수렴해주는걸 볼 수 있음)
+
+lr = 1로 잡아보면?
+![[Pasted image 20260717125625.png]]
+
+신경망이 아무리 좋아도 하나도 안 된다.
+
+lr=0.1으로 잡으면 
+
+![[Pasted image 20260717125800.png]]
+
+가끔씩 loss가 튀는 (loss 그래프 참조) 구간이 있지만 일단 어느정도 되는 듯 보임.
+단, 데이터 분포에 따라 오차가 생기기는 함.
+(그래서 lr=0.11 이런식으로 돌려보면 정확도가 좋지는 못함.)
+https://playground.tensorflow.org/#activation=relu&batchSize=19&dataset=spiral&regDataset=reg-gauss&learningRate=0.11&regularizationRate=0&noise=0&networkShape=8,8,8,8,8,2&seed=0.77569&showTestData=false&discretize=false&percTrainData=50&x=true&y=true&xTimesY=false&xSquared=false&ySquared=false&cosX=false&sinX=false&cosY=false&sinY=false&collectStats=false&problem=classification&initZero=false&hideText=false
+
+이 주소에다가 learningRate=()여기에 아무거나 입력해보면 각 결과 볼수있음
+
+![[Pasted image 20260717125846.png|161]]
+
+여기서 이 튀는 구간은 정체가 무엇일까???
+
+=>  lr=0.1에서 Loss가 튀는 이유
+
+**오버슈팅**이에요.
+
+```
+최적점을 향해 내려가다가
+→ lr=0.1이 너무 커서 최적점을 지나침
+→ 반대편으로 튐
+→ 다시 돌아오다가 또 지나침
+→ 진동
+```
+
+그림으로 보면:
+
+```
+Loss 지형
+        ↘
+   최적점 ← lr=0.01 (조심스럽게 내려감)
+        ↗↘↗↘  ← lr=0.1 (왔다갔다 진동)
+lr=1.0  →→→→→  (아예 날아가서 복구 불가)
+```
+
+Loss가 확 튀는 순간 = 최적점을 넘어서 반대편 경사로 올라간 거예요. 
+근데 lr=0.1은 결국 수렴하긴 해요 — 진동하면서도 조금씩 내려오거든요.
+
+---
+
+세 가지 정리
+
+```
+lr=1.0   → 발산, 복구 불가
+lr=0.1   → 오버슈팅으로 진동하지만 수렴 가능
+lr=0.01  → 안정적, 느림
+```
+
+![[Pasted image 20260717144134.png]]
+
+참고로 lr = 0.3 은 위처럼 학습 제대로 안 됨.
+
+(추가 : 위에 보이는 ${x_{1}}^2$ , $sin(x_1)$ 이런 애들은 피처 엔지니어링 - 원본 입력에서 새로운 특성 만들어내는 거 맞고, 데이터 구조에 맞는 피처 추가해서 모델 학습에 기여해줄 수 있음.)
+
+ex : 피처들중 x1 x2 를 보면, 생긴게 사분면으로 나눠지듯 생겼는데 그럼
+사분면구조로 나뉘는 데이터는 x1x2 곱하는게 좋은건가?
+
+##### => 사분면 구조에서 X1X2가 왜 도움이 되냐
+
+```
+1사분면: x1>0, x2>0 → x1x2 > 0
+2사분면: x1<0, x2>0 → x1x2 < 0
+3사분면: x1<0, x2<0 → x1x2 > 0
+4사분면: x1>0, x2<0 → x1x2 < 0
+```
+
+x1x2 부호만 봐도 사분면 구분이 돼요. 
+모델이 이 패턴을 스스로 학습하려면 층이 깊어야 하는데, 
+피처로 미리 넣어주면 훨씬 빨리 학습해요.
+
+---
+
+##### 보통 어떤 경우에 추가하냐
+
+**추가하는 경우**
+
+```
+전통 ML (LogisticRegression, SVM) 쓸 때
+→ 선형 모델이라 비선형 패턴 못 잡음
+→ 피처 엔지니어링으로 보완 필수
+
+딥러닝인데 데이터가 적을 때
+→ 층 깊게 해서 학습하기엔 데이터 부족
+→ 도메인 지식으로 피처 만들어서 보완
+
+도메인 지식이 명확할 때
+→ "이 두 변수의 비율이 중요하다" 같은 것
+→ 수동으로 넣어주는 게 빠름
+```
+
+**안 넣는 경우**
+
+```
+딥러닝 + 데이터 충분할 때
+→ 모델이 알아서 비선형 패턴 학습
+→ 피처 추가하면 오히려 노이즈
+
+CNN, Transformer 같은 경우
+→ 구조 자체가 피처 추출기 역할
+→ raw 데이터 그대로 넣는 게 보통
+```
+
+---
+
+##### 한 줄 요약
+
+딥러닝은 피처 엔지니어링을 모델이 대신해줘요. 
+전통 ML은 사람이 직접 해줘야 해요. 
+데이터 적거나 도메인 지식 명확하면 딥러닝도 넣는 게 이득이에요.
+
+![[Pasted image 20260717145353.png]]
+
+![[Pasted image 20260717145419.png]]
+
+loss 그래프를 보면 더 빠르게 학습하는 것을 알 수 있음.
+
+
+
+
+
+
+###
+
+총 10,001번의 에포크를 수행합니다. 
+각 << 에포크마다 역전파가 수행된다 >> 고 보면 되겠습니다.
+
+```python
+for epoch in range(10001):
+    optimizer.zero_grad()
+    # forward 연산
+    hypothesis = model(X)
+
+    # 비용 함수
+    cost = criterion(hypothesis, Y)
+    cost.backward()
+    optimizer.step()
+
+    # 100의 배수에 해당되는 에포크마다 비용을 출력
+    if epoch % 100 == 0:
+        print(epoch, cost.item())
+```
+
+비용이 최소화 되는 방향으로 가중치와 편향이 업데이트 됩니다.  
+아래는 100배수의 에포크마다 비용이 줄어드는 과정을 보여줍니다.
+
+```python
+0 0.6948983669281006
+100 0.693155825138092
+200 0.6931535601615906
+... 중략 ...
+5400 0.009766248054802418
+```
+
+### 2) 학습된 다층 퍼셉트론의 예측값 확인하기
+
+이제 모델이 XOR 문제를 풀 수 있는지 테스트 해봅시다.
+
+```python
+with torch.no_grad():
+    hypothesis = model(X)
+    predicted = (hypothesis > 0.5).float()
+    accuracy = (predicted == Y).float().mean()
+    print('모델의 출력값(Hypothesis): ', hypothesis.detach().cpu().numpy())
+    print('모델의 예측값(Predicted): ', predicted.detach().cpu().numpy())
+    print('실제값(Y): ', Y.cpu().numpy())
+    print('정확도(Accuracy): ', accuracy.item())
+```
+
+with torch.no_grad(): 블록 안에서는 기울기 계산을 비활성화하여 연산 속도를 높이고 메모리 사용을 줄입니다. 여기서는 학습이 아니라 모델의 성능을 평가하는 단계이기 때문에 기울기 계산이 필요하지 않습니다.
+
+먼저, hypothesis = model(X)를 통해 입력 데이터 X에 대한 모델의 예측값을 계산합니다. 이 값은 모델의 출력값으로, 0과 1 사이의 확률을 나타냅니다.
+
+그 다음, predicted = (hypothesis > 0.5).float()를 통해 예측값이 0.5를 초과하면 1, 그렇지 않으면 0으로 간주하여 이진 분류를 수행합니다. 이는 모델이 예측한 클래스 레이블입니다.
+
+accuracy = (predicted == Y).float().mean()를 사용하여 
+모델의 예측값과 실제값 Y를 비교하고, 그 일치하는 비율을 계산하여 정확도를 구합니다.
+
+마지막으로, 모델의 출력값(hypothesis), 모델의 이진 분류 예측값(predicted), 실제값(Y), 그리고 정확도(accuracy)를 출력합니다. 각 값은 .detach().cpu().numpy()를 사용해 PyTorch 텐서를 NumPy 배열로 변환하여 출력하기 전에 계산 그래프에서 분리하고 CPU로 옮깁니다.
+
+```python
+모델의 출력값(Hypothesis):  [[1.1169249e-04]
+ [9.9982882e-01]
+ [9.9984229e-01]
+ [1.8529959e-04]]
+모델의 예측값(Predicted):  [[0.]
+ [1.]
+ [1.]
+ [0.]]
+실제값(Y):  [[0.]
+ [1.]
+ [1.]
+ [0.]]
+정확도(Accuracy):  1.0
+```
+
+실제값은 0, 1, 1, 0이며 예측값은 0, 1, 1, 0으로 문제를 해결하는 모습을 보여줍니다.
+
+---
+
+인공 신경망 그림 그리기 : http://alexlenail.me/NN-SVG/index.html
+
+
+>>>>>>> d0c7ade (Day13 MLP Practice (Single, Multi Layer Perceptron : XOR))
 # 06-04  역전파(BackPropagation)
 # 06-05  다층 퍼셉트론으로 손글씨 분류하기
 # 06-06  다층 퍼셉트론으로 MNIST 분류하기
@@ -833,4 +1717,399 @@ $$\text{XOR}(x_1, x_2) = (x_1 \lor x_2) \land \neg(x_1 \land x_2)$$
 
 
 
+<<<<<<< HEAD
 ## 
+=======
+## 미니배치, 데이터 정규화
+
+### 미니배치 
+
+미니배치하면 에포크를 적게해도되는거임? 아니면 미니배치 = 그냥 정확도, 학습 더 잘되게 해주는 묶음단위 학습 인거임??
+
+=>두 번째가 더 정확해요.
+
+---
+
+#### 미니배치의 진짜 역할
+
+에포크를 줄여도 되는 게 아니라 **같은 에포크에서 더 많은 가중치 업데이트**가 일어나는 거예요.
+
+```
+데이터 1000개, batch_size=100이면
+
+전체 배치:   에포크당 업데이트 1번
+미니배치:    에포크당 업데이트 10번 (1000÷100)
+```
+
+에포크 수가 같아도 << 실제 가중치 업데이트 횟수가 10배 많아요. >>
+
+---
+
+#### 그럼 미니배치가 무조건 좋냐?
+
+아니에요. 트레이드오프가 있어요.
+
+```
+전체 배치     정확한 그라디언트, 안정적, GPU 메모리 많이 씀
+미니배치      노이즈 있는 그라디언트, 불안정하지만 Local Minima 탈출 잘함
+```
+
+노이즈가 오히려 장점이에요 — Saddle Point나 Local Minima에 갇혔을 때 미니배치의 랜덤성이 탈출을 도와줘요.
+
+---
+
+#### GPU에서 미니배치 돌릴 때 실질적 팁
+
+```python
+# 코랩 GPU면 batch_size 키워도 돼요
+batch_size = 256  # 또는 512
+
+# GPU 메모리 남으면 더 크게
+batch_size = 1024
+```
+
+배치 크기 크면 그라디언트가 안정적이고, 작으면 노이즈 많아서 수렴이 들쭉날쭉해요. 보통 64~512 사이가 실용적이에요.
+
+에포크는 그대로 두고 batch_size만 조정하는 게 맞아요.
+
+
+```
+전체 배치    데이터 1000개 한꺼번에 GPU에 올림 → 메모리 많이 씀
+             에포크당 업데이트 1번
+
+미니배치     100개씩 잘라서 올림 → 메모리 적게 씀
+             에포크당 업데이트 10번 (계산량 많아짐)
+```
+
+
+
+
+### 데이터 정규화
+
+### 정규화 역할
+
+데이터 정규화는 뺴도 되려나? 정규화는 뭔 역할임
+
+```python
+X = (X - X.mean(dim=0)) / X.std(dim=0) # 데이터 정규화 (큰 scale 대응)
+```
+
+입력값을 평균 0, 표준편차 1로 맞춰주는 거예요.
+
+**왜 필요하냐** — Loss 지형 문제예요.
+
+```
+정규화 없음 (scale=10)
+입력값이 -30 ~ +30 범위
+→ Loss 지형이 길쭉한 타원형
+→ 경사 방향이 왜곡됨
+→ lr 잘못 잡으면 지그재그로 튐
+
+정규화 있음
+입력값이 -3 ~ +3 범위
+→ Loss 지형이 둥근 원형
+→ 경사 방향이 올바름
+→ 수렴이 빠르고 안정적
+```
+
+---
+
+### 이번 실험에서 빼면?
+
+scale=10이면 빼도 ReLU라서 어느 정도 돌아가요. 근데 수렴이 느려지고 lr 선택이 더 민감해져요.
+
+scale=50이면 정규화 없으면 둘 다 또 죽어요 — 아까 확인했잖아요.
+
+---
+
+### 결론
+
+실험 목적이 **lr 차이 보는 거**면 정규화 유지하는 게 나아요. 정규화 빼면 "정규화 효과 vs lr 효과"가 섞여서 뭐 때문인지 알기 어려워져요.
+
+변수 하나씩 바꾸는 게 실험 원칙이에요.
+
+
+
+
+
+
+
+## scikit-learn, Pytorch
+### 정확한 포지션
+
+**PyTorch**
+
+```
+텐서 연산 + 자동 미분 (autograd)
+신경망 구조 정의 (nn.Module)
+GPU 연산
+딥러닝 전용
+```
+
+**scikit-learn**
+
+```
+전통적인 ML 알고리즘 모음
+  - 분류: LogisticRegression, SVM, RandomForest
+  - 회귀: LinearRegression, Ridge
+  - 클러스터링: KMeans
+데이터 전처리 도구
+  - train_test_split, StandardScaler, LabelEncoder
+모델 평가 도구
+  - accuracy_score, confusion_matrix, cross_val_score
+```
+
+---
+
+### 겹치는 범위?
+
+거의 안 겹쳐요. 역할이 달라요.
+
+```
+scikit-learn    전통 ML (트리, 선형모델, SVM 등)
+                GPU 지원 없음, 자동미분 없음
+
+PyTorch         딥러닝 (신경망)
+                GPU 지원, 자동미분 있음
+```
+
+XGBoost는 scikit-learn이 만든 게 아니라 **별도 라이브러리**예요. 근데 scikit-learn API 형식을 따라서 같이 쓰기 편한 거예요.
+
+---
+
+### 실무에서 같이 쓰는 패턴
+
+```python
+# 데이터 분리는 sklearn으로
+from sklearn.model_selection import train_test_split
+X_train, X_val = train_test_split(X, test_size=0.2)
+
+# 정규화도 sklearn으로
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+
+# 학습은 PyTorch로
+model = DeepNet()
+optimizer = optim.Adam(...)
+```
+
+전처리는 sklearn, 신경망 학습은 PyTorch — 이게 표준 패턴이에요.
+
+
+참고로 scikit 의 sci 는 :
+
+```
+NumPy        수치 배열 연산 기반
+        ↓
+SciPy        과학 계산 라이브러리 (적분, 선형대수, 신호처리 등)
+        ↓
+scikit-learn SciPy 생태계 위에 ML 얹은 것
+             "scikit" = SciPy Toolkit 줄임말
+```
+
+논문에서 보는 그 SciPy 맞아요. 물리, 수학, 공학 계산용으로 쓰는 그거예요.
+
+## FLOPs, throughput, time/step : 학습 시 오버헤드는                   어떻게 측정하는가 (학습 규모)
+
+#### 핵심 지표: Total Iterations
+
+```
+iterations = (데이터 수 / batch_size) × epochs
+```
+
+이게 실제 가중치 업데이트 횟수예요. 학습 규모의 가장 직접적인 지표예요.
+
+---
+
+#### batch × epochs가 틀린 이유
+
+```
+Case A: batch=1000, epochs=100 → iterations=100
+Case B: batch=10,   epochs=100 → iterations=10,000
+
+batch × epochs = 둘 다 100,000 (같음)
+실제 업데이트 횟수 = 100배 차이
+```
+
+batch × epochs는 처리한 샘플 수의 합산이지, 업데이트 횟수가 아니에요.
+
+---
+
+#### 학습 규모에 기여하는 변수 전체
+
+```
+고정값 (데이터)
+├── 데이터 수 N
+└── 데이터 복잡도 (차원, 노이즈)
+
+하이퍼파라미터
+├── batch_size     → iterations 결정
+├── epochs         → iterations 결정
+├── lr             → 업데이트 보폭
+└── 모델 크기      → 파라미터 수 (층 × 뉴런)
+```
+
+---
+
+#### 오버헤드 측정 실용 공식
+
+```
+총 학습량 = iterations × 파라미터 수 × 2
+                              ↑
+                     (순전파 + 역전파)
+```
+
+LLM에서는 iterations 대신 **total tokens seen**을 써요. 같은 개념이에요.
+
+---
+### 실무에서 대규모 학습 시 오버헤드 수치화는 정확히 어떻게 할까?
+
+### 실제로 쓰는 표준 지표
+
+**FLOPs (Floating Point Operations)**
+
+대규모 학습 오버헤드 수치화할 때 업계 표준이에요.
+
+```
+Linear 레이어 하나의 FLOPs:
+순전파 = 2 × 입력차원 × 출력차원
+역전파 ≈ 순전파의 2배
+
+전체 모델 FLOPs = 모든 레이어 합산
+```
+
+"GPT-3는 몇 PFLOPs 썼다" 이런 식으로 논문에 나와요.
+
+**실측 지표**
+
+```
+GPU utilization    실제 GPU 사용률
+throughput         초당 처리 샘플 수 (samples/sec)
+time per step      스텝당 걸리는 시간
+memory bandwidth   메모리 대역폭 사용량
+```
+
+---
+
+### 코드로 직접 재는 법
+
+```python
+import time
+import torch
+
+start = time.time()
+# 학습 루프
+elapsed = time.time() - start
+
+# GPU 메모리
+print(torch.cuda.memory_allocated() / 1024**2, "MB")
+
+# throughput
+samples_per_sec = total_samples / elapsed
+```
+
+---
+
+### 정리
+
+```
+이론적 오버헤드   FLOPs (논문/모델 비교 시)
+실측 오버헤드     throughput, time/step (실무 튜닝 시)
+```
+
+제가 쓴 `iterations × 파라미터 수 × 2`는 FLOPs 개념을 단순화한 거고, 실제 FLOPs 계산은 레이어 구조마다 달라요.
+
+
+
+![[Pasted image 20260717151937.png|298]]      ![[Pasted image 20260717152256.png|328]]
+
+
+#### 왜 갑자기 loss 가  0.6 에서 0.1 로 갈까??
+
+##### 뭔 일이 일어난 거냐
+
+```
+Epoch 6000 | Loss: 0.6862 | Acc: 58.3%   ← 아직 헤매는 중
+Epoch 7000 | Loss: 0.6142 | Acc: 62.7%   ← 조금 내려감
+Epoch 8000 | Loss: 0.0080 | Acc: 100%    ← 갑자기 폭락
+```
+
+7000 → 8000 사이 **1000 에포크 만에 0.61 → 0.008**이에요. 이게 정상이에요.
+
+---
+
+##### 왜 이렇게 갑자기 뚫리냐
+
+**Loss 지형 구조** 때문이에요.
+
+```
+긴 평지 (Plateau)
+→ 그라디언트가 거의 0에 가까움
+→ 업데이트가 미세하게 일어남
+→ 오래 헤매는 것처럼 보임
+        ↓
+임계점 돌파
+→ 갑자기 경사가 急해지는 구간 진입
+→ 그라디언트 커짐
+→ Loss가 폭포처럼 떨어짐
+```
+
+소용돌이 문제 특성상 **"패턴을 거의 다 파악했을 때 나머지가 한꺼번에 풀리는"** 구조예요.
+
+---
+
+##### 비유하면
+
+미로 찾기랑 비슷해요.
+
+```
+Epoch 0~7000   벽 더듬으면서 조금씩 나아감
+Epoch 7000     출구 근처까지 왔는데 아직 못 찾음
+Epoch 8000     출구 발견 → 한 번에 탈출
+```
+
+Loss가 선형으로 줄어드는 게 아니라 **갑자기 뚫리는** 현상은 딥러닝에서 매우 흔해요. << 특히 복잡한 비선형 데이터에서 자주 나타나요. >>
+
+
+---
+---
+
+#### 오버헤드 측정 결과 분석
+
+재밌는 포인트 몇 개 있어요.
+(참고로 쓰루풋이 아주 살짝 다른건 => 측정 노이즈라고 보면 됨)
+(그리고 위 결과에서 scale 바꿔도 동일함)
+
+---
+
+### 1. 오버헤드 수치가 거의 똑같음
+
+```
+              lr=1.0      lr=0.01
+경과 시간     334.8s      332.2s
+iterations    80,004      80,004
+time/step     4.185ms     4.152ms
+throughput    59,744      60,214
+FLOPs         1.44TFLOP   1.44TFLOP
+GPU 메모리    17.4MB      17.4MB
+```
+
+**lr은 오버헤드에 영향을 안 줘요.** 당연한 건데 실험으로 확인된 거예요. lr이 크든 작든 연산량은 같아요. 결과(수렴)만 달라지는 거예요.
+
+### 가장 재밌는 부분
+
+**같은 1.44 TFLOPs 썼는데 결과가 극단적으로 달라요.**
+
+```
+lr=1.0  → Acc 50% (찍기 수준, 완전 실패)
+lr=0.01 → Acc 100% (완벽 수렴)
+```
+
+연산량은 동일한데 lr 하나 차이로 결과가 이렇게 갈려요. **하이퍼파라미터가 얼마나 중요한지** 수치로 보여주는 거예요.
+
+
+
+
+##
+>>>>>>> d0c7ade (Day13 MLP Practice (Single, Multi Layer Perceptron : XOR))

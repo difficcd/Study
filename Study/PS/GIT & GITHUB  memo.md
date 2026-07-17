@@ -73,8 +73,13 @@ From https://github.com/difficcd/Study
 
 방금 push한 커밋 취소하기  =>  git reset --soft HEAD~1
 
+git reset 을 취소하기 => git reflog (취소를 취소)
+
+
 지금 상태를 강제 반영하기  =>  git push origin main --force   (--force == -f)
 (이미 올라간거지우기)  위험해서 권장하지는 않음..
+
+
 
 
 
