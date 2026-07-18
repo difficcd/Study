@@ -1,6 +1,6 @@
 # Claude Code는 로컬에서 어떻게 동작하는가
 
-[[claude/README|← Claude 활용법]]
+[[AI_external/Claude/README|← Claude 활용법]]
 
 > 이 문서는 Claude Code 자신이 자기 동작 방식을 설명한 것
 > 핵심 한 줄: **모델(두뇌)은 클라우드에, 손발(도구 실행)은 내 PC에 있다.**

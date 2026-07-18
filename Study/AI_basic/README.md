@@ -26,7 +26,7 @@ https://wikidocs.net/book/2788
 - [ ] 다중 레이블 분류 practice 해보기
 
 
-_관련: [[Claude/README]] (이 원리가 Claude의 바탕)
+_관련: [[AI_external/Claude/README]] (이 원리가 Claude의 바탕)
 
 
 

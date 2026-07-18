@@ -6,13 +6,13 @@
 
 ## 학습 트랙
 
-| 트랙                | 내용                                                                                                | 상태  | 허브                      |
-| ----------------- | ------------------------------------------------------------------------------------------------- | --- | ----------------------- |
-| **AI 기초**         | 딥러닝 기초(PyTorch) — [wikidocs 2788](https://wikidocs.net/book/2788) 기반 **학습 기록 + 실습** (ai internal) | 진행  | [[AI_basic/README]]     |
-| **Claude 활용**     | 프롬프트·Claude Code·API·MCP 등 Claude 및 <br>여러 agent "잘" 쓰는 법 (external)                              | 진행  | [[Claude/README]]       |
-| **클라우드 기초**       | OCI 등 클라우드/데이터 파이프라인                                                                              | 대기  | [[Cloud_basic/README]]  |
-| **OpenClaw / VM** | 오픈클로 + 자율·멀티에이전트 실험 (VM 격리)                                                                       | 대기  | [[Openclaw_VM/README]]  |
-| **리눅스 커널**        | 리눅스 커널 소스 조금씩 읽으며 구조 이해 (+ VM, custom)                                                            | 대기  | [[Linux_kernel/README]] |
+| 트랙                | 내용                                                                                                | 상태  | 허브                            |
+| ----------------- | ------------------------------------------------------------------------------------------------- | --- | ----------------------------- |
+| **AI 기초**         | 딥러닝 기초(PyTorch) — [wikidocs 2788](https://wikidocs.net/book/2788) 기반 **학습 기록 + 실습** (ai internal) | 진행  | [[AI_basic/README]]           |
+| **AI 활용**         | 프롬프트·Claude Code·API·MCP 등 Claude 및 <br>여러 agent "잘" 쓰는 법 (external)                              | 진행  | [[AI_external/Claude/README]] |
+| **클라우드 기초**       | OCI 등 클라우드/데이터 파이프라인                                                                              | 대기  | [[Cloud_basic/README]]        |
+| **OpenClaw / VM** | 오픈클로 + 자율·멀티에이전트 실험 (VM 격리)                                                                       | 대기  | [[Openclaw_VM/README]]        |
+| **리눅스 커널**        | 리눅스 커널 소스 조금씩 읽으며 구조 이해 (+ VM, custom)                                                            | 대기  | [[Linux/README]]              |
 
 상태: 대기 · 진행 · 완료
 우선순위: **AI 기초 = Claude 활용** > 클라우드 기초 > OpenClaw > 리눅스 커널
@@ -24,6 +24,7 @@
 ## 지금 할 일 (Current Focus)
 
 - [ ] **AI 기초** — wikidocs 2788(PyTorch 딥러닝) 따라가며 학습 기록 + 코드 실습 → [[AI_basic/README]]
+- [ ] **AI 사용** -- 트렌트서칭 * 직접 활용하는방법 학습
 
 ---
 

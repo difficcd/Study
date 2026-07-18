@@ -1,6 +1,6 @@
 # MCP (Model Context Protocol)
 
-[[claude/README|← Claude 활용법]] · [[01 Claude Code 동작 방식]]에서 이어짐
+[[AI_external/Claude/README|← Claude 활용법]] · [[01 Claude Code 동작 방식]]에서 이어짐
 
 > 한 줄: **AI 도구 연결의 표준 규격 — "AI계의 USB-C".**
 > [[01 Claude Code 동작 방식]]의 도구(Read/Bash 등)는 하네스에 내장된 것이고,

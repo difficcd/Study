@@ -73,7 +73,21 @@ From https://github.com/difficcd/Study
 
 방금 push한 커밋 취소하기  =>  git reset --soft HEAD~1
 
+```bash
+git reset --soft HEAD~1    # 커밋만 취소, 파일 staged 유지
+git reset --mixed HEAD~1   # 커밋 취소, 파일 unstaged 유지 (기본값)
+git reset --hard HEAD~1    # 커밋 + 파일 변경사항 전부 삭제
+git reset --soft afe157f   # 특정 커밋으로 되돌리기
+```
+
+
+
 git reset 을 취소하기 => git reflog (취소를 취소)
+	                 HEAD가 이동한 모든 기록 보여줌. reset으로 날린 것도 복구 가능.
+
+
+git revert HEAD => 취소 커밋 새로 만들기.
+
 
 
 지금 상태를 강제 반영하기  =>  git push origin main --force   (--force == -f)
@@ -81,6 +95,14 @@ git reset 을 취소하기 => git reflog (취소를 취소)
 
 
 
+git rebase -i '커밋 해시' => 특정 커밋 이후 커밋들을 수정/삭제/합치기 가능
 
 
 
+git rebase --continue    =>  충돌 해결 후 rebase 계속
+git rebase --abort        =>  rebase 전체 취소하고 원상복구
+
+
+안전        revert, reflog
+보통        reset --soft, reset --mixed
+위험        reset --hard, push --force

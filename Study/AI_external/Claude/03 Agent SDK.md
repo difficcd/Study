@@ -1,6 +1,6 @@
 # Claude Agent SDK
 
-[[claude/README|← Claude 활용법]] · [[01 Claude Code 동작 방식]]에서 이어짐
+[[AI_external/Claude/README|← Claude 활용법]] · [[01 Claude Code 동작 방식]]에서 이어짐
 
 > 한 줄: **Claude Code를 라이브러리로 포장한 것.**
 > [[01 Claude Code 동작 방식]]에서 본 하네스(에이전트 루프 + 내장 도구 + 권한 + 세션)를

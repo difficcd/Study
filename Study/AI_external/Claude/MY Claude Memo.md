@@ -28,7 +28,7 @@ This installs the guidelines as a Claude Code plugin, making the skill available
 /plugin 의 원리는 [[05 Claude Extension Understanding]] 참조
 
 (참고 : user scope 로 설치하면 아예 모든 claude.md에 자동 적용됨.)
-![[Pasted image 20260716012905.png]]
+![[Pasted image 20260716012905 1.png]]
 
 바로 나옴!
 
