@@ -8,7 +8,8 @@ import torch.optim as optim
 import numpy as np
 
 import time                     # FLOPs 측정 실습
-
+import matplotlib.pyplot as plt # 시각화를 위한 맷플롯립
+from sklearn.datasets import load_digits
 
 
 def _01_Basic_concept():
@@ -335,7 +336,7 @@ def _03_Perceptron_XOR():
     _Two_Spirals_practice() 
 
 def _04_BackPropagation():
-
+        
         def BackPropagation():
 
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -391,14 +392,71 @@ def _04_BackPropagation():
                 print(f"\ncost: {cost.item():.8f}\n")
                 print(f"W1~W4 :  \n{model.linear1.weight.data}")
                 print(f"W5~W8 :  \n{model.linear2.weight.data}\n")
-
-
         BackPropagation()
     
-        
+def _05_load_digits_MLP():
+    digits = load_digits() # 1,979개의 이미지 데이터 로드
+
+    print(digits.images[0]) # (8,8)
+    print('label: ', digits.target[0]) # label
+    print('전체 샘플의 수 : {}'.format(len(digits.images)), '\n')
+
+    images_and_labels = list(zip(digits.images, digits.target))
+    for index, (image, label) in enumerate(images_and_labels[:5]): 
+        # 5개의 샘플만 출력
+        plt.subplot(2, 5, index + 1)
+        plt.axis('off')
+        plt.imshow(image, cmap=plt.cm.gray_r, interpolation='nearest')
+        plt.title('sample: %i' % label)
+    plt.show()
+
+    for i in range(5):
+        print(i,'번 인덱스 샘플의 레이블 : ',digits.target[i])
+    print('\n', digits.data[0], '\n') # (8,8)이 아니라 (64,)로 바꾸어 샘플단위로 학습
+
+    X = digits.data # 이미지. 즉, 특성 행렬
+    Y = digits.target # 각 이미지에 대한 레이블
+
+    # 모델 정의: 순차적인 레이어 구조
+    model = nn.Sequential(
+        nn.Linear(64, 32), # 입력층: 64, 첫 번째 은닉층: 32
+        nn.ReLU(),         # 활성화 함수: ReLU
+        nn.Linear(32, 16), # 첫 번째 은닉층: 32, 두 번째 은닉층: 16
+        nn.ReLU(),         # 활성화 함수: ReLU
+        nn.Linear(16, 10)  # 두 번째 은닉층: 16, 출력층: 10 (클래스의 개수)
+    )
+
+    # 입력 데이터 X와 레이블 Y를 텐서로 변환
+    X = torch.tensor(X, dtype=torch.float32)
+    Y = torch.tensor(Y, dtype=torch.int64)
+    loss_fn = nn.CrossEntropyLoss() # 이 비용 함수는 소프트맥스 함수를 포함하고 있음.
+    optimizer = optim.Adam(model.parameters())
+    losses = []
+
+    # 총 100번의 에포크 동안 모델 학습
+    for epoch in range(100):
+        optimizer.zero_grad()      # 옵티마이저의 기울기 초기화
+        y_pred = model(X)          # 순전파 연산으로 예측값 계산
+        loss = loss_fn(y_pred, Y)  # 손실 함수로 비용 계산
+        loss.backward()            # 역전파 연산으로 기울기 계산
+        optimizer.step()           # 옵티마이저를 통해 파라미터 업데이트
+
+        # 10번째 에포크마다 현재 에포크와 손실 값 출력
+        if epoch % 10 == 0:
+            print('Epoch {:4d}/{} Cost: {:.6f}'.format(
+                    epoch, 100, loss.item()
+                ))
+
+        # 손실 값을 리스트에 추가하여 추적
+        losses.append(loss.item())
+
+    plt.plot(losses)
+    plt.show()
+            
 
 # _01_Basic_concept()
 # _02_Perceptron()
 # _03_Perceptron_XOR()
-_04_BackPropagation()
+# _04_BackPropagation()
+_05_load_digits_MLP()
 

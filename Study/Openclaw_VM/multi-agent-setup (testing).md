@@ -58,7 +58,7 @@ links: [agent-basics, knowledge-base-design]
 - 수동 전문가: codex 앱(코딩), Antigravity(무거운 코딩)
 
 ## 9. Q&A 로그
-- **2026-06-24 패널 1회전** (모드 A, claude 오케스트레이터): 과제 "AI 최적화 지식베이스 설계". ollama gemma3:4b(구조)·gemini CLI(원칙)·claude(인출효율) 3종 응답 → 종합. 결과: [[knowledge-base-design]]. 성격차이: gemma3=실용/빠름, gemini=원칙(원자성·그래프), claude=토큰효율 인덱싱.
+- **2026-06-24 패널 1회전** (모드 A, claude 오케스트레이터): 과제 "AI 최적화 지식베이스 설계". ollama gemma3:4b(구조)·gemini CLI(원칙)·claude(인출효율) 3종 응답 → 종합. 결과: [[멀티에이전팅 TEST]]. 성격차이: gemma3=실용/빠름, gemini=원칙(원자성·그래프), claude=토큰효율 인덱싱.
 
 ## 10. 인공지능 강의 속 멀티에이전트 (참고 위치, material/)
 - **「Agentic AI I」**: §1.4 단일 vs 다중 에이전트 / A2A(에이전트 간 통신) / MCP vs A2A / **LangGraph**(다중에이전트, node=에이전트·edge=통신, 예 Researcher+Router)

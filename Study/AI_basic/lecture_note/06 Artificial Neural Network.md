@@ -1730,6 +1730,210 @@ def BackPropagation():
 
 
 # 06-05  다층 퍼셉트론으로 손글씨 분류하기
+
+이번 챕터에서는 다층 퍼셉트론을 구현하고, 
+딥 러닝을 통해서 숫자 필기 데이터를 분류해봅시다.
+
+- MNIST 데이터랑 다른 데이터입니다.
+
+## 1. 숫자 필기 데이터 소개
+
+숫자 필기 데이터는 사이킷런 패키지에서 제공하는 분류용 예제 데이터입니다. 
+<< 0부터 9까지의 숫자를 손으로 쓴 이미지 데이터로 load_digits() 명령으로 로드 >>할 수 있습니다. 각 이미지는 0부터 15까지의 명암을 가지는 8 × 8 = 64 픽셀 해상도의 흑백 이미지입니다. 그리고 해당 이미지가 1,797개가 있습니다.
+
+load_digits()를 통해 이미지 데이터를 로드할 수 있습니다. 
+로드한 전체 데이터를 digits에 저장합니다.
+
+```python
+%matplotlib inline # 주피터/코랩용 : 실행한 셀 바로 밑에 결과를 인라인으로 띄우라는 의미, 요즘은 웬만해선 안 써도 됨
+import matplotlib.pyplot as plt # 시각화를 위한 맷플롯립
+from sklearn.datasets import load_digits
+digits = load_digits() # 1,979개의 이미지 데이터 로드
+```
+
+첫번째 샘플을 출력해보겠습니다. `.images[인덱스]` 를 사용하면 
+해당 인덱스의 이미지를 행렬로서 출력할 수 있습니다.
+
+```scss
+print(digits.images[0])
+```
+
+```css
+[[ 0.  0.  5. 13.  9.  1.  0.  0.]
+ [ 0.  0. 13. 15. 10. 15.  5.  0.]
+ [ 0.  3. 15.  2.  0. 11.  8.  0.]
+ [ 0.  4. 12.  0.  0.  8.  8.  0.]
+ [ 0.  5.  8.  0.  0.  9.  8.  0.]
+ [ 0.  4. 11.  0.  1. 12.  7.  0.]
+ [ 0.  2. 14.  5. 10. 12.  0.  0.]
+ [ 0.  0.  6. 13. 10.  0.  0.  0.]]
+```
+
+첫번째 샘플이 8 × 8 행렬로 출력된 것을 볼 수 있습니다. 0을 흰색 도화지, 0보다 큰 숫자들을 검은색 점이라고 상상해보면 숫자 0의 실루엣처럼 보입니다. 실제로 레이블도 숫자 0인지 첫번째 샘플의 레이블을 확인해봅시다.
+
+```python
+print(digits.target[0])
+```
+
+```python
+0
+```
+
+첫번째 샘플의 레이블은 0인 것을 확인할 수 있습니다. 
+이런 샘플이 몇 개 있는지 확인해봅시다.
+
+```python
+print('전체 샘플의 수 : {}'.format(len(digits.images)))
+```
+
+```python
+전체 샘플의 수 : 1797
+```
+
+전체 샘플의 개수는 1,797개입니다. 
+전체 샘플 중에서 상위 5개의 샘플만 시각화해봅시다.
+
+```python
+images_and_labels = list(zip(digits.images, digits.target))
+for index, (image, label) in enumerate(images_and_labels[:5]): # 5개의 샘플만 출력
+    plt.subplot(2, 5, index + 1)
+    plt.axis('off')
+    plt.imshow(image, cmap=plt.cm.gray_r, interpolation='nearest')
+    plt.title('sample: %i' % label)
+```
+
+![](https://static.wikidocs.net/images/page/61046/%EC%83%98%ED%94%8C%EB%8B%A4%EC%84%AF%EA%B0%9C.PNG)
+
+상위 5개의 샘플을 시각화해봤는데, 
+순서대로 숫자 0, 1, 2, 3, 4의 손글씨인 것처럼 보입니다.  
+상위 5개 샘플의 레이블을 확인해보겠습니다.
+
+```python
+for i in range(5):
+  print(i,'번 인덱스 샘플의 레이블 : ',digits.target[i])
+```
+
+```python
+0 번 인덱스 샘플의 레이블 :  0
+1 번 인덱스 샘플의 레이블 :  1
+2 번 인덱스 샘플의 레이블 :  2
+3 번 인덱스 샘플의 레이블 :  3
+4 번 인덱스 샘플의 레이블 :  4
+```
+
+이제 << 훈련 데이터와 레이블을 각각 X, Y에 저장해봅시다. digits.images는 모든 샘플을 8 × 8 행렬로 저장하고 있습니다. >> 더 나은 방법은 << digts.data를 사용하는 것입니다. 이는 8 × 8 행렬을 전부 64차원의 벡터로 변환해서 저장한 상태 >> 입니다. digits.data를 이용해서 첫번째 샘플을 출력해보겠습니다.
+
+```python
+print(digits.data[0])
+```
+
+```python
+[ 0.  0.  5. 13.  9.  1.  0.  0.  0.  0. 13. 15. 10. 15.  5.  0.  0.  3.
+ 15.  2.  0. 11.  8.  0.  0.  4. 12.  0.  0.  8.  8.  0.  0.  5.  8.  0.
+  16.  9.  8.  0.  0.  4. 11.  0.  1. 12.  7.  0.  0.  2. 14.  5. 10. 12.
+  17.  0.  0.  0.  6. 13. 10.  0.  0.  0.]
+```
+
+8 × 8 행렬이 아니라 64차원의 벡터로 저장된 것을 볼 수 있습니다. 
+이를 X로 저장하고, 레이블을 Y에 저장합니다.
+
+```python
+X = digits.data # 이미지. 즉, 특성 행렬
+Y = digits.target # 각 이미지에 대한 레이블
+```
+
+## 2. 다층 퍼셉트론 분류기 만들기
+
+```python
+import torch
+import torch.nn as nn
+from torch import optim
+```
+
+PyTorch를 사용하여 다층 퍼셉트론(Multi-Layer Perceptron, MLP) 모델을 정의해봅시다. << nn.Sequential을 사용하여 모델의 레이어들을 순차적으로 쌓아올리는 구조로 구현되었습니다. 각 레이어와 그에 대한 설명은 다음과 같습니다. >>
+
+- 첫 번째 레이어 (nn.Linear(64, 32)): 입력층으로, 입력 데이터의 특성(feature) 수가 64개인 경우를 가정합니다. 이 레이어는 입력 데이터를 받아 32개의 출력을 생성합니다. 이는 첫 번째 은닉층의 역할을 합니다.
+    
+- 첫 번째 활성화 함수 (nn.ReLU()): 첫 번째 은닉층의 출력을 비선형적으로 변환하기 위해 ReLU(Rectified Linear Unit) 활성화 함수가 적용됩니다. ReLU는 입력이 양수일 경우 그대로 반환하고, 음수일 경우 0을 반환하는 비선형 함수로, 딥러닝 모델의 성능을 개선하는 데 널리 사용됩니다.
+    
+- 두 번째 레이어 (nn.Linear(32, 16)): 두 번째 은닉층으로, 이전 레이어의 출력(32개)을 받아 16개의 출력으로 변환합니다.
+    
+- 두 번째 활성화 함수 (nn.ReLU()): 두 번째 은닉층의 출력에 대해서도 ReLU 활성화 함수가 적용됩니다. 이는 모델의 비선형성을 유지하고 학습을 효과적으로 수행할 수 있게 도와줍니다.
+    
+- 세 번째 레이어 (nn.Linear(16, 10)): 세 번째 은닉층이자 출력층입니다. 이 레이어는 이전 레이어의 출력(16개)을 받아 최종적으로 10개의 클래스로 출력합니다. 이 레이어의 출력은 모델의 최종 예측을 나타내며, 다중 클래스 분류 문제에서 각 클래스에 대한 예측값을 반환합니다.
+    
+
+```python
+# 모델 정의: 순차적인 레이어 구조
+model = nn.Sequential(
+    nn.Linear(64, 32), # 입력층: 64, 첫 번째 은닉층: 32
+    nn.ReLU(),         # 활성화 함수: ReLU
+    nn.Linear(32, 16), # 첫 번째 은닉층: 32, 두 번째 은닉층: 16
+    nn.ReLU(),         # 활성화 함수: ReLU
+    nn.Linear(16, 10)  # 두 번째 은닉층: 16, 출력층: 10 (클래스의 개수)
+)
+```
+
+```python
+# 입력 데이터 X와 레이블 Y를 텐서로 변환
+X = torch.tensor(X, dtype=torch.float32)
+Y = torch.tensor(Y, dtype=torch.int64)
+```
+
+```python
+loss_fn = nn.CrossEntropyLoss() # 이 비용 함수는 소프트맥스 함수를 포함하고 있음.
+```
+
+```python
+optimizer = optim.Adam(model.parameters())
+```
+
+```python
+losses = []
+```
+
+```python
+# 총 100번의 에포크 동안 모델 학습
+for epoch in range(100):
+  optimizer.zero_grad()      # 옵티마이저의 기울기 초기화
+  y_pred = model(X)          # 순전파 연산으로 예측값 계산
+  loss = loss_fn(y_pred, Y)  # 손실 함수로 비용 계산
+  loss.backward()            # 역전파 연산으로 기울기 계산
+  optimizer.step()           # 옵티마이저를 통해 파라미터 업데이트
+
+  # 10번째 에포크마다 현재 에포크와 손실 값 출력
+  if epoch % 10 == 0:
+    print('Epoch {:4d}/{} Cost: {:.6f}'.format(
+            epoch, 100, loss.item()
+        ))
+
+  # 손실 값을 리스트에 추가하여 추적
+  losses.append(loss.item())
+```
+
+optimizer.zero_grad()를 사용해 이전 학습에서 남은 기울기 정보를 초기화합니다. model(X)는 모델에 입력 데이터 X를 넣어 예측 결과 y_pred를 생성합니다. 
+
+이 예측값과 실제 데이터 Y를 비교해 loss_fn 함수로 손실 값을 계산하고, loss.backward()를 통해 이 손실을 기반으로 모델의 파라미터에 대한 기울기를 업데이트합니다. 
+
+마지막으로 optimizer.step()이 모델의 파라미터를 실제로 업데이트하여 다음 에포크의 학습에 반영합니다. 에포크가 10의 배수일 때마다 현재의 에포크 수와 손실 값을 출력하여 학습의 진행 상황을 추적합니다.
+
+```python
+Epoch    0/100 Cost: 2.380815
+Epoch   10/100 Cost: 2.059323
+... 중략 ...
+Epoch   90/100 Cost: 0.205398
+```
+
+```python
+plt.plot(losses)
+```
+
+![](https://static.wikidocs.net/images/page/61046/%EB%8B%A4%EC%B8%B5%ED%8D%BC%EC%85%89%ED%8A%B8%EB%A1%A0.PNG)
+
+
+
+
+
 # 06-06  다층 퍼셉트론으로 MNIST 분류하기
 # 06-07  과적합(Overfitting)을 막는 방법들
 # 06-08  기울기 소실(Gradient Vanishing)과 폭주(Exploding)

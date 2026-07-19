@@ -13,4 +13,19 @@
 **실제 컴퓨터(가상머신 X)에 깔아보기** : 남는 다른 컴퓨터가 있다면 무조건 실물 컴퓨터에 까는 걸 추천해. 가상머신은 하드웨어 호환성 문제를 다 알아서 우회해 주거든. 실물 컴퓨터에 직접 깔면서 그래픽카드 드라이버 설치하고, 와이파이 안 잡혀서 고생해 봐야 리눅스 커널과 하드웨어가 어떻게 상호작용하는지 뼈저리게 배울 수 있어.
 
 
+## 자료
+
+https://namu.wiki/w/Linux
+
+https://namu.wiki/w/X11?from=Wayland#Wayland
+
+https://wikidocs.net/238658
+
+https://ppsicd.tistory.com/26
+
+https://ppsicd.tistory.com/29
+
+https://ppsicd.tistory.com/27
+
+
 _선행 추천: 모듈 5(Linux 서버 운영)로 사용자 관점부터 익히고 진입_
