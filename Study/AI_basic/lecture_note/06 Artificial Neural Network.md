@@ -1935,6 +1935,355 @@ plt.plot(losses)
 
 
 # 06-06  다층 퍼셉트론으로 MNIST 분류하기
+
+앞서 소프트맥스 회귀로 MNIST 데이터를 분류하는 실습을 해봤습니다. 
+<< 소프트맥스 회귀 또한 인공 신경망 >>이라고 볼 수 있는데, 입력층과 출력층만 존재하므로 소프트맥스 함수를 활성화 함수로 사용한 '단층 퍼셉트론'이라고 할 수 있습니다. 이번 챕터에서는 은닉층을 추가로 넣어 다층 퍼셉트론을 구현하고, 딥 러닝을 통해서 MNIST 데이터를 분류해봅시다. 
+(인공지능 과제 코드 참조 :\Study\AI_basic\practice\material(AI)\practice\PyTorch_MLP_Prog.py)
+
+MNIST 데이터에 대한 설명 : https://wikidocs.net/60324
+
+## 1. 데이터 로드하기
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+from sklearn.datasets import fetch_openml
+```
+
+MNIST 데이터셋을 불러옵니다. 
+cache=True는 다운로드한 데이터를 로컬 디스크에 저장하여 다음 호출 때 빠르게 로드합니다.
+
+```python
+mnist = fetch_openml('mnist_784', version=1, cache=True, as_frame=False)
+```
+
+as_frame 옵션은? => 
+`fetch_openml`이 데이터를 어떤 형태로 반환할지 결정하는 옵션
+
+```python
+as_frame=True   # pandas DataFrame으로 반환
+as_frame=False  # numpy array로 반환
+```
+
+```python
+as_frame=True  → DataFrame
+                  → numpy 변환 필요
+                  → tensor 변환 필요
+
+as_frame=False → numpy array 바로
+                  → tensor 변환만 하면 됨
+```
+
+한 단계 줄이려고 False 쓰는 거예요. 
+PyTorch는 DataFrame 바로 못 받고 numpy 거쳐야 하거든요.
+
+
+첫번째 샘플을 출력해보겠습니다.
+
+```python
+mnist.data[0]
+```
+
+```python
+array([  0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   3.,  18.,
+        18.,  18., 126., 136., 175.,  26., 166., 255., 247., 127.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+        30.,  36.,  94., 154., 170., 253., 253., 253., 253., 253., 225.,
+       172., 253., 242., 195.,  64.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,  49., 238., 253., 253., 253., 253.,
+       253., 253., 253., 253., 251.,  93.,  82.,  82.,  56.,  39.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+        18., 219., 253., 253., 253., 253., 253., 198., 182., 247., 241.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,  80., 156., 107., 253.,
+       253., 205.,  11.,   0.,  43., 154.,   0.,   0.,   0.,   0.,   0.,
+... 중략 ...
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.])
+```
+
+첫번째 샘플의 레이블을 출력해보겠습니다. 현재는 문자열 타입입니다.
+
+```python
+mnist.target[0]
+```
+
+```python
+'5'
+```
+
+레이블 데이터 타입을 정수형으로 변환합니다.
+
+astype 함수 :
+fetch_openml로 가져오면 target(정답 레이블)이 **문자열**로 와요.
+
+```python
+mnist.target
+# array(['5', '0', '4', '1', '9', ...], dtype=object)
+#        ↑ 문자열
+```
+
+이걸 숫자로 바꾸는 거예요:
+
+```python
+mnist.target.astype(np.int8)
+# array([5, 0, 4, 1, 9, ...], dtype=int8)
+#        ↑ 정수
+```
+
+---
+
+* int8인 이유
+
+MNIST 레이블은 0~9 사이 숫자예요. int8은 -128~127 범위라서 0~9 담기에 충분하고 메모리 효율적이에요.
+
+```
+int8   1바이트  -128 ~ 127
+int32  4바이트  -2억 ~ 2억
+int64  8바이트  훨씬 큰 범위
+```
+
+0~9만 담으면 되니까 가장 작은 int8 쓰는 거예요.
+
+
+
+```python
+mnist.target = mnist.target.astype(np.int8)
+```
+
+모든 이미지 데이터를 0-255 범위에서 0-1 범위로 정규화합니다. 이는 학습 효율을 높이기 위해 수행합니다. 레이블 데이터를 y에 저장합니다.
+
+```python
+X = mnist.data / 255  # 0-255값을 [0,1] 구간으로 정규화
+y = mnist.target
+```
+
+정규화된 첫 번째 이미지 데이터를 출력합니다.
+
+```python
+X[0]
+```
+
+```python
+array([0.        , 0.        , 0.        , 0.        , 0.        ,
+       0.        , 0.        , 0.        , 0.        , 0.        ,
+... 중략 ...
+       1.        , 0.        , 0.01176471, 0.07058824, 0.07058824,
+       0.07058824, 0.49411765, 0.53333333, 0.68627451, 0.10196078,
+       0.65098039, 1.        , 0.96862745, 0.49803922, 0.        ,
+       2.        , 0.        , 0.        , 0.        , 0.        ,
+       3.        , 0.        , 0.        , 0.        , 0.        ,
+       4.        , 0.11764706, 0.14117647, 0.36862745, 0.60392157,
+       0.66666667, 0.99215686, 0.99215686, 0.99215686, 0.99215686,
+       0.99215686, 0.88235294, 0.6745098 , 0.99215686, 0.94901961,
+       0.76470588, 0.25098039, 0.        , 0.        , 0.        ,
+       5.        , 0.        , 0.        , 0.        , 0.        ,
+       6.        , 0.        , 0.        , 0.19215686, 0.93333333,
+       0.99215686, 0.99215686, 0.99215686, 0.99215686, 0.99215686,
+       0.99215686, 0.99215686, 0.99215686, 0.98431373, 0.36470588,
+       0.32156863, 0.32156863, 0.21960784, 0.15294118, 0.        ,
+... 중략 ...
+       7.        , 0.        , 0.        , 0.        , 0.        ,
+       8.        , 0.        , 0.        , 0.        ])
+```
+
+첫 번째 이미지의 레이블을 출력합니다.
+
+```python
+y[0]
+```
+
+```python
+5
+```
+
+첫 번째 MNIST 데이터 샘플을 시각화하고 해당 이미지의 레이블을 출력합니다.
+
+```python
+plt.imshow(X[0].reshape(28, 28), cmap='gray')
+print("이 이미지 데이터의 레이블은 {:.0f}이다".format(y[0]))
+```
+
+![](https://static.wikidocs.net/images/page/61073/%EB%A0%88%EC%9D%B4%EB%B8%94.PNG)
+
+## 2. 훈련 데이터와 테스트 데이터의 분리
+
+```python
+import torch
+from torch.utils.data import TensorDataset, DataLoader
+from sklearn.model_selection import train_test_split
+```
+
+데이터를 훈련 데이터와 테스트 데이터로 분할합니다.
+
+```python
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1/7, random_state=0)
+```
+
+MNIST 데이터셋을 불러오고, 이를 훈련 세트와 테스트 세트로 분할합니다. 
+데이터를 PyTorch의 텐서로 변환 후, TensorDataset을 사용하여 데이터셋을 구성합니다. 이 데이터셋을 DataLoader에 적용하여 미니 배치 학습이나 추론 시 편리하게 데이터를 로드할 수 있게 합니다.
+
+```python
+# 텐서로 변환
+X_train = torch.Tensor(X_train)
+X_test = torch.Tensor(X_test)
+y_train = torch.LongTensor(y_train)
+y_test = torch.LongTensor(y_test)
+
+# TensorDataset 객체 생성
+ds_train = TensorDataset(X_train, y_train)
+ds_test = TensorDataset(X_test, y_test)
+
+# DataLoader 객체 생성
+loader_train = DataLoader(ds_train, batch_size=64, shuffle=True)
+loader_test = DataLoader(ds_test, batch_size=64, shuffle=False)
+```
+
+## 3. 다층 퍼셉트론
+
+```python
+from torch import nn
+from torch import optim
+```
+
+이 코드는 784(28x28)개의 입력 뉴런, 100개의 은닉 뉴런, 
+그리고 10개의 << 출력 뉴런(0~9)을 >> 가지는 다층 퍼셉트론을 구성합니다. 
+ReLU 활성화 함수를 사용하여 비선형성을 추가하고, 최종 출력은 10개의 클래스에 대한 점수를 제공합니다.
+
+784(인풋) - 100 - 10(아웃풋)
+
+당연하지만 입출력 크기는 문제(입력=데이터, 출력=문제정답)에 의해, 
+은닉층의 크기와 층 개수는 임의로 정해짐 (문제복잡도등에영향)
+
+```python
+model = nn.Sequential()
+model.add_module('fc1', nn.Linear(28*28*1, 100))
+model.add_module('relu1', nn.ReLU())
+model.add_module('fc2', nn.Linear(100, 100))
+model.add_module('relu2', nn.ReLU())
+model.add_module('fc3', nn.Linear(100, 10))
+
+print(model)
+```
+
+```python
+Sequential(
+  (fc1): Linear(in_features=784, out_features=100, bias=True)
+  (relu1): ReLU()
+  (fc2): Linear(in_features=100, out_features=100, bias=True)
+  (relu2): ReLU()
+  (fc3): Linear(in_features=100, out_features=10, bias=True)
+)
+```
+
+여기에서는 크로스 엔트로피 손실 함수를 사용하여 모델의 예측과 실제 레이블 사이의 차이를 계산합니다. << Adam 최적화 기법을 사용하여 모델의 가중치를 업데이트 >>
+합니다.
+
+```python
+# 오차함수 선택
+loss_fn = nn.CrossEntropyLoss()
+
+# 가중치를 학습하기 위한 최적화 기법 선택
+optimizer = optim.Adam(model.parameters(), lr=0.01)
+```
+
+데이터 로더에서 미니배치를 하나씩 꺼내 모델을 훈련합니다. 
+손실을 계산하고 역전파를 통해 기울기(gradient)를 계산한 다음, 
+최적화기를 사용하여 가중치를 업데이트합니다.
+
+```python
+# 총 3번의 에포크 동안 모델 학습
+epochs = 3
+
+for epoch in range(epochs):
+  for data, targets in loader_train:
+    optimizer.zero_grad()      # 옵티마이저의 기울기 초기화
+    y_pred = model(data)          # 순전파 연산으로 예측값 계산
+    loss = loss_fn(y_pred, targets)  # 손실 함수로 비용 계산
+    loss.backward()            # 역전파 연산으로 기울기 계산
+    optimizer.step()           # 옵티마이저를 통해 파라미터 업데이트
+
+  print('Epoch {:4d}/{} Cost: {:.6f}'.format(epoch + 1, 3, loss.item()))
+```
+
+```python
+Epoch    1/3 Cost: 0.364392
+Epoch    2/3 Cost: 0.048837
+Epoch    3/3 Cost: 0.231157
+```
+
+이제 테스트 데이터에 대해서 평가를 진행해봅시다. 모델을 평가하기 위해 추론 모드로 설정하고, 데이터 로더를 통해 테스트 데이터에 대한 예측을 수행합니다. 예측된 클래스와 실제 클래스를 비교하여 정확도를 계산합니다.
+
+```python
+model.eval()  # 신경망을 추론 모드로 전환
+correct = 0
+
+# 데이터로더에서 미니배치를 하나씩 꺼내 추론을 수행
+with torch.no_grad():  # 추론 과정에는 미분이 필요없음
+    for data, targets in loader_test:
+
+        outputs = model(data)  # 데이터를 입력하고 출력을 계산
+
+        # 추론 계산
+        _, predicted = torch.max(outputs.data, 1)  # 확률이 가장 높은 레이블이 무엇인지 계산
+        correct += predicted.eq(targets.data.view_as(predicted)).sum()  # 정답과 일치한 경우 정답 카운트를 증가
+
+# 정확도 출력
+data_num = len(loader_test.dataset)  # 데이터 총 건수
+print('\n테스트 데이터에서 예측 정확도: {}/{} ({:.0f}%)\n'.format(correct, data_num, 100. * correct / data_num))
+```
+
+```python
+테스트 데이터에서 예측 정확도: 9566/10000 (96%)
+```
+
+평가 코드를 살펴봅시다. 신경망 모델을 추론 모드로 설정하여 테스트 데이터에 대한 성능을 평가합니다. << 함수는 model.eval()을 호출해 모델을 추론 모드로 전환합니다. 이는 모델 내의 일부 계층들이 학습과 추론 시 다르게 동작할 수 있기 때문에 필요한 설정입니다. >>
+
+torch.no_grad() 컨텍스트 매니저는 이어지는 코드 블록에서 기울기 계산을 비활성화하여 메모리 사용량을 줄이고 계산 속도를 향상시킵니다. 이는 테스트 시에는 모델을 업데이트하지 않기 때문에 기울기를 추적할 필요가 없기 때문입니다.
+
+데이터로더 loader_test에서 미니배치 단위로 데이터와 레이블을 추출하며, 
+모델은 각 데이터 배치를 받아 해당 데이터의 출력 outputs을 계산합니다. torch.max(outputs.data, 1)는 각 예측에 대해 가장 높은 확률(max함수)을 가진 
+클래스를 찾아내고, 이는 모델이 예측한 레이블이 됩니다.
+
+예측한 레이블 predicted와 실제 레이블 targets을 비교하여 일치하는 개수를 세어 correct에 더합니다. 마지막으로 전체 데이터 개수 data_num 대비 정확하게 예측한 데이터의 비율을 계산하여 화면에 출력합니다. 이 비율은 모델의 정확도를 나타냅니다.
+
+이제 << 임의의 데이터에 대해서 특정 인덱스의 테스트 이미지를 모델에 전달하여 예측 결과 >> 를 얻어봅시다. 그 결과를 출력하고, 해당 이미지를 시각화하여 정답 레이블과 함께 보여줍니다. 이를 통해 모델의 예측이 얼마나 정확한지 직접 확인할 수 있습니다.
+
+```python
+index = 2018
+
+model.eval()  # 신경망을 추론 모드로 전환
+data = X_test[index]
+output = model(data)  # 데이터를 입력하고 출력을 계산
+_, predicted = torch.max(output.data, 0)  # 확률이 가장 높은 레이블이 무엇인지 계산
+
+print("예측 결과 : {}".format(predicted))
+
+X_test_show = (X_test[index]).numpy()
+plt.imshow(X_test_show.reshape(28, 28), cmap='gray')
+print("이 이미지 데이터의 정답 레이블은 {:.0f}입니다".format(y_test[index]))
+```
+
+![280](https://static.wikidocs.net/images/page/61073/%EC%98%88%EC%B8%A1.PNG)
+
+
+
+
+
 # 06-07  과적합(Overfitting)을 막는 방법들
 # 06-08  기울기 소실(Gradient Vanishing)과 폭주(Exploding)
 

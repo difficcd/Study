@@ -24,9 +24,10 @@ https://wikidocs.net/book/2788
 - [ ] 아주 작은 GPT 코드 읽고 (nanoGPT 예정) 직접 학습 돌려보기
 - [ ] 손으로 만져보며 하이퍼파라미터 실험
 - [ ] 다중 레이블 분류 practice 해보기
-
-
-_관련: [[AI_external/Claude/README]] (이 원리가 Claude의 바탕)
+- [ ] 파이토치 구현체 깊게 이해하기 [pytorch github][https://github.com/pytorch/pytorch?tab=License-1-ov-file#License-1-ov-file]
+	- [ ] DataLoader, TeorDataset, Tensor 등 이해
+- [ ] 경사하강법 ~> ADAM 발전과정, 성능테스트 https://hiddenbeginner.github.io/deeplearning/paperreview/2019/12/29/paper_review_AdamW.html (AdamW ck : 실무 SGD방법)
+- [ ] 
 
 
 
