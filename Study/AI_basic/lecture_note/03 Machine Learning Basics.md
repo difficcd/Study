@@ -1208,7 +1208,7 @@ tensor([0.2802], requires_grad=True)]
 model = nn.Linear(1,1)
 ```
 
-이를 클래스로 구현하면 다음과 같습니다.
+이를 클래스로 구현하면 다음과 같습니다. ^88b651
 
 ```python
 class LinearRegressionModel(nn.Module): 

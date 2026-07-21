@@ -8,12 +8,12 @@ import torch.optim as optim
 import numpy as np
 
 import time                     # FLOPs 측정 실습
-import matplotlib.pyplot as plt # 시각화를 위한 맷플롯립
 from sklearn.datasets import load_digits
 
 from sklearn.datasets import fetch_openml # 전처리 필요 MNIST
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
+
 
 
 
@@ -559,6 +559,353 @@ def _06_MNIST_MLP():
     plt.imshow(X_test_show.reshape(28, 28), cmap='gray')
     print("이 이미지 데이터의 정답 레이블은 {:.0f}입니다\n".format(y_test[index]))
 
+def _07_prevent_Overfitting():
+
+    def complexity():
+        # 데이터 생성 (적은 수 + 노이즈)
+        np.random.seed(42)
+        X_train = np.linspace(-3, 3, 20)          # 훈련 데이터 20개만
+        y_train = np.sin(X_train) + np.random.normal(0, 0.3, 20) 
+                                                # 노이즈 추가
+
+        X_test = np.linspace(-3, 3, 100)          # 테스트 200개
+        y_test = np.sin(X_test)                   # 노이즈 없는 정답
+
+        # 텐서 변환
+        X_train_t = torch.FloatTensor(X_train).unsqueeze(1)
+        y_train_t = torch.FloatTensor(y_train).unsqueeze(1)
+        X_test_t  = torch.FloatTensor(X_test).unsqueeze(1)
+        y_test_t  = torch.FloatTensor(y_test).unsqueeze(1)
+
+        # 복잡한 모델 (과적합 유도)
+        class Architecture1(nn.Module):
+            def __init__(self, input_size, hidden_size, num_classes):
+                super(Architecture1, self).__init__()
+                self.fc1 = nn.Linear(input_size, hidden_size)
+                self.relu = nn.ReLU()
+                self.fc2 = nn.Linear(hidden_size, hidden_size)
+                self.fc3 = nn.Linear(hidden_size, hidden_size)
+                self.fc4 = nn.Linear(hidden_size, num_classes)
+
+            def forward(self, x):
+                out = self.fc1(x)
+                out = self.relu(out)
+                out = self.fc2(out)
+                out = self.relu(out)
+                out = self.fc3(out)
+                out = self.relu(out)
+                out = self.fc4(out) 
+                return out # 층을 4개로 깊게 쌓아보기
+        
+        class Architecture2(nn.Module):
+            def __init__(self, input_size, hidden_size, num_classes):
+                super(Architecture2, self).__init__()
+                self.fc1 = nn.Linear(input_size, hidden_size)
+                self.relu = nn.ReLU()
+                self.fc2 = nn.Linear(hidden_size, num_classes)
+
+            def forward(self, x):
+                out = self.fc1(x)
+                out = self.relu(out)
+                out = self.fc2(out)
+                return out
+
+        # 모델 생성
+        model = [
+            Architecture1(input_size=1, hidden_size=512, num_classes=1),
+            Architecture2(input_size=1, hidden_size=128, num_classes=1)
+        ]
+
+        for i in range(2): 
+            optimizer = torch.optim.Adam(model[i].parameters(), lr=0.01)
+            criterion = nn.MSELoss()
+
+            print('\n\n model ', i, '  parameter:\n')
+            for param in model[i].parameters(): print(param.shape)
+            print('\n')
+
+            train_losses = []
+            test_losses  = []
+
+            for epoch in range(3000):
+                model[i].train()
+                optimizer.zero_grad()
+                pred = model[i](X_train_t)
+                loss = criterion(pred, y_train_t)
+                loss.backward()
+                optimizer.step()
+
+                model[i].eval()
+                with torch.no_grad():
+                    test_loss = criterion(model[i](X_test_t), y_test_t)
+
+                train_losses.append(loss.item())
+                test_losses.append(test_loss.item())
+
+                if epoch % 500 == 0:
+                    print(f"Epoch {epoch} | Train: {loss.item():.4f} | Test: {test_loss.item():.4f}")
+
+            # 그래프
+            plt.figure(figsize=(12, 4))
+
+            plt.subplot(1, 2, 1)
+            plt.plot(train_losses, label='Train Loss')
+            plt.plot(test_losses,  label='Test Loss')
+
+            # y축 범위 가공
+            cutoff = 40  # 초반 40 epoch 제거
+            max_y = max(max(train_losses[cutoff:]), max(test_losses[cutoff:]))
+            plt.ylim(0, max_y * 1.5)  # 상단 여유 1.5배
+
+            plt.legend()
+            plt.title('Loss graph')
+
+            plt.subplot(1, 2, 2)
+            model[i].eval()
+            with torch.no_grad():
+                pred_line = model[i](X_test_t).numpy()
+            plt.scatter(X_train, y_train, label='train_data')
+            plt.plot(X_test, y_test,     label='label')
+            plt.plot(X_test, pred_line,  label='model-prediction')
+            plt.legend()
+            plt.title('prediction result')
+            plt.show()
+    # complexity()
+
+    def regularization():
+         # 데이터 생성 (적은 수 + 노이즈)
+        np.random.seed(42)
+        X_train = np.linspace(-3, 3, 20)          # 훈련 데이터 20개만
+        y_train = np.sin(X_train) + np.random.normal(0, 0.3, 20) 
+                                                # 노이즈 추가
+
+        X_test = np.linspace(-3, 3, 100)          # 테스트 200개
+        y_test = np.sin(X_test)                   # 노이즈 없는 정답
+
+        # 텐서 변환
+        X_train_t = torch.FloatTensor(X_train).unsqueeze(1)
+        y_train_t = torch.FloatTensor(y_train).unsqueeze(1)
+        X_test_t  = torch.FloatTensor(X_test).unsqueeze(1)
+        y_test_t  = torch.FloatTensor(y_test).unsqueeze(1)
+
+        # 복잡한 모델 (과적합 유도)
+        class Architecture1(nn.Module):
+            def __init__(self, input_size, hidden_size, num_classes):
+                super(Architecture1, self).__init__()
+                self.fc1 = nn.Linear(input_size, hidden_size)
+                self.relu = nn.ReLU()
+                self.fc2 = nn.Linear(hidden_size, hidden_size)
+                self.fc3 = nn.Linear(hidden_size, hidden_size)
+                self.fc4 = nn.Linear(hidden_size, num_classes)
+
+            def forward(self, x):
+                out = self.fc1(x)
+                out = self.relu(out)
+                out = self.fc2(out)
+                out = self.relu(out)
+                out = self.fc3(out)
+                out = self.relu(out)
+                out = self.fc4(out) 
+                return out # 층을 4개로 깊게 쌓아보기
+
+        # 모델 생성
+        model = [
+            Architecture1(input_size=1, hidden_size=512, num_classes=1),
+            Architecture1(input_size=1, hidden_size=512, num_classes=1)
+        ]
+
+        for i in range(2): 
+
+            if i == 0:
+                optimizer = torch.optim.Adam(model[i].parameters(), lr=0.01)
+            else:
+                time.sleep(30)
+                optimizer = torch.optim.Adam(model[i].parameters(), lr=0.01,
+                                             weight_decay=1e-4, foreach=True)
+
+
+            criterion = nn.MSELoss()
+
+            print('\n\n model ', i, '  parameter:\n')
+            for param in model[i].parameters(): print(param.shape)
+            print('\n')
+
+            train_losses = []
+            test_losses  = []
+
+            for epoch in range(3000):
+                model[i].train()
+                optimizer.zero_grad()
+                pred = model[i](X_train_t)
+                loss = criterion(pred, y_train_t)
+                loss.backward()
+                optimizer.step()
+
+                model[i].eval()
+                with torch.no_grad():
+                    test_loss = criterion(model[i](X_test_t), y_test_t)
+
+                train_losses.append(loss.item())
+                test_losses.append(test_loss.item())
+
+                if epoch % 500 == 0:
+                    print(f"Epoch {epoch} | Train: {loss.item():.4f} | Test: {test_loss.item():.4f}")
+
+            # 그래프
+            plt.figure(figsize=(12, 4))
+
+            plt.subplot(1, 2, 1)
+            plt.plot(train_losses, label='Train Loss')
+            plt.plot(test_losses,  label='Test Loss')
+
+            plt.legend()
+            plt.title('Loss graph')
+
+             # y축 범위 가공
+            cutoff = 30  # 초반 40 epoch 제거
+            max_y = max(max(train_losses[cutoff:]), max(test_losses[cutoff:]))
+            plt.ylim(0, max_y * 1.5)  # 상단 여유 1.5배
+
+            plt.subplot(1, 2, 2)
+            model[i].eval()
+            with torch.no_grad():
+                pred_line = model[i](X_test_t).numpy()
+            plt.scatter(X_train, y_train, label='train_data')
+            plt.plot(X_test, y_test,     label='label')
+            plt.plot(X_test, pred_line,  label='model-prediction')
+            plt.legend()
+            plt.title('prediction result')
+            plt.show()
+    # regularization()
+
+    def dropout():
+         # 데이터 생성 (적은 수 + 노이즈)
+        np.random.seed(42)
+        X_train = np.linspace(-3, 3, 20)          # 훈련 데이터 20개만
+        y_train = np.sin(X_train) + np.random.normal(0, 0.3, 20) 
+                                                # 노이즈 추가
+
+        X_test = np.linspace(-3, 3, 100)          # 테스트 200개
+        y_test = np.sin(X_test)                   # 노이즈 없는 정답
+
+        # 텐서 변환
+        X_train_t = torch.FloatTensor(X_train).unsqueeze(1)
+        y_train_t = torch.FloatTensor(y_train).unsqueeze(1)
+        X_test_t  = torch.FloatTensor(X_test).unsqueeze(1)
+        y_test_t  = torch.FloatTensor(y_test).unsqueeze(1)
+
+        # 복잡한 모델 (과적합 유도)
+        class Architecture1(nn.Module):
+            def __init__(self, input_size, hidden_size, num_classes):
+                super(Architecture1, self).__init__()
+                self.fc1 = nn.Linear(input_size, hidden_size)
+                self.relu = nn.ReLU()
+                self.fc2 = nn.Linear(hidden_size, hidden_size)
+                self.fc3 = nn.Linear(hidden_size, hidden_size)
+                self.fc4 = nn.Linear(hidden_size, num_classes)
+
+            def forward(self, x):
+                out = self.fc1(x)
+                out = self.relu(out)
+                out = self.fc2(out)
+                out = self.relu(out)
+                out = self.fc3(out)
+                out = self.relu(out)
+                out = self.fc4(out) 
+                return out 
+            
+        class Architecture2(nn.Module):
+            def __init__(self, input_size, hidden_size, num_classes):
+                super(Architecture2, self).__init__()
+                self.fc1 = nn.Linear(input_size, hidden_size)
+                self.relu = nn.ReLU()
+                self.dropout = nn.Dropout(p=0.3) 
+                self.fc2 = nn.Linear(hidden_size, hidden_size)
+                self.fc3 = nn.Linear(hidden_size, hidden_size)
+                self.fc4 = nn.Linear(hidden_size, num_classes)
+
+            def forward(self, x):
+                out = self.fc1(x)
+                out = self.relu(out)
+                out = self.dropout(out)
+                out = self.fc2(out)
+                out = self.relu(out)
+                out = self.dropout(out)
+                out = self.fc3(out)
+                out = self.relu(out)
+                out = self.dropout(out)
+                out = self.fc4(out) 
+                return out 
+
+        # 모델 생성
+        model = [
+            Architecture1(input_size=1, hidden_size=512, num_classes=1),
+            Architecture2(input_size=1, hidden_size=512, num_classes=1)
+        ]
+
+        for i in range(2): 
+
+            if i == 0:
+                optimizer = torch.optim.Adam(model[i].parameters(), lr=0.01)
+            else:
+                time.sleep(30)
+                optimizer = torch.optim.Adam(model[i].parameters(), lr=0.01,
+                                             weight_decay=1e-4, foreach=True)
+
+
+            criterion = nn.MSELoss()
+
+            print('\n\n model ', i, '  parameter:\n')
+            for param in model[i].parameters(): print(param.shape)
+            print('\n')
+
+            train_losses = []
+            test_losses  = []
+
+            for epoch in range(3000):
+                model[i].train()
+                optimizer.zero_grad()
+                pred = model[i](X_train_t)
+                loss = criterion(pred, y_train_t)
+                loss.backward()
+                optimizer.step()
+
+                model[i].eval()
+                with torch.no_grad():
+                    test_loss = criterion(model[i](X_test_t), y_test_t)
+
+                train_losses.append(loss.item())
+                test_losses.append(test_loss.item())
+
+                if epoch % 500 == 0:
+                    print(f"Epoch {epoch} | Train: {loss.item():.4f} | Test: {test_loss.item():.4f}")
+
+            # 그래프
+            plt.figure(figsize=(12, 4))
+
+            plt.subplot(1, 2, 1)
+            plt.plot(train_losses, label='Train Loss')
+            plt.plot(test_losses,  label='Test Loss')
+
+            plt.legend()
+            plt.title('Loss graph')
+
+             # y축 범위 가공
+            cutoff = 30  # 초반 40 epoch 제거
+            max_y = max(max(train_losses[cutoff:]), max(test_losses[cutoff:]))
+            plt.ylim(0, max_y * 1.5)  # 상단 여유 1.5배
+
+            plt.subplot(1, 2, 2)
+            model[i].eval()
+            with torch.no_grad():
+                pred_line = model[i](X_test_t).numpy()
+            plt.scatter(X_train, y_train, label='train_data')
+            plt.plot(X_test, y_test,     label='label')
+            plt.plot(X_test, pred_line,  label='model-prediction')
+            plt.legend()
+            plt.title('prediction result')
+            plt.show()
+    dropout()
 
 
 # _01_Basic_concept()
@@ -566,4 +913,5 @@ def _06_MNIST_MLP():
 # _03_Perceptron_XOR()
 # _04_BackPropagation()
 # _05_load_digits_MLP()
-_06_MNIST_MLP()
+# _06_MNIST_MLP()
+_07_prevent_Overfitting()
