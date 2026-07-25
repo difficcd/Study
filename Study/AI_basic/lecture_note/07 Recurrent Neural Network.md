@@ -4,7 +4,7 @@
 > 각종 딥 러닝 실습을 진행해보겠습니다.
 
 
-# 07-01 순환 신경망(Recurrent Neural Network, RNN)
+# 07-01 순환 신경망 (Recurrent Neural Network, RNN)
 
 RNN(Recurrent Neural Network)은 시퀀스(Sequence) 모델입니다. 
 
@@ -621,7 +621,6 @@ MLP(DRNN기준) 에다가 타임스탬프 : 입력 단위(단어)사이 관계 �
         
     - 문장의 개수는 `batch_size`로 설정해야 합니다. (예: `batch_size = 4`면 문장 4개를 한 번에 처리) => 문장자체가 바로 들어갈수있는게아니라 임베딩이되어야들어가니까... 당연한건데 제대로 생각을 못한듯.
         
-
 ### ② 8층의 은닉층?
 
 - **아닙니다! 💡**
@@ -1067,6 +1066,723 @@ nn.GRU(input_dim, hidden_size, batch_first=True)
 
 # 07-03 문자 단위 RNN(Char RNN): 실습 2개
 
+RNN의 입출력의 단위가 단어 레벨(word-level)이 아니라 문자 레벨(character-level)로 하여 RNN을 구현한다면, 이를 문자 단위 RNN이라고 합니다. RNN 구조 자체가 달라진 것은 아니고, 입, 출력의 단위가 문자로 바뀌었을 뿐입니다. 문자 단위 RNN을 다대다 구조로 구현해봅시다.
+
+## 1. 문자 단위 RNN(Char RNN)
+
+우선 필요한 도구들을 임포트합니다.
+
+```javascript
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+```
+
+### 1) 훈련 데이터 전처리하기
+
+여기서는 << 문자 시퀀스 apple을 입력받으면 pple!를 출력하는 RNN을 구현해볼 겁니다. 이렇게 구현하는 어떤 의미가 있지는 않습니다. 그저 RNN의 동작을 이해하기 위한 목적입니다. >> 
+
+입력 데이터와 레이블 데이터에 대해서 문자 집합(voabulary)을 만듭니다. 여기서 문자 집합은 중복을 제거한 문자들의 집합입니다.
+(set : 중복 제거, list : 리스트변환, sorted : 알파벳,기호순 정렬)
+
+```python
+input_str = 'apple'
+label_str = 'pple!'
+char_vocab = sorted(list(set(input_str+label_str)))
+vocab_size = len(char_vocab)
+print ('문자 집합의 크기 : {}'.format(vocab_size))
+```
+
+```undefined
+문자 집합의 크기 : 5
+```
+
+현재 문자 집합에는 총 5개의 문자가 있습니다. !, a, e, l, p입니다. 
+
+이제 하이퍼파라미터를 정의해줍니다. 이때 입력은 원-핫 벡터를 사용할 것이므로 입력의 크기는 문자 집합의 크기여야만 합니다.
+
+```python
+input_size = vocab_size # 입력의 크기는 문자 집합의 크기
+hidden_size = 5
+output_size = 5
+learning_rate = 0.1
+```
+
+이제 문자 집합에 고유한 정수를 부여합니다.
+(enumerate(char_vocab) : 리스트 돌면서 인덱스, 글자 짝 만들어주는 함수.
+직관적으로 잘 보이겠지만 for문은 인덱스,글자 셋을 글자,인덱스 순으로 뒤집어서 char_to_index 에 저장하기 위한 작업을 해줌. )
+
+```python
+char_to_index = dict((c, i) for i, c in enumerate(char_vocab)) # 문자에 고유한 정수 인덱스 부여
+print(char_to_index)
+```
+
+```bash
+{'!': 0, 'a': 1, 'e': 2, 'l': 3, 'p': 4}
+```
+
+!은 0, a는 1, e는 2, l은 3, p는 4가 부여되었습니다. 
+나중에 예측 결과를 다시 문자 시퀀스로 보기위해서 반대로 정수로부터 문자를 얻을 수 있는 index_to_char을 만듭니다.
+(나는 그냥 for문 대신에 한줄로 dict(enumerate(char_vocab)로 씀))
+
+```python
+index_to_char={}
+for key, value in char_to_index.items():
+    index_to_char[value] = key
+print(index_to_char)
+```
+
+```css
+{0: '!', 1: 'a', 2: 'e', 3: 'l', 4: 'p'}
+```
+
+
+이제 입력 데이터와 레이블 데이터의 각 문자들을 정수로 맵핑합니다.
+
+```r
+x_data = [char_to_index[c] for c in input_str]
+y_data = [char_to_index[c] for c in label_str]
+print(x_data)
+print(y_data)
+```
+
+```css
+[1, 4, 4, 3, 2] # a, p, p, l, e에 해당됩니다.
+[4, 4, 3, 2, 0] # p, p, l, e, !에 해당됩니다.
+```
+
+파이토치의 nn.RNN()은 << 기본적으로 3차원 텐서를 입력받습니다. 
+그렇기 때문에 배치 차원을 추가해줍니다. >> => 01 실습 코드 보면 항상 3개의 축을 기반으로 넣어주는것을 볼 수 있음! 아래 참조.
+
+---
+**3차원 텐서** = 축이 3개짜리인 텐서.
+
+```python
+(batch_size, sequence_length, input_size)
+     ↑              ↑              ↑
+  배치 크기      시퀀스 길이    입력 크기
+```
+
+왜 3차원이냐 
+
+RNN은 **시계열/순서 데이터**를 처리해요. 차원마다 의미가 있어요.
+
+```python
+# 'apple' → RNN에 넣으려면
+
+batch_size     = 1        (문장 1개)
+sequence_length = 5       (a, p, p, l, e 순서대로)
+input_size     = vocab_size (각 문자의 원핫벡터 크기)
+
+→ shape: (1, 5, vocab_size)
+```
+
+2차원이랑 차이
+
+```
+Linear (MLP)  → (batch, feature)        2D
+RNN           → (batch, seq, feature)   3D
+                         ↑
+                         이게 추가됨
+                         "순서" 정보
+```
+
+RNN이 "이전 시점 정보를 다음 시점에 전달"하려면 << 시점(sequence) 축이 반드시 필요해서 3D인 거예요. : 시퀀스 길이를 알아야 타임 스텝마다 순서대로 처리할 수 있기 떄문! >> 
+
+---
+
+unsqueeze 복습 : [[02 PyTorch Basic#^54ecfd]]
+
+x_data = torch.LongTensor(x_data) # 텐서로 변환 먼저 
+x_data = x_data.unsqueeze(0) # 그 다음 unsqueeze
+이렇게 해도 됨. 아래 방법이 더 간단하긴 함 (리스트는 [] 씌우면 쉽고 텐서는 unsqueeze 쓰면 쉬움. 하지만 실무에서는 unsqueeze 쓰는 게 더 일반적이라고 함. 텐서변환시 차원 혼동 때문에)
+
+```python
+# 배치 차원 추가
+# 텐서 연산인 unsqueeze(0)를 통해 해결할 수도 있었음.
+x_data = [x_data]
+y_data = [y_data]
+print(x_data)
+print(y_data)
+```
+
+```lua
+[[1, 4, 4, 3, 2]]
+[[4, 4, 3, 2, 0]]
+```
+
+
+
+입력 시퀀스의 각 문자들을 원-핫 벡터로 바꿔줍니다.
+
+```python
+x_one_hot = [np.eye(vocab_size)[x] for x in x_data]
+print(x_one_hot)
+```
+
+```csharp
+[array([[0., 1., 0., 0., 0.],
+       [0., 0., 0., 0., 1.],
+       [0., 0., 0., 0., 1.],
+       [0., 0., 0., 1., 0.],
+       [0., 0., 1., 0., 0.]])]
+```
+
+eye 함수 : 단위행렬 만드는 함수. RV : [[01 Introduction (Basic)#^fdba91]]
+
+apple → `[1, 4, 4, 3, 2]` (인덱스)
+
+`np.eye(vocab_size)[[1, 4, 4, 3, 2]]`
+
+```
+np.eye(5)[0]  # → [1, 0, 0, 0, 0]  ← 0번 인덱스
+np.eye(5)[3]  # → [0, 0, 0, 1, 0]  ← 3번 인덱스
+```
+
+```
+a → [0, 1, 0, 0, 0]
+p → [0, 0, 0, 0, 1]
+p → [0, 0, 0, 0, 1]
+l → [0, 0, 0, 1, 0]
+e → [0, 0, 1, 0, 0]
+```
+
+
+--- 
+
+UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\torch\csrc\utils\tensor_new.cpp:256.)
+
+경고 이유??
+
+```python
+x_one_hot = [np.eye(vocab_size)[x] for x in x_data]  
+									# numpy 리스트
+X = torch.FloatTensor(x_one_hot)    # 여기서 경고
+```
+
+numpy 배열들이 담긴 리스트를 텐서로 변환할 때 
+— 파이토치가 원소 하나씩 변환해서 느려요.
+
+---
+
+해결법
+
+```python
+# numpy array로 먼저 합친 다음 텐서 변환
+x_one_hot = np.array(x_one_hot)       # numpy로 먼저 합치기
+X = torch.FloatTensor(x_one_hot)      # 그 다음 텐서 변환
+```
+
+---
+
+
+입력 데이터와 레이블 데이터를 텐서로 바꿔줍니다.
+
+```python 
+X = torch.FloatTensor(x_one_hot)
+Y = torch.LongTensor(y_data)
+```
+
+이제 각 텐서의 크기를 확인해봅시다.
+
+```lua
+print('훈련 데이터의 크기 : {}'.format(X.shape))
+print('레이블의 크기 : {}'.format(Y.shape))
+```
+
+```css
+훈련 데이터의 크기 : torch.Size([1, 5, 5])
+레이블의 크기 : torch.Size([1, 5])
+```
+
+
+
+### 2) 모델 구현하기
+
+이제 RNN 모델을 구현해봅시다. 
+아래에서 fc는 완전 연결층(fully-connected layer)을 의미하며 
+출력층으로 사용됩니다.
+
+```python
+class Net(torch.nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(Net, self).__init__()
+        self.rnn = torch.nn.RNN(input_size, hidden_size, batch_first=True) # RNN 셀 구현
+        self.fc = torch.nn.Linear(hidden_size, output_size, bias=True) # 출력층 구현
+
+    def forward(self, x): # 구현한 RNN 셀과 출력층을 연결
+        x, _status = self.rnn(x)
+        x = self.fc(x)
+        return x
+```
+
+클래스로 정의한 모델을 net에 저장합니다.
+
+```python
+net = Net(input_size, hidden_size, output_size)
+```
+
+이제 입력된 모델에 입력을 넣어서 출력의 크기를 확인해봅시다.
+
+```python
+outputs = net(X)
+print(outputs.shape) # 3차원 텐서
+```
+
+```css
+torch.Size([1, 5, 5])
+```
+
+(1, 5, 5)의 크기를 가지는데
+각각 배치 차원, 시점(timesteps), 출력의 크기입니다. 
+
+나중에 << 정확도를 측정할 때는 이를 모두 펼쳐서 계산 >> 하게 되는데, 
+이때는 view를 사용하여 << 배치 차원과 시점 차원을 하나로 >> 만듭니다.
+(view함수: [[02 PyTorch Basic#^fa255c]])
+
+```python
+print(outputs.view(-1, input_size).shape) # 2차원 텐서로 변환
+```
+
+```css
+torch.Size([5, 5])
+```
+
+차원이 (5, 5)가 된 것을 볼 수 있습니다. 
+
+이제 레이블 데이터의 크기를 다시 복습봅시다.
+
+```python
+print(Y.shape)
+print(Y.view(-1).shape)
+```
+
+```css
+torch.Size([1, 5])
+torch.Size([5])
+```
+
+레이블 데이터는 (1, 5)의 크기를 가지는데, 마찬가지로 나중에 정확도를 측정할 때는 이걸 펼쳐서 계산할 예정입니다. 이 경우 (5)의 크기를 가지게 됩니다. 
+
+
+이제 옵티마이저와 손실 함수를 정의합니다.
+
+```python
+criterion = torch.nn.CrossEntropyLoss()
+optimizer = optim.Adam(net.parameters(), learning_rate)
+```
+
+총 100번의 에포크를 학습합니다.
+
+```python
+for i in range(100):
+    optimizer.zero_grad()
+    outputs = net(X)
+    loss = criterion(outputs.view(-1, input_size), Y.view(-1)) # view를 하는 이유는 Batch 차원 제거를 위해
+    loss.backward() # 기울기 계산
+    optimizer.step() # 아까 optimizer 선언 시 넣어둔 파라미터 업데이트
+
+    # 아래 세 줄은 모델이 실제 어떻게 예측했는지를 확인하기 위한 코드.
+    result = outputs.data.numpy().argmax(axis=2) # 최종 예측값인 각 time-step 별 5차원 벡터에 대해서 가장 높은 값의 인덱스를 선택
+    result_str = ''.join([index_to_char[c] for c in np.squeeze(result)])
+    print(i, "loss: ", loss.item(), "prediction: ", result, "true Y: ", y_data, "prediction str: ", result_str)
+```
+
+```lua
+0 loss:  1.3871121406555176 prediction:  [[4 4 0 4 0]] true Y:  [[4, 4, 3, 2, 0]] prediction str:  pp!p!
+... 중략 ...
+99 loss:  0.0003285939747001976 prediction:  [[4 4 3 2 0]] true Y:  [[4, 4, 3, 2, 0]] prediction str:  pple!
+```
+
+![[Pasted image 20260725210051.png]]
+
+아주 간단한 문제이긴 하지만, 에포크를 거듭할수록 정확해지는 게 보임!
+처음에는 랜덤으로 뱉고..
+
+이제 더 많은 데이터로 문자 단위 RNN을 구현해봅시다.
+
+## 2. 더 많은 데이터로 학습한 문자 단위 RNN(Char RNN)
+
+우선 필요한 도구들을 임포트합니다.
+
+```javascript
+import torch
+import torch.nn as nn
+import torch.optim as optim
+```
+
+다음과 같이 임의의 샘플을 만듭니다.
+
+### 1) 훈련 데이터 전처리하기
+
+```python 
+sentence = ("if you want to build a ship, don't drum up people together to "
+            "collect wood and don't assign them tasks and work, but rather "
+            "teach them to long for the endless immensity of the sea.")
+```
+
+문자 집합을 생성하고, 각 문자에 고유한 정수를 부여합니다.
+
+```python
+char_set = list(set(sentence)) # 중복을 제거한 문자 집합 생성
+char_dic = {c: i for i, c in enumerate(char_set)} 
+								# 각 문자에 정수 인코딩
+```
+
+#### 왜 여기서는 sort 를 안 할까??
+
+1) pple! 예제에서 sort 한 이유
+
+```python
+char_vocab = sorted(list(set(input_str+label_str)))
+```
+
+인덱스가 **일관되게 고정**돼야 해요. 
+sort 안 하면 실행할 때마다 set의 순서가 달라질 수 있어요.
+
+```
+실행 1: {'a':0, 'p':1, ...}
+실행 2: {'p':0, 'a':1, ...}  ← 순서 바뀜
+```
+
+원핫인코딩에서 인덱스가 바뀌면 학습 결과가 달라지니까 sort로 고정한 거예요.
+
+---
+
+2) 이 예제에서 sort 안 한 이유
+
+```python
+char_dic = {c: i for i, c in enumerate(char_set)}
+```
+
+이 예제는 **인덱스 순서가 중요하지 않아요.** << 어떤 문자에 어떤 숫자가 붙든 딕셔너리로 관리하니까 일관성이 보장돼요. >> 
+
+```
+'k'→0, 'o'→1 이든
+'o'→0, 'k'→1 이든
+→ char_dic['k'] 로 항상 같은 값 참조 가능
+```
+
+---
+
+```
+sort 필요   인덱스 순서 자체가 의미 있을 때 (원핫인코딩 직접 구성)
+sort 불필요  딕셔너리로 문자→인덱스 참조할 때
+```
+
+
+
+
+```python
+print(char_dic) # 공백도 여기서는 하나의 원소
+```
+
+```bash
+{'k': 0, 'o': 1, 'r': 2, 'a': 3, 'f': 4, 'b': 5, 'g': 6, 'w': 7, ',': 8, ' ': 9, 'h': 10, 'l': 11, "'": 12, 'e': 13, '.': 14, 'd': 15, 's': 16, 'y': 17, 'u': 18, 't': 19, 'n': 20, 'i': 21, 'm': 22, 'c': 23, 'p': 24}
+```
+
+각 문자에 정수가 부여되었으며, 총 25개의 문자가 존재합니다. 
+문자 집합의 크기를 확인해봅시다.
+
+```lua
+dic_size = len(char_dic)
+print('문자 집합의 크기 : {}'.format(dic_size))
+```
+
+```undefined
+문자 집합의 크기 : 25
+```
+
+문자 집합의 크기는 25이며, 입력을 원-핫 벡터로 사용할 것이므로 이는 매 시점마다 들어갈 입력의 크기이기도 합니다. 
+
+이제 하이퍼파라미터를 설정합니다. 
+hidden_size(은닉 상태의 크기)를 입력의 크기와 동일하게 줬는데, 
+이는 사용자의 선택으로 다른 값을 줘도 무방합니다.
+
+그리고 sequence_length라는 변수를 선언했는데, 우리가 앞서 만든 샘플을 10개 단위로 끊어서 샘플을 만들 예정이기 때문입니다. 이는 뒤에서 더 자세히 보겠습니다. (시퀀스 길이 : 단어 10개씩 끊어서 보기 : sentence 는 단어 10개로 이루어진 문장 3개임. )
+
+```python
+# 하이퍼파라미터 설정
+hidden_size = dic_size
+sequence_length = 10  # 임의 숫자 지정
+learning_rate = 0.1
+```
+
+다음은 임의로 지정한 sequence_length 값인 10의 단위로 샘플들을 잘라서 데이터를 만드는 모습을 보여줍니다.
+
+```python
+# 데이터 구성
+x_data = []
+y_data = []
+
+for i in range(0, len(sentence) - sequence_length):
+    x_str = sentence[i:i + sequence_length]
+    y_str = sentence[i + 1: i + sequence_length + 1]
+    print(i, x_str, '->', y_str)
+
+    x_data.append([char_dic[c] for c in x_str])  # x str to index
+    y_data.append([char_dic[c] for c in y_str])  # y str to index
+```
+
+```rust
+0 if you wan -> f you want
+1 f you want ->  you want 
+2  you want  -> you want t
+3 you want t -> ou want to
+4 ou want to -> u want to 
+... 중략 ...
+165 ity of the -> ty of the 
+166 ty of the  -> y of the s
+167 y of the s ->  of the se
+168  of the se -> of the sea
+169 of the sea -> f the sea.
+```
+
+총 170개의 샘플이 생성되었습니다. 그리고 각 샘플의 각 문자들은 고유한 정수로 인코딩이 된 상태입니다. 
+
+#### 예제 정밀하게 이해하기
+
+아까 예제에선 단어를 원핫인코딩을 해서 벡터화한 다음 그거로 학습을 돌린거잖아? 그 인코딩된 단어의 정답 Y를 만들어서 그거에 맞춰지게
+
+그럼 이번 예제에선 어케되는거지 문장을 줬는데 시퀀스가 10개잖아 (단어가 한문장에 10개인것으로보임) 그래서 단어차원으로 가공해야하니 char_dic 딕셔너리를 관리할건데 각 학습데이터 구성할 떄 x 랑 y 데이터는: 안녕하세요를 학습하게한다치면 안녕하세 => 안녕하세요 뭐 이런식으로 뒤에 줄줄이 이어지는 단어의 시퀀스를 학습데이터로 해서 뒤에 오는 글자를 한글자단위로 예측하게 하는건가? 인코딩없이 딕셔너리로?
+
+=>
+
+맞아요. 거의 정확하게 이해했어요.
+
+이 예제 구조: **문자 단위 예측**이에요. 단어 단위가 아니라요.
+
+```
+sentence = "if you want..."
+
+sequence_length = 10  ← 문자 10개씩
+
+x: "if you wa"  → y: "f you wan"
+x: "f you wan"  → y: " you want"
+x: " you want"  → y: "you want "
+...
+```
+
+한 칸씩 밀면서 **다음 문자 하나**를 예측하는 구조예요.
+
+
+인코딩은 어떻게?
+
+원핫인코딩 안 하고 **인덱스 번호 그대로** x_data, y_data에 담아요.
+
+```python
+x_data[0] = [21, 4, 9, 17, 1, 18, 9, 7, 3, 19]  # "if you wa" → 인덱스
+y_data[0] = [4, 9, 17, 1, 18, 9, 7, 3, 19, 20]   # "f you wan" → 인덱스
+```
+
+나중에 원핫인코딩은 텐서 변환할 때 해요. <= 중요. 인코딩 안하면 RNN이 받기 힘들기 때문에 해야함. (RNN은 실수벡터 입력받아야 함)
+
+아까 예제랑 차이:
+
+```
+apple 예제     단어 하나 → 다음 단어 예측 (짧은 시퀀스)
+이번 예제      문장 전체를 슬라이딩 윈도우로 잘라서
+               10글자 → 다음 10글자 예측 (긴 시퀀스, 실제 언어모델에 가까움)
+```
+
+슬라이딩 윈도우 방식이라 데이터가 문장 길이만큼 자동으로 많아져요.
+=> 어디서 많이 본 방식이다 했더니 슬라이딩 윈도우였다. 이런 문장이 있을 떄 다음에 올 문장 예측하기를 가능하게 하는 학습기법!
+(당연히 여러 문장에 대한 예측시킬떄는 많은 데이터, 어려움이 보이긴 한다 어텐션보다는. 이런 식이어서 앞 맥락을 쭉 가져가지 못하는 듯하다. ~> 장기 의존성 문제 )
+####
+
+첫번째 샘플의 입력 데이터와 레이블 데이터를 출력해봅시다.
+
+```scss
+print(x_data[0])
+print(y_data[0])
+```
+
+```csharp
+[21, 4, 9, 17, 1, 18, 9, 7, 3, 20] # if you wan에 해당됨.
+```
+
+```csharp
+[4, 9, 17, 1, 18, 9, 7, 3, 20, 19] # f you want에 해당됨.
+```
+
+한 칸씩 쉬프트 된 시퀀스가 정상적으로 출력되는 것을 볼 수 있습니다. 이제 입력 시퀀스에 대해서 원-핫 인코딩을 수행하고, 입력 데이터와 레이블 데이터를 텐서로 변환합니다.
+
+```python
+x_one_hot = [np.eye(dic_size)[x] for x in x_data] # x 데이터는 원-핫 인코딩
+X = torch.FloatTensor(x_one_hot)
+Y = torch.LongTensor(y_data)
+```
+
+이제 훈련 데이터와 레이블 데이터의 크기를 확인해봅시다.
+
+```lua
+print('훈련 데이터의 크기 : {}'.format(X.shape))
+print('레이블의 크기 : {}'.format(Y.shape))
+```
+
+```css
+훈련 데이터의 크기 : torch.Size([170, 10, 25])
+레이블의 크기 : torch.Size([170, 10])
+```
+
+원-핫 인코딩 된 결과를 보기 위해서 첫번째 샘플만 출력해봅시다.
+
+```scss
+print(X[0])
+```
+
+```csharp
+tensor([
+[0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], # i
+[0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], # f
+[0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], # 공백
+[0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], # y
+[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0.], # o
+[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], # y
+[0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.], # 공백
+[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.], # w
+[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0.], # a
+[0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]]) # n
+```
+
+레이블 데이터의 첫번째 샘플도 출력해봅시다.
+
+```scss
+print(Y[0])
+```
+
+```scss
+tensor([ 1,  2,  5, 21, 14,  2, 16, 19,  9, 12])
+```
+
+위 레이블 시퀀스는 f you want에 해당됩니다. 이제 모델을 설계합니다.
+
+
+
+### 2) 모델 구현하기
+
+모델은 앞서 실습한 문자 단위 RNN 챕터와 거의 동일합니다. 
+다만 이번에는 << 은닉층을 두 개 쌓을 겁니다 >>.
+
+```ruby
+class Net(torch.nn.Module):
+    def __init__(self, input_dim, hidden_dim, layers): # 현재 hidden_size는 dic_size와 같음.
+        super(Net, self).__init__()
+        self.rnn = torch.nn.RNN(input_dim, hidden_dim, num_layers=layers, batch_first=True)
+        self.fc = torch.nn.Linear(hidden_dim, hidden_dim, bias=True)
+
+    def forward(self, x):
+        x, _status = self.rnn(x)
+        x = self.fc(x)
+        return x
+```
+
+```python
+net = Net(dic_size, hidden_size, 2) 
+# 이번에는 층을 두 개 쌓습니다.
+```
+
+nn.RNN() 안에 num_layers라는 인자를 사용합니다. 
+이는 은닉층을 몇 개 쌓을 것인지를 의미합니다. 
+
+모델 선언 시 layers라는 인자에 2를 전달하여 은닉층을 두 개 쌓습니다. 
+
+
+비용 함수와 옵티마이저를 선언합니다.
+
+```python
+criterion = torch.nn.CrossEntropyLoss()
+optimizer = optim.Adam(net.parameters(), learning_rate)
+```
+
+이제 모델에 입력을 넣어서 출력의 크기를 확인해봅시다.
+
+```python
+outputs = net(X)
+print(outputs.shape) # 3차원 텐서
+```
+
+```css
+torch.Size([170, 10, 25])
+```
+
+(170, 10, 25)의 크기를 가지는데 각각 << 배치 차원, 시점(timesteps), 출력의 크기입니다.  >>
+
+나중에 정확도를 측정할 때는 이를 모두 펼쳐서 계산하게 되는데, 
+이때는 view를 사용하여 배치 차원과 시점 차원을 하나로 만듭니다.
+(교차 엔트로비가 요구하는  shape 를 위해.. : 입력이 (샘플수, 클래스수)
+정답이 (샘플수,) shape 임)
+
+```python
+print(outputs.view(-1, dic_size).shape) # 2차원 텐서로 변환.
+```
+
+```css
+torch.Size([1700, 25])
+```
+
+차원이 (1700, 25)가 된 것을 볼 수 있습니다. 
+((170, 10, 25) → (-1, 25) → (1700, 25))
+
+이제 레이블 데이터의 크기를 다시 복습해봅시다. 
+
+```scss
+print(Y.shape)
+print(Y.view(-1).shape)
+```
+
+```css
+torch.Size([170, 10])
+torch.Size([1700])
+```
+
+레이블 데이터는 (170, 10)의 크기를 가지는데, 
+마찬가지로 나중에 정확도를 측정할 때는 이걸 펼쳐서 계산할 예정입니다. 이 경우 (1700)의 크기를 가지게 됩니다. 
+
+이제 옵티마이저와 손실 함수를 정의합니다.
+
+```python
+for i in range(100):
+    optimizer.zero_grad()
+    outputs = net(X) 
+      # (170, 10, 25) 크기를 가진 텐서를 
+      # 매 에포크마다 모델의 입력으로 사용
+    loss = criterion(outputs.view(-1, dic_size), Y.view(-1))
+    loss.backward()
+    optimizer.step()
+
+    # results의 텐서 크기는 (170, 10)
+    results = outputs.argmax(dim=2)
+    predict_str = ""
+    for j, result in enumerate(results):
+        if j == 0: # 처음에는 예측 결과를 전부 가져오지만
+            predict_str += 
+	            ''.join([char_set[t] for t in result])
+        else: # 그 다음에는 마지막 글자만 반복 추가
+            predict_str += char_set[result[-1]]
+
+    print(predict_str)
+```
+
+```vbnet
+hahha... 중략 ...
+p you want to build a ship, don't drum up people together to collect wood and don't assign them tasks and work, but rather teach them to long for the endless immensity of the sea.
+```
+
+처음에는 이상한 예측을 하지만 마지막 에포크에서는 꽤 정확한 문자를 생성하는 것을 볼 수 있습니다.
+
+![[Pasted image 20260725213923.png]]
+
+아주이상한예측..
+![[Pasted image 20260725213937.png|507]]
+
+그래도 아까보단 나음
+
+![[Pasted image 20260725214000.png]]
+
+여기까지 오면 꽤 정확해짐
+
 
 # 용어 정리
 ## RNN 기억 소실 (hidden state), 기울기 소실 관계
@@ -1177,6 +1893,164 @@ PyTorch 등의 자동미분기(Autograd)가 연산 그래프(Computational Graph
 
 
 
+
+
+## 파이썬 컴프리헨션 문법 복습
+
+### List Comprehension `[]`
+
+```python
+# 기본
+[x for x in range(5)]
+# [0, 1, 2, 3, 4]
+
+# 조건
+[x for x in range(10) if x % 2 == 0]
+# [0, 2, 4, 6, 8]
+
+# 변환
+[x**2 for x in range(5)]
+# [0, 1, 4, 9, 16]
+```
+
+---
+
+### Dict Comprehension `{}`
+
+```python
+# 기본
+{k: v for k, v in enumerate(['a', 'b', 'c'])}
+# {0: 'a', 1: 'b', 2: 'c'}
+
+# key/value 뒤집기
+d = {'a': 1, 'b': 2}
+{v: k for k, v in d.items()}
+# {1: 'a', 2: 'b'}
+```
+
+---
+
+### Set Comprehension `{}`
+
+```python
+{x % 3 for x in range(10)}
+# {0, 1, 2}  중복 제거
+```
+
+---
+
+### Generator Expression `()`
+
+```python
+# 리스트랑 비슷한데 메모리 안 씀
+gen = (x**2 for x in range(5))
+next(gen)  # 0
+next(gen)  # 1
+```
+
+---
+
+### 중첩
+
+```python
+# 2D 리스트 펼치기
+matrix = [[1,2],[3,4],[5,6]]
+[x for row in matrix for x in row]
+# [1, 2, 3, 4, 5, 6]
+```
+
+---
+
+### 아까 코드에 적용하면
+
+```python
+# for문 방식
+char_to_index = {}
+for i, c in enumerate(char_vocab):
+    char_to_index[c] = i
+
+# dict comprehension
+char_to_index = {c: i for i, c in enumerate(char_vocab)}
+```
+
+
+
+
+
+## RNN 내부 구현체 미리보기
+
+
+```python
+class RNN(RNNBase):
+    def __init__(self, input_size, hidden_size, ...):
+        super().__init__('RNN', input_size, hidden_size, ...)
+```
+
+`RNNBase`가 실제 무거운 일을 다 해요. RNN은 그냥 mode='RNN'으로 특정해서 넘기는 껍데기예요.
+
+---
+
+### RNNBase 핵심 구조
+
+```python
+class RNNBase(nn.Module):
+    def __init__(self, mode, input_size, hidden_size, ...):
+        
+        # 가중치 초기화
+        # Wx: input → hidden
+        # Wh: hidden → hidden
+        self.weight_ih_l0  # (hidden_size, input_size)
+        self.weight_hh_l0  # (hidden_size, hidden_size)
+        self.bias_ih_l0
+        self.bias_hh_l0
+
+    def forward(self, input, hx=None):
+        # hx 없으면 0으로 초기화
+        if hx is None:
+            hx = torch.zeros(...)
+
+        # 실제 연산은 C++ 백엔드로 넘김
+        result = _VF.rnn_tanh(input, hx, self._flat_weights, ...)
+        
+        output, hidden = result
+        return output, hidden
+```
+
+---
+
+### 핵심 포인트
+
+**`_VF.rnn_tanh`** — 여기서 실제 타임스텝 루프가 돌아요. 
+Python이 아니라 **C++ ATen 커널**로 구현돼있어요. 
+GPU면 CUDA 커널로 넘어가요.
+
+```
+Python RNN.forward()
+    ↓
+C++ _VF.rnn_tanh()
+    ↓
+for t in seq_len:
+    h_t = tanh(x_t @ Wx + h_(t-1) @ Wh + b)
+    ↓
+CUDA 커널 (GPU면)
+```
+
+---
+
+### 가중치 이름 구조
+
+```python
+rnn.weight_ih_l0  # input-hidden, layer 0
+rnn.weight_hh_l0  # hidden-hidden, layer 0
+rnn.bias_ih_l0
+rnn.bias_hh_l0
+
+# 2층이면
+rnn.weight_ih_l1  # layer 1
+rnn.weight_hh_l1
+```
+
+`l0`, `l1`이 레이어 번호예요. `num_layers=2`면 두 세트가 생겨요.
 
 
 ##
