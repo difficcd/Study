@@ -1,4 +1,10 @@
 
+https://namu.wiki/w/x86
+https://namu.wiki/w/%EB%A6%AC%EB%88%84%EC%8A%A4%20%ED%86%A0%EB%A5%B4%EB%B0%9C%EC%8A%A4
+https://namu.wiki/w/Linux
+https://wiki.archlinux.org/title/Main_page
+
+
 # CPU GHz
 
 컴퓨터 세상에서 기가헤르츠($GHz$)는 클럭 속도(Clock Speed)를 의미하는 단위인데요, 아주 직관적으로 쪼개서 설명해 드릴게요.

@@ -1446,6 +1446,8 @@ for epoch in range(nb_epochs+1):
 
 # 03-04 미니 배치, 데이터 로더                                   (Mini Batch and DataLoader)
 
+^c5d014
+
 이번 챕터에서 배우는 내용은 선형 회귀에 한정되는 내용은 아닙니다. 
 이번 챕터에서는 데이터를 로드하는 방법과 미니 배치 경사 하강법(Minibatch Gradient Descent)에 대해서 학습합니다.
 

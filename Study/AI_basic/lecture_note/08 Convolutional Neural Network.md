@@ -298,5 +298,659 @@ $$O_{h} = floor(\frac{I_{h} - K_{h} + 2P}{S}+1)$$ $$O_{w} = floor(\frac{I_{w} - 
 
 
 
-# 08-02 
+
+
+# 08-02 CNN으로 MNIST 분류하기
+
+이번 챕터에서는 CNN으로 MNIST를 분류해보겠습니다.
+
+## 1. 모델 이해하기
+
+우리가 만들 모델의 아키텍처를 이해해봅시다. 
+합성곱 신경망은 출처에 따라서 합성곱 층을 부르는 단위가 조금 다릅니다.
+
+![[Pasted image 20260727184903.png|245]]
+
+### 1) 첫번째 표기 방법
+
+합성곱(nn.Cov2d) + 활성화 함수(nn.ReLU)를 하나의 합성곱 층으로 보고, 
+맥스풀링(nn.MaxPoold2d)은 << 풀링 층으로 별도로 명명 >> 합니다.
+
+### 2) 두번째 표기 방법
+
+합성곱(nn.Conv2d) + 활성화 함수(nn.ReLU) + 맥스풀링(nn.MaxPoold2d)을 
+하나의 합성곱 층으로 봅니다.
+
+다시 말해 풀링도 하나의 층으로 보느냐, 안 보느냐의 문제인데 누가 옳고 틀리냐의 문제는 아니므로, 이번 챕터에서는 편의를 위해 맥스풀링까지도 포함해서 하나의 합성곱 층으로 판단하고 정리해보겠습니다. 
+다시 말해 두번째 표기 방법을 택하겠습니다.
+
+모델의 아키텍처는 총 3개의 층으로 구성됩니다.
+
+```python
+# 1번 레이어 : 합성곱층(Convolutional layer)
+합성곱(in_channel = 1, out_channel = 32,
+	  kernel_size=3, stride=1, padding=1) + 활성화 함수 ReLU
+맥스풀링(kernel_size=2, stride=2))
+
+# 2번 레이어 : 합성곱층(Convolutional layer)
+합성곱(in_channel = 32, out_channel = 64, 
+      kernel_size=3, stride=1, padding=1) + 활성화 함수 ReLU
+맥스풀링(kernel_size=2, stride=2))
+
+# 3번 레이어 : 전결합층(Fully-Connected layer)
+특성맵을 펼친다. # batch_size × 7 × 7 × 64 → batch_size × 3136
+전결합층(뉴런 10개) + 활성화 함수 Softmax
+```
+
+이를 직접 구현해보며 이해해봅시다.
+
+
+
+
+## 2. 모델 구현하기
+
+위의 3개의 층을 직접 구현해보겠습니다.
+
+### 1) 필요한 도구 임포트와 입력의 정의
+
+필요한 도구들을 임포트합니다.
+
+```python
+import torch
+import torch.nn as nn
+```
+
+임의의 텐서를 만듭니다. 텐서의 크기는 1 × 1 × 28 × 28입니다.
+
+```python
+# 배치 크기 × 채널 × 높이(height) × 너비(widht)의 크기의 텐서를 선언
+inputs = torch.Tensor(1, 1, 28, 28)
+print('텐서의 크기 : {}'.format(inputs.shape))
+```
+
+```css
+텐서의 크기 : torch.Size([1, 1, 28, 28])
+```
+
+
+### 2) 합성곱층과 풀링 선언하기
+
+이제 첫번째 합성곱 층을 구현해봅시다. 
+1채널 짜리를 입력받아서 32채널을 뽑아내는데 
+커널 사이즈는 3이고 패딩은 1입니다.
+
+=> RGB 채널은 3채널. 즉, 각각의 feature 가 3개 있고 그에 따른 컨볼루션 연산을 각 채널에서, 3채널용 커널 1개를 이용해서 진행.
+
+=> MNIST : 32채널 => "1채널 짜리 흑백 이미지에서, 3x3 크기의 서로 다른 돋보기(커널/필터) 32개를 대보고, 각각의 돋보기가 찾아낸 32 종류의 특징 지도(Feature Map)를 만들어내라!"
+
+
+```Python
+Conv2d(입력 채널 개수, 출력 채널 개수, 커널 사이즈, padding=패딩)
+```
+
+
+예를 들어 32개의 필터 중:
+
+- 1번 필터는 "가로 선"을 감지하는 돋보기
+- 2번 필터는 "세로 선"을 감지하는 돋보기
+- 3번 필터는 "대각선"을 감지하는 돋보기 ... 이런 식으로 각기 다른 패턴을 찾는 필터 32개를 동시에 돌려 32개의 특징 지도를 출력하는 것입니다.
+
+- **입력 채널 (1):** 원본 데이터의 특성 수 (RGB 컬러면 3, 흑백 이미지는 1).
+- **출력 채널 (32):** 모델이 학습할 << **특징 필터의 개수**. (개발자가 임의로 지정하는 하이퍼파라미터입니다.) >>
+
+
+
+```python
+conv1 = nn.Conv2d(1, 32, 3, padding=1)
+print(conv1)
+```
+
+```css
+Conv2d(1, 32, 
+	   kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+```
+
+이제 두번째 합성곱 층을 구현해봅시다. 32채널 짜리를 입력받아서 64채널을 뽑아내는데 커널 사이즈는 3이고 패딩은 1입니다.
+
+=> 왜 2번째 층은 64채널일까?
+
+> **딥러닝의 핵심 원리: "층이 깊어질수록 채널 수(특징 수)는 늘리고, 공간 크기(가로/세로)는 줄인다."**
+
+```
+[입력 이미지] (1x28x28) 
+     ↓ 
+[1번째 Conv] (32x28x28) ───> 점, 모서리 등 단순특징 32개 추출       ↓ 
+[Pooling 등] (32x14x14) ───> 이미지 가로/세로 크기 절반 줄임 
+     ↓ 
+[2번째 Conv] (64x14x14) ───> 선들이 조합된 '복잡한 형태
+						    (동그라미, 꺾임 등)' 64개 추출
+
+```
+
+
+
+```python
+conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+print(conv2)
+```
+
+```python
+Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+```
+
+이제 맥스풀링을 구현해봅시다. 
+정수 하나를 인자로 넣으면 << 커널 사이즈와 스트라이드 >> 가 둘 다 해당값으로 지정됩니다. (pool = nn.MaxPool2d(kernel_size=3, stride=2)로 두 개를 다르게 지정할 수 있음! 
+하지만 맥스풀링에서는 커널 크기 = 스트라이드로 설정하는 것이 거의 표준, 기본 동작이라고 함. stride 를 명시하지 않으면 둘을 같게 함)
+
+=> 그렇다면 왜 둘을 같게 만드는 게 기본일까?
+
+맥스풀링의 본래 목적은 
+특징 지도(Feature Map)의 가로·세로 크기를 겹침 없이 깔끔하게 줄이는 것"이기 때문.
+
+```
+[4x4 원본 데이터]
+1  3 | 2  4
+5  6 | 0  1
+-----+-----
+2  1 | 8  3
+4  0 | 5  2
+```
+
+1. **`kernel_size=2, stride=2` (기본 추천):**
+    
+    - 2x2 영역에서 가장 큰 값을 뽑은 뒤, **2칸씩 껑충 뛰어넘어** 다음 영역으로 이동합니다.
+    
+    - 영토가 **서로 겹치지 않고** 깔끔하게 $2 \times 2$ 크기로 딱 반토막 줄어듭니다 ($4 \times 4 \rightarrow 2 \times 2$).
+    
+    - 연산량이 깔끔하게 줄어들고 중복 계산이 없습니다.
+
+2. **`kernel_size=3, stride=1`처럼 다르게 줄 때 (Overlapping Pooling):**
+    
+    - 돋보기(3x3)는 큰데 1칸씩만 이동하므로, **이전 영역과 겹치는 부분이 발생**합니다.
+    
+    - 특징을 더 촘촘하게 추출한다는 장점은 있지만, 데이터 크기가 잘 안 줄어들고 연산량이 늘어납니다.
+
+
+
+```python
+pool = nn.MaxPool2d(2)
+print(pool)
+```
+
+```css
+MaxPool2d(kernel_size=2, stride=2, padding=0, 
+		  dilation=1, ceil_mode=False)
+```
+
+
+
+### 3) 구현체를 연결하여 모델 만들기
+
+지금까지는 선언만한 것이고 아직 이들을 연결시키지는 않았습니다. 
+이들을 연결시켜서 모델을 완성시켜보겠습니다. 
+
+우선 입력을 첫번째 합성곱층을 통과시키고 
+합성곱층을 통과시킨 후의 텐서의 크기를 보겠습니다.
+
+```python
+out = conv1(inputs)
+print(out.shape)
+```
+
+```css
+torch.Size([1, 32, 28, 28])
+```
+
+32채널의 28너비 28높이의 텐서가 되었습니다. 
+32가 나온 이유는 conv1의 out_channel(두 번쨰 인자)로 
+32를 지정해주었기 때문입니다. 
+
+또한, << 28너비 28높이가 된 이유는 패딩을 1폭으로 하고 3 × 3 커널을 사용하면 크기가 보존되기 때문 >> 입니다. 
+
+이제 이를 맥스풀링을 통과시키고 맥스풀링을 통과한 후의 텐서의 크기를 보겠습니다.
+
+```python
+out = pool(out)
+print(out.shape)
+```
+
+```python
+torch.Size([1, 32, 14, 14])
+```
+
+32채널의 14너비 14높이의 텐서가 되었습니다. 
+
+이제 이를 다시 두번째 합성곱층에 통과시키고 
+통과한 후의 텐서의 크기를 보겠습니다.
+
+```python
+out = conv2(out)
+print(out.shape)
+```
+
+```python
+torch.Size([1, 64, 14, 14])
+```
+
+64채널의 14너비 14높이의 텐서가 되었습니다. 64가 나온 이유는 conv2의 out_channel로 64를 지정해주었기 때문입니다. << 또한, 14너비 14높이가 된 이유는 패딩을 1폭으로 하고 3 × 3 커널을 사용하면 크기가 보존되기 때문입니다. >> 
+
+이제 이를 맥스풀링을 통과시키고 맥스풀링을 통과한 후의 텐서의 크기를 보겠습니다. 이제 이를 맥스풀링을 통과시키고 맥스풀링을 통과한 후의 텐서의 크기를 보겠습니다.
+
+```python
+out = pool(out)
+print(out.shape)
+```
+
+```python
+torch.Size([1, 64, 7, 7])
+```
+
+이제 이 텐서를 펼치는 작업을 할 겁니다. 
+
+그런데 펼치기에 앞서 텐서의 n번째 차원을 접근하게 해주는 .size(n)에 대해서 배워보겠습니다. 현재 out의 크기는 1 × 64 × 7 × 7입니다. out의 첫번째 차원이 몇인지 출력해보겠습니다.
+
+```python
+out.size(0)
+```
+
+```python
+1
+```
+
+out의 첫번째 차원은 1입니다. 두번째 차원이 몇인지 출력해보겠습니다.
+
+```python
+out.size(1)
+```
+
+```python
+64
+```
+
+out의 두번째 차원은 64입니다. 세번째 차원이 몇인지 출력해보겠습니다.
+
+```python
+out.size(2)
+```
+
+```python
+7
+```
+
+마찬가지로 out의 네번째 차원을 출력해보겠습니다.
+
+```python
+out.size(3)
+```
+
+```python
+7
+```
+
+이제 이를 가지고 .view()를 사용하여 텐서를 펼치는 작업을 해보겠습니다.
+
+```python
+# 첫번째 차원인 배치 차원은 그대로 두고 나머지는 펼쳐라
+out = out.view(out.size(0), -1) 
+print(out.shape)
+```
+
+```css
+torch.Size([1, 3136])
+```
+
+<< 배치 차원을 제외하고 모두 하나의 차원으로 통합 >> 된 것을 볼 수 있습니다. 이제 이에 대해서 << 전결합층(Fully-Connteced layer)를 통과시켜보겠습니다. 출력층으로 10개의 뉴런을 배치하여 10개 차원의 텐서로 변환합니다. >> 
+
+```python
+fc = nn.Linear(3136, 10) 
+	 # input_dim = 3,136, output_dim = 10
+out = fc(out)
+print(out.shape)
+```
+
+```css
+torch.Size([1, 10])
+```
+
+
+
+## 3. CNN으로 MNIST 분류하기
+
+우선 필요한 도구들을 임포트합니다.
+
+```python
+import torch
+import torchvision.datasets as dsets
+import torchvision.transforms as transforms
+import torch.nn.init
+```
+
+만약 GPU를 사용 가능하다면 device 값이 cuda가 되고, 
+아니라면 cpu가 됩니다.
+
+```python
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# 랜덤 시드 고정
+torch.manual_seed(777)
+
+# GPU 사용 가능일 경우 랜덤 시드 고정
+if device == 'cuda':
+    torch.cuda.manual_seed_all(777)
+```
+
+학습에 사용할 파라미터를 설정합니다.
+
+```python
+learning_rate = 0.001
+training_epochs = 15
+batch_size = 100
+```
+
+데이터로더를 사용하여 데이터를 다루기 위해서 데이터셋을 정의해줍니다.
+
+```python
+mnist_train = dsets.MNIST(root='MNIST_data/', 
+
+			    # 다운로드 경로 지정
+                          train=True, 
+                # True를 지정하면 훈련 데이터로 다운로드
+                          transform=transforms.ToTensor(), 
+                # 텐서로 변환
+                          download=True)
+
+mnist_test = dsets.MNIST(root='MNIST_data/', 
+			    # 다운로드 경로 지정
+                         train=False, 
+		        # False를 지정하면 테스트 데이터로 다운로드
+                         transform=transforms.ToTensor(), 
+                # 텐서로 변환
+                         download=True)
+```
+
+데이터로더를 사용하여 배치 크기를 지정해줍니다. 
+만약 데이터셋과 데이터로더가 기억이 안 난다면 '미니 배치와 데이터 로드' 챕터를 꼭 복습하세요. [[03 Machine Learning Basics#^c5d014]]
+
+```python
+data_loader = torch.utils.data.DataLoader(dataset=mnist_train,
+                            batch_size=batch_size,
+                            shuffle=True,
+                            drop_last=True)
+```
+
+이제 클래스로 모델을 설계합니다.
+
+```python
+class CNN(torch.nn.Module):
+
+    def __init__(self):
+        super(CNN, self).__init__()
+        # 첫번째층
+        # ImgIn shape  = (?, 28, 28, 1)
+        #    Conv     -> (?, 28, 28, 32)
+        #    Pool     -> (?, 14, 14, 32)
+        self.layer1 = torch.nn.Sequential(
+            torch.nn.Conv2d(1, 32, kernel_size=3, 
+				            stride=1, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2, stride=2))
+
+        # 두번째층
+        # ImgIn shape   = (?, 14, 14, 32)
+        #    Conv      -> (?, 14, 14, 64)
+        #    Pool      -> (?, 7, 7, 64)
+        self.layer2 = torch.nn.Sequential(
+            torch.nn.Conv2d(32, 64, kernel_size=3, 
+				            stride=1, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2, stride=2))
+
+        # 전결합층 << 7x7x64 inputs -> 10 outputs >>
+        self.fc = torch.nn.Linear(7 * 7 * 64, 
+							      10, bias=True)
+
+        # 전결합층 한정으로 가중치 초기화 (세어비어)
+        torch.nn.init.xavier_uniform_(self.fc.weight)
+
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = out.view(out.size(0), -1)   
+            # 전결합층을 위해서 Flatten
+        out = self.fc(out)
+        return out
+```
+
+모델을 정의합니다.
+
+```python
+# CNN 모델 정의
+model = CNN().to(device)
+```
+
+비용 함수와 옵티마이저를 정의합니다.
+(학습 데이터 평탄화 하면 CNN이든 MLP든 본질은 동일하고,
+결정적으로 다부류 분류이기 떄문에 당연히 교차 엔트로피 사용!)
+
+```python
+criterion = torch.nn.CrossEntropyLoss().to(device)    
+		    # 비용 함수에 소프트맥스 함수 포함되어져 있음.
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+```
+
+총 배치의 수를 출력해보겠습니다.
+
+```python
+total_batch = len(data_loader)
+print('총 배치의 수 : {}'.format(total_batch))
+```
+
+```python
+총 배치의 수 : 600
+```
+
+총 배치의 수는 600입니다. 
+그런데 배치 크기를 100으로 했으므로 결국 훈련 데이터는 총 60,000개란 의미입니다. 
+이제 모델을 훈련시켜보겠습니다. (시간이 꽤 오래 걸립니다.)
+
+```python
+for epoch in range(training_epochs):
+    avg_cost = 0  
+    # 에포크당 평균 비용을 저장하기 위한 변수 초기화
+
+    for X, Y in data_loader: 
+     # 미니 배치 단위로 데이터 꺼내옴. X는 입력 데이터, Y는 레이블
+     # 이미지 데이터는 이미 (28x28) 크기를 가지므로,
+     # 별도의 reshape 필요 없음
+     # 레이블 Y는 원-핫 인코딩이 아닌 정수형 클래스 레이블임
+        X = X.to(device)  
+           # 입력 데이터를 연산이 수행될 장치로 이동 (예: GPU)
+        Y = Y.to(device)  
+           # 레이블을 연산이 수행될 장치로 이동 (예: GPU)
+
+        optimizer.zero_grad()  # 옵티마이저의 기울기 초기화
+        hypothesis = model(X)  
+           # 모델을 통해 예측값(hypothesis)을 계산 (순전파 연산)
+        cost = criterion(hypothesis, Y)  
+           # 예측값과 실제값 Y 간의 손실(cost) 계산
+        cost.backward()  # 역전파 연산을 통해 기울기 계산
+        optimizer.step()  # 옵티마이저를 통해 파라미터 업데이트
+
+        avg_cost += cost / total_batch 
+          # 현재 배치의 비용을 전체 배치 수로 나누어 누적
+
+    # 에포크가 끝날 때마다 평균 비용 출력
+    print('[Epoch: {:>4}] cost = {:>.9}'.format(epoch + 1, avg_cost))
+```
+
+```python
+[Epoch:    1] cost = 0.224006683
+[Epoch:    2] cost = 0.062186949
+[Epoch:    3] cost = 0.0449030139
+[Epoch:    4] cost = 0.0355709828
+[Epoch:    5] cost = 0.0290450025
+[Epoch:    6] cost = 0.0248527844
+[Epoch:    7] cost = 0.0207189098
+[Epoch:    8] cost = 0.0181982815
+[Epoch:    9] cost = 0.0153046707
+[Epoch:   10] cost = 0.0124179339
+[Epoch:   11] cost = 0.0105423154
+[Epoch:   12] cost = 0.00991860125
+[Epoch:   13] cost = 0.00894770492
+[Epoch:   14] cost = 0.0071221008
+[Epoch:   15] cost = 0.00588585297
+```
+
+이제 테스트를 해보겠습니다.
+
+```python
+# 학습을 진행하지 않을 것이므로 torch.no_grad() 사용
+with torch.no_grad():
+    # 테스트 데이터를 모델에 입력하기 위한 준비
+    X_test = mnist_test.test_data.view(len(mnist_test), 1, 28, 28).float().to(device)  # 테스트 데이터셋의 크기를 맞추고, 연산을 위한 장치로 이동
+    Y_test = mnist_test.test_labels.to(device)  # 테스트 데이터셋의 레이블을 연산을 위한 장치로 이동
+
+    # 모델 예측 수행
+    prediction = model(X_test)  # 테스트 데이터에 대해 모델이 예측한 결과값
+
+    # 예측 결과와 실제 레이블 비교
+    correct_prediction = torch.argmax(prediction, 1) == Y_test  # 예측된 클래스와 실제 레이블이 일치하는지 확인
+
+    # 정확도 계산
+    accuracy = correct_prediction.float().mean()  # 정확도를 계산하기 위해 일치하는 예측의 평균을 구함
+    print('Accuracy:', accuracy.item())  # 정확도를 출력
+```
+
+```python
+Accuracy: 0.9883000254631042
+```
+
+98%의 정확도를 얻습니다. 
+
+with torch.no_grad(): 블록은 기울기 계산을 하지 않아 메모리 사용을 최적화합니다. 
+
+테스트 데이터는 view 메서드를 사용해 (배치 크기, 채널 수, 높이, 너비) 형태로 변환되며, to(device)를 통해 GPU나 CPU로 전송됩니다. 
+레이블도 동일하게 장치로 이동합니다. 
+
+모델에 테스트 데이터를 입력해 예측을 수행하고, torch.argmax를 사용해 예측된 클래스와 실제 레이블을 비교합니다. 
+
+정확도는 correct_prediction.float().mean()을 통해 계산되며, 최종적으로 print로 출력됩니다. 다음 챕터에서는 층을 더 쌓아보겠습니다.
+
+![[Pasted image 20260727211323.png|296]]
+
 # 08-03
+
+
+
+# 용어 정리
+## Conv2d가 있으면 Conv3d는 동영상 처리?
+
+`Conv2d`가 가로·세로(2D) 방향으로 필터를 쓸어내리며 특징을 찾는다면, `Conv3d`는 거기에 **"시간(Time)"** 또는 "깊이(Depth)"라는 3번째 축을 추가해서 계산합니다.
+
+### 1. Conv2d vs Conv3d 차이점
+
+|**구분**|**nn.Conv2d**|**nn.Conv3d**|
+|---|---|---|
+|**주요 대상**|**단일 이미지** (2D)|**동영상, 3D 의료 영상** (3D)|
+|**입력 데이터 모양**|`(Batch, Channel, H, W)`|`(Batch, Channel, D, H, W)`|
+|**필터 이동 방향**|가로, 세로 (2방향)|**가로, 세로, 깊이/시간 (3방향)**|
+|**핵심 역할**|공간적 특징 (선, 모양) 추출|**공간적 특징 + 시간적 변화**를 동시에 추출|
+
+- 여기서 `D(Depth)`는 동영상에서는 프레임 수(시간)가 되고, MRI 같은 3D 데이터에서는 **입체 단면의 깊이**가 됩니다.
+    
+
+### 2. 동영상에서 Conv3d가 동작하는 방식
+
+동영상은 결국 "시간 순서대로 나열된 연속된 이미지(프레임)들의 모음"입니다.
+
+- **Conv2d로 동영상을 본다면:** 각 프레임을 따로따로 보기 때문에, 1번 프레임의 손 모양과 2번 프레임의 손 모양은 알 수 있지만 "손이 오른쪽으로 움직이고 있다"는 시간적 흐름(움직임)은 알아채기 어렵습니다.
+
+- **Conv3d로 동영상을 본다면:** 3D 입체 커널이 **여러 프레임(예: 5개 프레임)을 한꺼번에 묶어서 훑고 지나갑니다.** 덕분에 공간적 모양뿐만 아니라 "시간에 따른 움직임 변화(모션)"까지 한 번에 특징으로 뽑아냅니다.
+
+
+```Python
+import torch
+import torch.nn as nn
+
+# 입력: [배치 크기 1, RGB 3채널, 16 프레임, 가로 112, 세로 112]
+video_input = torch.randn(1, 3, 16, 112, 112)
+
+# Conv3d(입력채널, 출력채널, 커널크기)
+# 커널 크기 (3, 3, 3) 
+# -> 시간(3프레임) x 가로(3px) x 세로(3px) 범위의 특징을 탐색
+conv3d = nn.Conv3d(in_channels=3, out_channels=64, 
+				   kernel_size=3, padding=1)
+
+output = conv3d(video_input)
+print(output.shape)  # torch.Size([1, 64, 16, 112, 112])
+```
+
+### 3. Conv3d는 언제 주로 쓰일까요?
+
+1. **비디오 행동 인식 (Action Recognition):** 사람 영상에서 "걷고 있는지", "뛰고 있는지", "춤추고 있는지" 구분할 때
+    
+2. **3D 의료 영상 분석 (Medical Imaging):** CT나 MRI처럼 사람 장기를 여러 장의 입체 단면으로 찍은 3D 뇌/장기 데이터 분석
+    
+3. **자율주행 3D LiDAR 데이터:** 3D 공간 정보를 담은 점군(Point Cloud)이나 연속 센서 데이터 처리
+    
+
+> **한 줄 요약:**
+> 
+> `Conv2d`가 **"스틸 컷 사진"**에서 모양을 찾는다면, `Conv3d`는 **"움직이는 영상"**이나 **"입체 물체"**에서 시간과 공간의 변화를 한 번에 읽어냅니다!
+
+
+===
+### Conv2,3d vs. transformer 동영상/이미지 처리 성능
+
+### 1. 2D 이미지: CNN의 "귀납적 편향(Inductive Bias)"이 미친 존재감
+
+2D 이미지 한 장을 볼 때는 CNN이 가진 엄청난 무기가 있습니다. << 바로 "가까이 있는 피셀끼리 서로 연관이 깊다(지연성/Locality)"는 성질 >> 입니다.
+
+- **CNN:** "이미지는 무조건 << 인접한 피셀끼리 묶어서 >> 봐야 해!"라는 강한 전제(귀납적 편향)를 깔고 시작합니다. 덕분에 **적은 데이터로도 학습이 굉장히 빠르고 안정적**입니다.
+    
+- **ViT(트랜스포머):** "모든 패치 간의 관계를 다 계산해볼게."라며 이미지 전체를 펼쳐서 봅니다. 데이터가 엄청나게 많으면(몇억 장 단위) CNN을 압도하지만, 데이터가 적으면 자꾸 << 이상한 곳에 집중하느라 성능이 떨어집니다. >> 
+
+
+그래서 실무나 일반적인 규모의 데이터셋에서는 "2D 이미지는 여전히 CNN(ResNet, ConvNeXt 등)이 가성비와 성능 모두 훌륭하다"는 말이 나오는 것입니다.
+
+### 2. 동영상: "시간 축"이 들어가면서 판도가 바뀐 이유
+
+하지만 3D(가로 $\times$ 세로 $\times$ 시간) 영역으로 넘어가면 **CNN의 저 장점이 오히려 발목을 잡습니다.**
+
+#### ① "바로 옆 프레임"만 보는 Conv3d의 답답함
+
+`Conv3d`는 3x3x3 작은 돋보기로 영상을 훑습니다. 즉, **바로 직전/직후 몇 프레임(1~2초 내)의 짧은 움직임**만 볼 수 있습니다.
+
+- 영상에서 진짜 중요한 건 **"10초 전에 칼을 꺼낸 사람이 지금 무엇을 하는가?"** 같은 장기적 맥락(Long-range dependency)입니다.
+    
+- Conv3d로 10초 전과 지금의 관계를 읽으려면 층을 엄청나게 깊게 쌓아야 하는데, 그러면 모델이 터져버립니다.
+    
+
+#### ② 계산량 폭발 (Conv3d의 멸망)
+
+Conv3d는 커널이 3차원 공간 전체를 밀도 높게(dense) 계산하며 훑고 지나갑니다. 가로/세로/시간이 조금만 늘어나도 연산량이 지수함수적으로 증가해 GPU가 비명을 지릅니다.
+
+#### ③ 트랜스포머의 어텐션(Attention)이 빛을 발하는 순간
+
+트랜스포머는 굳이 연속된 모든 프레임을 다 훑지 않습니다.
+
+- **시간적 징검다리 짚기:** 1초 전 프레임과 10초 후 프레임을 **직접 연결해서(Attention)** "아, 저 사람이 10초 전에 집어든 물건을 지금 던졌구나!"를 단번에 파악합니다.
+    
+- **효율적인 패치 추출:** 영상 전체를 다 밀도 있게 계산하는 대신, 주요 프레임의 주요 구역(Patch)만 듬성듬성 뽑아서 어텐션을 돌리면 Conv3d보다 **연산량 대비 훨씬 길고 복잡한 맥락**을 이해할 수 있습니다.
+    
+
+### 3. 한 줄로 요약하자면?
+
+| **구분**          | **2D 이미지**                         | **3D 동영상**                   |
+| --------------- | ---------------------------------- | ---------------------------- |
+| **핵심 과제**       | 한 장 안에서 **공간적 패턴** 찾기              | 여러 프레임에 걸친 **장기적 흐름/맥락** 보기  |
+| **CNN**         | 좁은 범위 집중 $\rightarrow$ **매우 효율적!** | 3D로 넓히면 **연산 폭발 & 먼 시간 못 봄** |
+| **Transformer** | 데이터 적으면 오버피팅 위험                    | 먼 프레임 간의 **맥락 연결 능력이 압도적**   |
+
+> **결론:**
+> 
+> 2D 이미지는 CNN 특유의 "좁고 깊게 보는 성질"로 충분히 커버가 되지만, **동영상은 시간의 흐름(멀리 떨어진 프레임 간의 관계)을 읽어내는 트랜스포머의 'Self-Attention'이 필수적**이기 때문에 판도가 달라진 것입니다!
+
+
+
+# 
