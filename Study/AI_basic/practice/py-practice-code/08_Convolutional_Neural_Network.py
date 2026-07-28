@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 import torch.nn.init
 
 
-def _01_CNN_Basic():
+def CNN_Basic():
 
     def CNN_model():
         # 배치 크기 × 채널 × 높이(height) × 너비(widht) 크기 텐서 선언
@@ -68,7 +68,7 @@ def _01_CNN_Basic():
                                         batch_size=batch_size,
                                         shuffle=True, drop_last=True)
 
-        # 모델 설계
+        # 모델 설계 (2 Conv, 1 FC)
         class CNN(torch.nn.Module):
 
             def __init__(self):
@@ -77,13 +77,15 @@ def _01_CNN_Basic():
                     torch.nn.Conv2d(1, 32, 
                                     kernel_size=3, stride=1, padding=1),
                     torch.nn.ReLU(),
-                    torch.nn.MaxPool2d(kernel_size=2, stride=2))
+                    torch.nn.MaxPool2d(kernel_size=2, stride=2)
+                    )
 
                 self.layer2 = torch.nn.Sequential(
                     torch.nn.Conv2d(32, 64, 
                                     kernel_size=3, stride=1, padding=1),
                     torch.nn.ReLU(),
-                    torch.nn.MaxPool2d(kernel_size=2, stride=2))
+                    torch.nn.MaxPool2d(kernel_size=2, stride=2)
+                    )
 
                 self.fc = torch.nn.Linear(7 * 7 * 64, 10, bias=True)
                 torch.nn.init.xavier_uniform_(self.fc.weight) 
@@ -94,8 +96,59 @@ def _01_CNN_Basic():
                 out = out.view(out.size(0), -1) 
                 out = self.fc(out)
                 return out
+
+        # 모델 설계 (3 Conv, 2 FC)
+        class Deep_CNN(torch.nn.Module):
+
+            def __init__(self):
+                super(Deep_CNN, self).__init__()
+                self.keep_prob = 0.5
+
+                self.layer1 = torch.nn.Sequential(
+                    torch.nn.Conv2d(1, 32, 
+                                    kernel_size=3, stride=1, padding=1),
+                    torch.nn.ReLU(),
+                    torch.nn.MaxPool2d(kernel_size=2, stride=2)
+                    )
+
+                self.layer2 = torch.nn.Sequential(
+                    torch.nn.Conv2d(32, 64, 
+                                    kernel_size=3, stride=1, padding=1),
+                    torch.nn.ReLU(),
+                    torch.nn.MaxPool2d(kernel_size=2, stride=2)
+                    )
+
+                self.layer3 = torch.nn.Sequential(
+                    torch.nn.Conv2d(64, 128, 
+                                    kernel_size=3, stride=1, padding=1),
+                    torch.nn.ReLU(),
+                    torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
+                    )
+
+                self.fc1 = torch.nn.Linear(4 * 4 * 128, 625, bias=True)
+                torch.nn.init.xavier_uniform_(self.fc1.weight) 
+
+                self.layer4 = torch.nn.Sequential(
+                    self.fc1,
+                    torch.nn.ReLU(),
+                    torch.nn.Dropout(p=1 - self.keep_prob)
+                )
+
+                self.fc2 = torch.nn.Linear(625, 10, bias=True)
+                torch.nn.init.xavier_uniform_(self.fc2.weight) 
+
+            def forward(self, x):
+                out = self.layer1(x)
+                out = self.layer2(out)
+                out = self.layer3(out)
+                out = out.view(out.size(0), -1) 
+                out = self.layer4(out)
+                out = self.fc2(out)
+                return out
+
         
-        model = CNN().to(device)
+        # model = CNN().to(device)
+        model = Deep_CNN().to(device)
 
         criterion = torch.nn.CrossEntropyLoss().to(device)   
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -132,19 +185,7 @@ def _01_CNN_Basic():
 
             accuracy = correct_prediction.float().mean()  
             print('Accuracy:', accuracy.item())
-
     CNN_Basic_MNIST()
 
 
-
-
-
-
-def _02_Deep_CNN():
-    print("\n")
-
-
-
-
-_01_CNN_Basic()
-# _02_Deep_CNN()
+CNN_Basic()

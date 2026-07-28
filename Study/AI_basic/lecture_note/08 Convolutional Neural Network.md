@@ -838,8 +838,289 @@ with torch.no_grad(): 블록은 기울기 계산을 하지 않아 메모리 사�
 
 ![[Pasted image 20260727211323.png|296]]
 
-# 08-03
 
+
+
+# 08-03 깊은 CNN으로 MNIST 분류하기
+
+이번 챕터에서는 
+앞서 배운 CNN에 층을 더 추가하여 MNIST를 분류해보겠습니다.
+
+## 1. 모델 이해하기
+
+우리가 만들 모델의 아키텍처를 이해해봅시다. 
+모델의 아키텍처는 총 5개의 층으로 구성됩니다. 
+앞서 배운 챕터에서 1번 레이어와 2번 레이어는 동일하되, 
+새로운 합성곱층과 전결합층을 추가했습니다.
+
+```python
+# 1번 레이어 : 합성곱층(Convolutional layer)
+합성곱(in_channel = 1, out_channel = 32, kernel_size=3, stride=1, padding=1) + 활성화 함수 ReLU
+맥스풀링(kernel_size=2, stride=2))
+
+# 2번 레이어 : 합성곱층(Convolutional layer)
+합성곱(in_channel = 32, out_channel = 64, kernel_size=3, stride=1, padding=1) + 활성화 함수 ReLU
+맥스풀링(kernel_size=2, stride=2))
+
+# 3번 레이어 : 합성곱층(Convolutional layer) : 추가
+합성곱(in_channel = 64, out_channel = 128, kernel_size=3, stride=1, padding=1) + 활성화 함수 ReLU
+맥스풀링(kernel_size=2, stride=2, padding=1))
+
+# 4번 레이어 : 전결합층(Fully-Connected layer)
+특성맵을 펼친다. 
+  # batch_size × 4 × 4 × 128 → batch_size × 2048
+전결합층(뉴런 625개) + 활성화 함수 ReLU  
+
+# 5번 레이어 : 전결합층(Fully-Connected layer)
+전결합층(뉴런 10개) + 활성화 함수 Softmax  # 추가!
+```
+
+## 2. 깊은 CNN으로 MNIST 분류하기
+
+사실 이번 챕터의 코드는 이전 챕터에서 층이 조금 더 추가되는 것 말고는 동일합니다.
+
+```python
+import torch
+import torchvision.datasets as dsets
+import torchvision.transforms as transforms
+import torch.nn.init
+```
+
+만약 GPU를 사용 가능하다면 device 값이 cuda가 되고, 아니라면 cpu가 됩니다.
+
+```python
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# 랜덤 시드 고정
+torch.manual_seed(777)
+
+# GPU 사용 가능일 경우 랜덤 시드 고정
+if device == 'cuda':
+    torch.cuda.manual_seed_all(777)
+```
+
+학습에 사용할 파라미터를 설정합니다.
+
+```python
+learning_rate = 0.001
+training_epochs = 15
+batch_size = 100
+```
+
+데이터로더를 사용하여 데이터를 다루기 위해서 데이터셋을 정의해줍니다.
+
+```python
+mnist_train = dsets.MNIST(root='MNIST_data/', # 다운로드 경로 지정
+                          train=True, # True를 지정하면 훈련 데이터로 다운로드
+                          transform=transforms.ToTensor(), # 텐서로 변환
+                          download=True)
+
+mnist_test = dsets.MNIST(root='MNIST_data/', # 다운로드 경로 지정
+                         train=False, # False를 지정하면 테스트 데이터로 다운로드
+                         transform=transforms.ToTensor(), # 텐서로 변환
+                         download=True)
+```
+
+데이터로더를 사용하여 배치 크기를 지정해줍니다. 
+만약 데이터셋과 데이터로더가 기억이 안 난다면 '미니 배치와 데이터 로드' 챕터를 꼭 복습하세요.
+
+```python
+data_loader = torch.utils.data.DataLoader(dataset=mnist_train,
+                                          batch_size=batch_size,
+                                          shuffle=True,
+                                          drop_last=True)
+```
+
+이제 클래스로 모델을 설계합니다.
+
+```python
+class CNN(torch.nn.Module):
+
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.keep_prob = 0.5  # 드롭아웃 확률
+
+# L1: 첫 번째 합성곱층 (Conv Layer)
+# 입력 이미지 형태: (?, 28, 28, 1)
+# Conv: 출력 채널 32, 커널 3x3, 스트라이드 1, 패딩 1
+# ReLU: 활성화 함수
+# MaxPool2d: 커널 크기 2x2, 스트라이드 2로 다운샘플링 
+# -> 출력 형태: (?, 14, 14, 32)
+
+        self.layer1 = torch.nn.Sequential(
+            torch.nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2, stride=2))
+
+        # L2: 두 번째 합성곱층 (Conv Layer)
+        # 입력 이미지 형태: (?, 14, 14, 32)
+# Conv: 출력 채널 64개, 커널 3x3, 스트라이드 1, 패딩 1
+# ReLU: 활성화 함수
+# MaxPool2d: 커널 크기 2x2, 스트라이드 2로 다운샘플링 
+# -> 출력 형태: (?, 7, 7, 64)
+        self.layer2 = torch.nn.Sequential(
+            torch.nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2, stride=2))
+
+        # L3: 세 번째 합성곱층 (Conv Layer)
+        # 입력 이미지 형태: (?, 7, 7, 64)
+        # Conv2d: 출력 채널 128개, 커널 크기 3x3, 스트라이드 1, 패딩 1
+        # ReLU: 활성화 함수
+        # MaxPool2d: 커널 크기 2x2, 스트라이드 2, 패딩 1로 다운샘플링 -> 출력 형태: (?, 4, 4, 128)
+        self.layer3 = torch.nn.Sequential(
+            torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=1))
+
+        # L4: 첫 번째 선형층 (Fully Connected Layer)
+        # 입력 노드 수: 4x4x128, 출력 노드 수: 625
+        # ReLU: 활성화 함수
+        # Dropout: 드롭아웃으로 과적합 방지, p=0.5
+        self.fc1 = torch.nn.Linear(
+		           4 * 4 * 128, 625, bias=True)
+        torch.nn.init.xavier_uniform_(self.fc1.weight)  
+		        # 가중치 초기화 (셰어비어)
+        self.layer4 = torch.nn.Sequential(
+            self.fc1,
+            torch.nn.ReLU(),
+            torch.nn.Dropout(p=1 - self.keep_prob))
+
+        # L5: 최종 선형층 (Fully Connected Layer)
+        # 입력 노드 수: 625, 출력 노드 수: 10 (클래스 개수)
+        self.fc2 = torch.nn.Linear(625, 10, bias=True)
+        torch.nn.init.xavier_uniform_(self.fc2.weight)  
+		        # 가중치 초기화
+
+    def forward(self, x):
+        out = self.layer1(x)  # 첫 번째 합성곱층 통과
+        out = self.layer2(out)  # 두 번째 합성곱층 통과
+        out = self.layer3(out)  # 세 번째 합성곱층 통과
+        out = out.view(out.size(0), -1)  # 선형층에 입력하기 위해 텐서를 Flatten
+        out = self.layer4(out)  # 첫 번째 선형층 통과
+        out = self.fc2(out)  # 최종 선형층 통과
+        return out  # 최종 출력 반환
+```
+
+```
+입력 28×28
+layer1 → 14×14 × 32
+layer2 → 7×7   × 64
+layer3 → ?×?   × 128
+```
+
+layer3 MaxPool에 padding=1 넣으면:
+
+```
+7×7 → padding → 9×9 → MaxPool(2,2) → 4×4
+```
+
+```python
+self.fc1 = torch.nn.Linear(4 * 4 * 128, 625)  # 4×4×128 = 2048
+```
+
+layer3에서는 **4×4로 맞추려고** padding=1 넣은 것.
+
+
+
+모델을 정의합니다.
+
+```python
+# CNN 모델 정의
+model = CNN().to(device)
+```
+
+비용 함수와 옵티마이저를 정의합니다.
+
+```python
+criterion = torch.nn.CrossEntropyLoss().to(device)    # 비용 함수에 소프트맥스 함수 포함되어져 있음.
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+```
+
+총 배치의 수를 출력해보겠습니다.
+
+```python
+total_batch = len(data_loader)
+print('총 배치의 수 : {}'.format(total_batch))
+```
+
+```python
+총 배치의 수 : 600
+```
+
+총 배치의 수는 600입니다. 그런데 배치 크기를 100으로 했으므로 결국 훈련 데이터는 총 60,000개란 의미입니다. 이제 모델을 훈련시켜보겠습니다. (시간이 꽤 오래 걸립니다.)
+
+```python
+for epoch in range(training_epochs):
+    avg_cost = 0
+
+    for X, Y in data_loader: # 미니 배치 단위로 꺼내온다. X는 미니 배치, Y느 ㄴ레이블.
+        # image is already size of (28x28), no reshape
+        # label is not one-hot encoded
+        X = X.to(device)
+        Y = Y.to(device)
+
+        optimizer.zero_grad()
+        hypothesis = model(X)
+        cost = criterion(hypothesis, Y)
+        cost.backward()
+        optimizer.step()
+
+        avg_cost += cost / total_batch
+
+    print('[Epoch: {:>4}] cost = {:>.9}'.format(epoch + 1, avg_cost))
+```
+
+```python
+[Epoch:    1] cost = 0.17012253403663635
+... 중략 ...
+[Epoch:   15] cost = 0.007885557599365711
+```
+
+이제 테스트를 해보겠습니다.
+
+```python
+# 학습을 진행하지 않을 것이므로 torch.no_grad()
+with torch.no_grad():
+    X_test = mnist_test.test_data.view(len(mnist_test), 1, 28, 28).float().to(device)
+    Y_test = mnist_test.test_labels.to(device)
+
+    prediction = model(X_test)
+    correct_prediction = torch.argmax(prediction, 1) == Y_test
+    accuracy = correct_prediction.float().mean()
+    print('Accuracy:', accuracy.item())
+```
+
+```python
+Accuracy: 0.9763999581336975
+```
+
+층을 더 깊게 쌓았는데 오히려 정확도가 줄어드는 것을 볼 수 있습니다. 결국 층을 깊게 쌓는 것도 중요하지만, 
+꼭 깊게 쌓는 것이 정확도를 올려주지는 않으며 << 효율적으로 쌓는 것도 중요하다는 의미입니다. >> 
+
+RV: ### Xavier 초기화 왜 하냐
+
+가중치 초기값이 너무 크거나 작으면:
+
+```
+너무 크면 → 그라디언트 폭발
+너무 작으면 → 그라디언트 소실
+```
+
+Xavier는 **입출력 노드 수에 맞게 가중치 범위를 자동으로 조정**해요.
+
+```
+분산 = 2 / (fan_in + fan_out)
+fan_in  = 입력 노드 수
+fan_out = 출력 노드 수
+```
+
+입출력이 클수록 가중치를 작게, 작을수록 크게 초기화해서 신호가 층을 통과해도 크기가 유지돼요. 
+Sigmoid, tanh 활성화 함수에 특히 적합해요.
+
+![[Pasted image 20260728184453.png|230]]  ![[Pasted image 20260728184435.png|210]]
+좌/우 비교해 봤을 때
+오른쪽이 0.01정도의 정확도 손실이 있는 것을 확인할 수 있었음!
 
 
 # 용어 정리
@@ -953,4 +1234,3 @@ Conv3d는 커널이 3차원 공간 전체를 밀도 높게(dense) 계산하며 �
 
 
 
-# 
