@@ -1,4 +1,7 @@
 
+https://wikidocs.net/book/11567
+
+
 - 부팅 시 뜨는 내용 이해해보기
 - CLI 웹서핑 : lynx, links, w3m,  체험해보기
 - 

@@ -1,11 +1,28 @@
 
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import WordPunctTokenizer
+from nltk.tokenize import TreebankWordTokenizer
+from nltk.tokenize import sent_tokenize
+from nltk.tokenize import word_tokenize
+
+from nltk.tag import pos_tag
+from nltk.corpus import stopwords
+
 from tensorflow.keras.preprocessing.text import text_to_word_sequence
+import kss
+import re
+
+from konlpy.tag import Okt
+from konlpy.tag import Kkma
+
+okt = Okt()
+kkma = Kkma()
+
+
 
 
 def _01_tokenization():
-    print('단어 토큰화1 :',
+    print('\n단어 토큰화1 :',
           word_tokenize("Don't be fooled by the dark sounding name, "\
                         "Mr. Jone's Orphanage is as cheery as " \
                         "cheery goes for a pastry shop."), "\n")
@@ -22,4 +39,85 @@ def _01_tokenization():
                         "cheery goes for a pastry shop."), "\n")
 
 
-_01_tokenization()
+    tokenizer = TreebankWordTokenizer()
+    text = "Starting a home_based restaurant may be an ideal. " \
+            "it doesn't have a food chain or restaurant of their own."
+    print('Treebank Word Tokenizer(PTB) : ',tokenizer.tokenize(text), '\n')
+
+    text = "His barber kept his word. " \
+           "But keeping such a huge secret to himself was driving him crazy. " \
+           "Finally, the barber went up a mountain and almost to the edge of a cliff. " \
+           "He dug a hole in the midst of some reeds. " \
+           "He looked about, to make sure no one was near."
+    print('문장 토큰화1 :',sent_tokenize(text), '\n')
+
+    text = "I am actively looking for Ph.D. students. and you are a Ph.D student."
+    print('문장 토큰화2 :',sent_tokenize(text), '\n')
+
+    text = '딥 러닝 자연어 처리가 재미있기는 합니다. ' \
+            '그런데 문제는 영어보다 한국어로 할 때 너무 어렵습니다. 이제 해보면 알걸요?'
+    print('한국어 문장 토큰화 :',kss.split_sentences(text), '\n')
+
+
+
+    # 품사 태깅 실습
+    text = "I am actively looking for Ph.D. students. and you are a Ph.D student."
+    tokenized_sentence = word_tokenize(text)
+
+    print('단어 토큰화 :',tokenized_sentence, '\n')
+    print('품사 태깅 :',pos_tag(tokenized_sentence), '\n')
+
+    print('OKT 형태소 분석 :',okt.morphs("열심히 코딩한 당신, 연휴에는 여행을 가봐요"), '\n')
+    print('OKT 품사 태깅 :',okt.pos("열심히 코딩한 당신, 연휴에는 여행을 가봐요"), '\n')
+    print('OKT 명사 추출 :',okt.nouns("열심히 코딩한 당신, 연휴에는 여행을 가봐요"), '\n') 
+
+    print('꼬꼬마 형태소 분석 :',kkma.morphs("열심히 코딩한 당신, 연휴에는 여행을 가봐요"))
+    print('꼬꼬마 품사 태깅 :',kkma.pos("열심히 코딩한 당신, 연휴에는 여행을 가봐요")) 
+    print('꼬꼬마 명사 추출 :',kkma.nouns("열심히 코딩한 당신, 연휴에는 여행을 가봐요"))  
+
+def _02_data_cleaning_and_normalization():
+      text = "I was wondering if anyone out there could enlighten me on this car."
+
+      shortword = re.compile(r'\W*\b\w{1,2}\b')
+      print('\n',shortword.sub('', text))
+
+def _03_Stopword():
+      stop_words_list = stopwords.words('english')
+      print('\n불용어 개수 :', len(stop_words_list))
+      print('불용어 10개 출력 :',stop_words_list[:10], '\n')
+
+
+      # NLTK를 통해 불용어 제거
+      example = "Family is not an important thing. It's everything."
+      stop_words = set(stopwords.words('english')) 
+
+      word_tokens = word_tokenize(example)
+
+      result = []
+      for word in word_tokens: 
+            if word not in stop_words: 
+                  result.append(word) 
+
+      print('\n불용어 제거 전 :',word_tokens) 
+      print('불용어 제거 후 :',result)
+
+
+      # 한국어 불용어 제거 (okt 사용)
+      okt = Okt()
+      example = "고기를 아무렇게나 구우려고 하면 안 돼. 고기라고 다 같은 게 아니거든. " \
+                "예컨대 삼겹살을 구울 때는 중요한 게 있지."
+      stop_words = "를 아무렇게나 구 우려 고 안 돼 같은 게 구울 때 는"
+
+      stop_words = set(stop_words.split(' '))
+      word_tokens = okt.morphs(example)
+
+      result = [word for word in word_tokens if not word in stop_words]
+
+      print('\n불용어 제거 전 :',word_tokens) 
+      print('불용어 제거 후 :',result)
+
+
+
+# _01_tokenization()
+# _02_data_cleaning_and_normalization()
+_03_Stopword()
