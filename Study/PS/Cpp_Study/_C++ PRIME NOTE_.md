@@ -1,5 +1,8 @@
 
-# 대소문자 변환
+> 기초 라이브러리 지식은 여기에, 
+> 본격적인 PS 기초는 [[PS BASIC]] 에 정리.
+
+# toupper, tolower
 ### 1. 개별 문자 변환 (`<cctype>`)
 
 단일 문자를 다룰 때는 `std::toupper()`와 `std::tolower()`를 사용합니다.
@@ -463,7 +466,7 @@ int main() {
 요약하자면, **`v.begin()`으로 시작해서 `!= v.end()` 일 때까지 `++it`로 전진하며, 값을 쓸 때는 `*it`를 사용한다!** 이것만 기억하시면 됩니다.
 
 
-# 형변환
+# to_string, stoi, etc.
 
 | 변환 방향                 | 사용하는 방법                 | 예시                           |
 | --------------------- | ----------------------- | ---------------------------- |
@@ -471,7 +474,8 @@ int main() {
 | **숫자 → 문자열**          | `std::to_string(숫자)`    | `to_string(10)` → `"10"`     |
 | **문자열 → 정수(`int`)**   | `std::stoi(문자열)`        | `stoi("5")` → `5`            |
 | **문자열 → 실수(`float`)** | `std::stof(문자열)`        | `stof("3.1")` → `3.1f`       |
-# 기초문법 RV
+
+# switch-case RV
 ## case문
 
 ```cpp
@@ -502,5 +506,150 @@ int main() {
     return 0;
 }
 ```
-# 
+# array
+
+```c++
+#include <iostream>
+#include <array> // <array> 헤더 필요
+
+using namespace std;
+
+int main() {
+    // 선언: std::array<타입, 크기> 이름;
+    array<int, 5> arr = {1, 2, 3, 4, 5};
+
+    // 주요 기능
+    cout << "크기: " << arr.size() << "\n";           // 1. 크기 구하기 (size())
+    cout << "첫 번째: " << arr.front() << "\n";        // 2. 맨 앞 원소
+    cout << "마지막: " << arr.back() << "\n";          // 3. 맨 뒤 원소
+
+    // 안전한 접근 (.at())
+    // arr.at(10); // 범위를 벗어나면 out_of_range 예외를 던져 안전함!
+
+    // 전체 채우기
+    arr.fill(0); // 모든 원소를 0으로 변경
+
+    return 0;
+}
+```
+
+# max
+
+```c++
+#include <iostream>
+#include <algorithm> // std::max 헤더
+
+using namespace std;
+
+int main() {
+    int a = 10;
+    int b = 20;
+
+    int result = max(a, b); // 더 큰 값인 20 반환
+    cout << result << endl;
+
+    return 0;
+}
+```
+
+# sort
+
+C++에서 `std::sort`는 `<algorithm>` 헤더에 있으며, **평균 $O(N \log N)$** 속도를 보장하는 가장 강력한 정렬 함수입니다.
+
+기본 사용법부터 커스텀 정렬까지 패턴별로 정리해 드릴게요.
+
+### 1. 기본 정렬 (오름차순 / 내림차순)
+
+`sort(시작위치, 끝위치)` 형태로 사용하며, 기본값은 **오름차순**입니다.
+
+```C++
+#include <iostream>
+#include <vector>
+#include <algorithm> // sort 사용을 위해 필수!
+
+using namespace std;
+
+int main() {
+    // 1. vector 오름차순 (작은 수 -> 큰 수)
+    vector<int> v = {5, 2, 8, 1, 4};
+    sort(v.begin(), v.end()); // {1, 2, 4, 5, 8}
+
+    // 2. vector 내림차순 (큰 수 -> 작은 수)
+    sort(v.begin(), v.end(), greater<int>()); // {8, 5, 4, 2, 1}
+
+    // 3. C 스타일 기본 배열 정렬
+    int arr[5] = {5, 2, 8, 1, 4};
+    sort(arr, arr + 5); // 시작 주소, 끝 주소(포인터)
+
+    return 0;
+}
+```
+
+### 2. 커스텀 정렬 (조건이 복잡할 때)
+
+비교 함수(Comparator)나 **람다(Lambda) 함수**를 세 번째 인자로 넘겨주면 원하는대로 정렬할 수 있습니다.
+
+#### ① 좌표(`pair<int, int>`) 정렬
+
+기본적으로 `pair`를 `sort` 돌리면 **first 기준 오름차순 ➡️ 같다면 second 기준 오름차순**으로 정렬됩니다. 만약 이 순서를 바꾸고 싶다면 람다 함수를 쓰면 됩니다.
+
+
+```C++
+vector<pair<int, int>> v = {{1, 4}, {3, 2}, {1, 2}};
+
+// y좌표(second) 기준 오름차순, y가 같으면 x좌표(first) 기준 오름차순
+sort(v.begin(), v.end(), [](const pair<int,int>& a, const pair<int,int>& b) {
+    if (a.second == b.second) return a.first < b.first;
+    return a.second < b.second;
+});
+// 결과: {1, 2} -> {3, 2} -> {1, 4}
+```
+
+#### ② 문자열 길이순 정렬 (길이가 같으면 사전순)
+
+
+```C++
+vector<string> words = {"apple", "cat", "banana", "dog"};
+
+sort(words.begin(), words.end(), [](const string& a, const string& b) {
+    if (a.length() != b.length()) {
+        return a.length() < b.length(); // 1. 길이 짧은 순
+    }
+    return a < b; // 2. 길이가 같으면 사전순
+});
+// 결과: "cat" -> "dog" -> "apple" -> "banana"
+```
+
+### 3. 구조체(struct) 정렬
+
+구조체 멤버 변수가 여러 개일 때도 비교 함수만 깔끔하게 작성해 주면 됩니다.
+
+```C++
+struct Student {
+    string name;
+    int score;
+    int age;
+};
+
+vector<Student> students = {{"Kim", 90, 20}, {"Lee", 90, 18}, {"Park", 100, 19}};
+
+// 점수 높은 순(내림차순) ➡️ 점수 같으면 나이 어린 순(오름차순)
+sort(students.begin(), students.end(), [](const Student& a, const Student& b) {
+    if (a.score != b.score) return a.score > b.score;
+    return a.age < b.age;
+});
+```
+
+### 🚨 커스텀 정렬 작성 시 주의사항 (`Strict Weak Ordering`)
+
+비교 연산 조건을 만들 때 **두 값이 같으면 무조건 `false`를 반환**해야 합니다. (등호 `=` 절대 금지!)
+
+- ⭕ `return a.score < b.score;`
+    
+- ❌ `return a.score <= b.score;` ➡️ **런타임 에러(Segmentation fault) 발생 원인!**
+
+
+
+
+
 # 

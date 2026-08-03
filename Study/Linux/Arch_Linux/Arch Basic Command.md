@@ -1,13 +1,16 @@
-> 
+
+
 > https://wikidocs.net/book/11567
-> 
+
+   tistory login 후 아래 자료 참조
+> https://ppsicd.tistory.com/45
 > https://ppsicd.tistory.com/43
 > https://ppsicd.tistory.com/33
 > https://ppsicd.tistory.com/29
-> 
 
 
-#### 듀얼부팅 : window 대신 arch 선택 방법
+
+#### archiso 진입
 
 f12 => Arch Linux install medium... 에서 tab 키 누르고 명령어 맨 끝에 nomodeset 붙여주기
 
@@ -27,7 +30,7 @@ nomodeset 을 사용하면 리눅스가 그래픽드라이버 제어 못하게 �
 
 
 
-#### 인터넷 연결 확인하기
+#### ping : 인터넷 연결 확인
 
 ```bash
 ping -c 3 google.com
@@ -38,7 +41,7 @@ https://wikidocs.net/224858#ping
 유선랜(이더넷)이 꽃혀있으면 자동으로 잡힐 가능성 높음.
 (와이파이인 경우 iwctl 도구 사용해야 함. 노트북 듀얼부팅 할 때 실습해볼 것)
 
-#### lsblk : 디스크 확인, 이해
+#### lsblk 
 
 list block devices. (IO - block device 맞음)
 
@@ -78,7 +81,7 @@ lsblk 컬럼 설명
 
 
 
-#### fdisk
+#### fdisk -l
 
 ```bash
 fdisk -l /dev/sdb
@@ -87,11 +90,186 @@ fdisk -l /dev/sdb
 - **fdisk**: **f**ixed **disk**의 약자. 디스크의 파티션 테이블을 보거나 편집하는 도구
 - **-l**: **l**ist. "파티션 목록을 보여줘" (읽기만 하고 수정은 안 함)
 - **/dev/sdb**: 어떤 디스크를 볼지 지정. `/dev/`는 리눅스에서 모든 장치 파일이 들어있는 디렉토리이고, `sdb`는 아까 확인한 두 번째 SATA 디스크
+https://ppsicd.tistory.com/43 보면 이미 배운 내용임
+
+정보 해석
+
+| 출력                                   | 뜻                                                                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| **Disk /dev/sdb: 931 GiB**           | 이 디스크 전체 크기                                                                                                    |
+| **1002...bytes, 1953525168 sectors** | 같은 용량을 바이트와 섹터 수로 표현한 것                                                                                        |
+| **Units: sectors of 1 * 512**        | "섹터 1개 = 512바이트" 단위로 표시하겠다는 뜻                                                                                  |
+| **Sector size: 512 / 4096**          | **논리 섹터 512B / 물리 섹터 4096B**. 실제 HDD 내부는 4KB 단위로 읽고 쓰지만, OS한테는 호환성을 위해 512B 단위로 보이게 해주는 거예요 (==512e 방식==이라고 함) |
+| **I/O size: 4096 / 4096**            | 최적 I/O 크기. 4KB 정렬해서 읽고 쓰는 게 성능이 좋다는 의미                                                                         |
+| **Disklabel type: dos**              | **dos = MBR 파티션 방식**이라는 뜻. 윈도우 디스크 관리에서 확인한 것과 일치                                                              |
+
+이 아래에 보면 
+Device     Boot  Start       End    Sectors   Size  Id  Type
+/dev/sdb1         2048  xxxxxxx  xxxxxxx   xxxG   7  HPFS/NTFS/exFAT
+
+이렇게 파티션 목록도 함께 나오는데
+여기서 **sdb1(축소된 F: 파티션)이 어디서 끝나는지** 확인해야 그 뒤의 미할당 공간에 Arch 파티션을 만들 수 있음.
+
+- **sdb1**: 섹터 2048부터 시작, 약 785GB, NTFS = 윈도우에서 축소한 F: 드라이브
+- **sdb1 뒤의 빈 공간**: 931GB - 785GB = **약 146GB 미할당** = 여기에 Arch 설치
+
+
+#### fdisk
+
+ `-l` 없이 실행하면  파티션을 직접 만들 수 있는 인터랙티브 모드로 들어감.
+
+```bash
+fdisk /dev/sdb
+```
+
+프롬프트가 `Command (m for help):` 로 바뀔 거예요. 여기서 **한 글자씩 입력**하면서 진행합니다:
+
+**1) 새 파티션 만들기:**
+
+```
+n
+```
+
+→ **n**ew partition
+
+**2) 파티션 타입 선택:**
+
+```
+p
+```
+
+→ **p**rimary (주 파티션)
+
+**3) 파티션 번호:**  
+그냥 **Enter** (기본값 2가 뜰 거예요 — sdb2가 됨)
+
+**4) 시작 섹터:**  
+그냥 **Enter** (자동으로 sdb1 끝 바로 다음부터 시작)
+
+**5) 끝 섹터:**  
+그냥 **Enter** (남은 공간 전부 사용)
+
+**6) 파티션 타입을 Linux로 변경:**
+
+```
+t
+```
+
+→ **t**ype 변경
+
+파티션 번호 물으면:
+
+```
+2
+```
+
+Hex code 물으면:
+
+```
+83
+```
+
+→ 83 = Linux 파일시스템 타입
+
+**7) 저장하고 나가기:**
+
+```
+w
+```
+
+→ **w**rite. 여기서 Enter 치는 순간 **실제로 파티션 테이블이 디스크에 써져요**
+
+=> 오소이 RV (+tistory)
+
+
+
+#### mkfs.ext4 
+
+파일시스템 포맷.
+
+fdisk에서 `w`로 저장하고 나왔으면, 
+이제 새로 만든 sdb2 파티션에 **ext4 파일시스템** 만들어줌.
+
+```bash
+mkfs.ext4 /dev/sdb2
+```
+
+- **mkfs**: **m**a**k**e **f**ile**s**ystem
+- **ext4**: 리눅스에서 가장 널리 쓰이는 파일시스템 종류
+- **/dev/sdb2**: 방금 fdisk로 만든 새 파티션
+
+#### mount 
+
+포맷 완료됐으면, 이제 이 파티션을 **마운트**해야 해요:
+
+```bash
+mount /dev/sdb2 /mnt
+```
+
+- **mount**: 파티션을 디렉토리에 "연결"하는 명령. 이후 `/mnt` 경로로 접근하면 sdb2 파티션에 읽고 쓸 수 있게 됨
+- **/mnt**: Arch 설치 관례상 여기에 마운트해요. 나중에 이 `/mnt`가 설치된 Arch의 루트(`/`)가 됨!!
+
+
+#### pacstrap
+
+마운트한 다음, **Arch 베이스 시스템 설치**:
+
+```bash
+pacstrap -K /mnt base linux linux-firmware
+```
+
+- **pacstrap**: Arch 설치 전용 도구. 지정한 경로(`/mnt`)에 패키지를 다운로드해서 설치해줌
+- **-K**: 새 pacman 키링을 초기화 (패키지 서명 검증용)
+- **base**: 최소한의 시스템 패키지 묶음 (bash, coreutils, systemd 등)
+- **linux**: 커널
+- **linux-firmware**: 하드웨어 드라이버/펌웨어
+
+
+#### genfstab
+
+##### ① fstab 생성
+
+```bash
+genfstab -U /mnt >> /mnt/etc/fstab
+```
+
+- **genfstab**: **gen**erate **fstab**. 현재 마운트 상태를 기반으로 fstab 파일을 자동 생성
+- **-U**: UUID로 파티션을 식별 (디바이스 이름 `/dev/sdb2`는 부팅할 때마다 바뀔 수 있지만, UUID는 고유하니까 더 안전)
+- **>> /mnt/etc/fstab**: 결과를 fstab 파일에 추가(append)
+
+fstab은 **"부팅할 때 어떤 파티션을 어디에 마운트할지"를 적어둔 설정 파일**이에요. 이게 없으면 Arch가 부팅돼도 자기 루트 파티션을 어디서 찾아야 하는지 모르게 돼요.
+
+```bash
+cat /mnt/etc/fstab
+```
+
+UUID로 시작하는 줄이 하나 보이고, 마운트 포인트가 `/`로 되어있으면 정상.
+(rv : **cat**: 파일 내용을 화면에 출력하는 명령 (**c**onc**at**enate의 약자))
+
+
+#### chroot
+
+##### ② chroot — 설치된 시스템 안으로 진입
+
+```bash
+arch-chroot /mnt
+```
+
+- **chroot**: **ch**ange **root**. 루트 디렉토리(`/`)를 `/mnt`로 바꾸는 명령
+- 이걸 실행하면 **지금 방금 설치한 Arch 시스템 안으로 들어가는 거예요.** 프롬프트가 바뀔 거예요
+- 이 안에서 치는 모든 명령은 USB의 라이브 환경이 아니라 **디스크에 설치된 Arch에 적용**됨
+
+쉽게 말하면 "아직 건물(Arch)이 완공은 안 됐지만, 일단 건물 안으로 들어가서 내부 공사(설정)를 하는 것"이에요.
 
 
 
 
-### 
+
+#### 
+
+#### 
+
+
 #### system 종료 명령어 
 
 (예전에는 전자: 프로그램정리과정 좀 생략, 후자: 좀 더 안전하게 작업중데이터/프로그램 안전하게 커버해준다음 OS 종료 뒤 메인보드에 파워오프 명령내리는거 였는데  ,  현재 시점에서는 둘이 별 차이 없음. : sys관리도구방식인 systemd 환경에서 내부적으로 심볼릭 링크를 걸어 systemctl poweroff라는 동일한 sys 종료 명령어로 연결해뒀기 때문임. : 안전종료로 끝냄)

@@ -251,21 +251,61 @@ USB 만들기가 끝나면 탐색기에서 USB 안에 `arch` 폴더나 `EFI` 폴
 
 
 
+
+
+
 # 부팅 이후 상세 설정
 
-arch basic command, \_command list 
-두 파일 보면서 이어가기.
-fdisk 결과는 
+## 디스크 파티션 만들기
 
-dist /dev/sdb : 931 GiB, 1002....butes, 195325168 sectors
+fdisk 후 :
+### 그 아래에 파티션 목록이 있을 거예요
 
-units : sectors of 1*512
+아마 이런 식으로:
 
-섹터 사이즈 : 512/4096B
+```
+Device     Boot  Start       End    Sectors   Size  Id  Type
+/dev/sdb1         2048  xxxxxxx  xxxxxxx   xxxG   7  HPFS/NTFS/exFAT
+```
 
-IO사이즈: 4096 4096
+이 부분(Device, Start, End, Size, Type 등)도 같이 알려주세요. 여기서 **sdb1(축소된 F: 파티션)이 어디서 끝나는지** 확인해야 그 뒤의 미할당 공간에 Arch 파티션을 만들 수 있어요.
 
-disklabel 타입 : dos
+
+
+
+/dev/sdb1 2048 1646..... 1646 .... 785G 7 HPFS/NTS/exFAT
+
+### 지금 상태 해석
+
+- **sdb1**: 섹터 2048부터 시작, 약 785GB, NTFS = 윈도우에서 축소한 F: 드라이브
+- **sdb1 뒤의 빈 공간**: 931GB - 785GB = **약 146GB 미할당** = 여기에 Arch 설치
+
+완벽하게 계획대로예요.
+
+### 이제 파티셔닝 — 미할당 공간에 Arch 파티션 만들기 :mkfs
+
+
+| 단계                        | 상태   |
+| ------------------------- | ---- |
+| ✅ 파티셔닝                    | 완료   |
+| ✅ 포맷                      | 완료   |
+| ✅ 마운트                     | 완료   |
+| ✅ 베이스 시스템 설치 (pacstrap)   | 완료   |
+| ✅ fstab 생성                | ==== |
+| ⬜ chroot (설치된 시스템 안으로 진입) | 다음   |
+| ⬜ 시간대/로케일/호스트네임 설정        | 다음   |
+| ⬜ 부트로더(GRUB) 설치           | 다음   |
+| ⬜ 유저 계정 생성 + 비밀번호         | 다음   |
+| ⬜ 재부팅해서 실제 Arch로 부팅 확인    | 마지막  |
+|                           |      |
+
+
+# 이어서 진행 :: USB로 부팅 후
+
+mount /dev/sdb2 /mnt
+arch-chroot /mnt
+
+한 다음 이어가면됨
 
 
 ## 

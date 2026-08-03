@@ -8,4 +8,17 @@ ping -c 3 google.com
 
 lsblk
 
-fdisk
+fdisk -l, fdisk
+
+mkfs 
+
+mount
+
+pacstrap
+
+genfstab
+
+cat 
+
+
+
