@@ -42,6 +42,8 @@ git pull --rebase   =>  히스토리를 깔끔하게 정리해서 가져오기
 
 커밋 없이 병합하기  =>  git pull --no-commit origin main
 
+(깔끔하게 가져오고 병합커밋없이 처리해주려면 = git pull --no-commit --rebase 두 옵션 붙여주면 됨!)
+
 
 당연하지만 pull 이후 커밋해주는거도 필수임.
 

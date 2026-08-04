@@ -1,4 +1,6 @@
 
+import nltk
+
 from nltk.tokenize import word_tokenize
 from nltk.tokenize import WordPunctTokenizer
 from nltk.tokenize import TreebankWordTokenizer
@@ -9,16 +11,31 @@ from nltk.tokenize import sent_tokenize
 from nltk.tag import pos_tag
 from nltk.corpus import stopwords
 
-from tensorflow.keras.preprocessing.text import text_to_word_sequence
+
+# from tensorflow.keras.preprocessing.text import text_to_word_sequence
 import kss
 import re 
 import textwrap
+import spacy
+
+from nltk import FreqDist
+import urllib.request
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 from konlpy.tag import Okt
 from konlpy.tag import Kkma
+from konlpy.tag import Mecab
+
 
 okt = Okt()
 kkma = Kkma()
+
+nltk.download('punkt')
+nltk.download('punkt_tab')
+nltk.download('stopwords')
 
 
 
@@ -257,6 +274,115 @@ def _04_Reg_ex():
 
       basic_function()
 
+def _05_NLP_preprocessing():
+
+      def Tokenization():
+            en_text = "A Dog Run back corner near spare bedrooms"
+
+            ## 1) spaCy lib
+            spacy_en = spacy.load('en_core_web_sm')
+
+            def tokenize(en_text):
+                  return [tok.text for tok in spacy_en.tokenizer(en_text)]
+            print('\n', tokenize(en_text), '\n')
+
+            ## 2) NLTK lib
+            nltk.download('punkt')
+            print(word_tokenize(en_text), '\n')
+
+            ## 3) 공백 기준 토큰화 (split())
+            print(en_text.split(), '\n\n')
+
+            ## 4) 문자 토큰화
+            print(list(en_text))
+
+
+            # 한국어 토큰화 (window 호환성 문제 : colab 사용)
+            kor_text = "사과의 놀라운 효능이라는 글을 봤어. " \
+            "그래서 오늘 사과를 먹으려고 했는데 " \
+            "사과가 썩어서 슈퍼에 가서 사과랑 오렌지 사왔어"
+
+            print(kor_text.split(), '\n')
+
+            tokenizer = Mecab()
+            print(tokenizer.morphs(kor_text), '\n')
+      # Tokenization()
+
+      def Vocabulary_preprocess_basic():
+            urllib.request.urlretrieve("https://raw.githubusercontent"
+            ".com/e9t/nsmc/master/ratings.txt", filename="ratings.txt")
+            data = pd.read_table('ratings.txt') # 데이터프레임에 저장
+            data[:10]
+
+            print('전체 샘플의 수 : {}'.format(len(data)))
+
+            sample_data = data[:100] 
+
+            sample_data['document'] = sample_data['document'].str.replace(
+                                    "[^ㄱ-ㅎㅏ-ㅣ가-힣 ]","", regex=True
+                                    )
+            # display(sample_data[:10])
+
+            stopwords=['의','가','이','은','들','는','좀','잘','걍',
+                       '과','도','를','으로','자','에','와','한','하다']
+
+            tokenizer = Mecab()
+            tokenized=[]
+            for sentence in sample_data['document']:
+                  temp = tokenizer.morphs(sentence) 
+                  temp = [word for word in temp if not word in stopwords]
+                  tokenized.append(temp)
+            print(tokenized[:10])
+
+            vocab = FreqDist(np.hstack(tokenized))
+            print('단어 집합의 크기 : {}'.format(len(vocab)))
+            vocab['재밌']
+
+            vocab_size = 500
+            vocab = vocab.most_common(vocab_size)
+            print('단어 집합의 크기 : {}'.format(len(vocab)))
+
+
+            # 단어에 고유한 정수 부여
+            word_to_index = {word[0] : index + 2 for index, word in enumerate(vocab)}
+            word_to_index['pad'] = 1
+            word_to_index['unk'] = 0
+
+            encoded = []
+            for line in tokenized: 
+                  temp = []
+                  for w in line:
+                        try:
+                              temp.append(word_to_index[w]) 
+                        except KeyError: 
+                              temp.append(word_to_index['unk']) 
+
+                  encoded.append(temp)
+
+            # padding (문장 길이 통일)
+            max_len = max(len(l) for l in encoded)
+
+            print('리뷰의 최대 길이 : %d' % max_len)
+            print('리뷰의 최소 길이 : %d' % min(len(l) for l in encoded))
+            print('리뷰의 평균 길이 : %f' % (sum(map(len, encoded))/len(encoded)))
+
+            plt.hist([len(s) for s in encoded], bins=50)
+            plt.xlabel('length of sample')
+            plt.ylabel('number of sample')
+            plt.show()
+
+            for line in encoded:
+                  if len(line) < max_len: 
+                        line += [word_to_index['pad']] * (max_len - len(line)) 
+
+            print('리뷰의 최대 길이 : %d' % max_len)
+            print('리뷰의 최소 길이 : %d' % min(len(l) for l in encoded))
+            print('리뷰의 평균 길이 : %f' % (sum(map(len, encoded))/len(encoded)))
+
+            print(encoded[:3])
+            
+                                          
+      Vocabulary_preprocess_basic()
 
 
 
@@ -264,4 +390,5 @@ def _04_Reg_ex():
 # _01_tokenization()
 # _02_data_cleaning_and_normalization()
 # _03_Stopword()
-_04_Reg_ex()
+# _04_Reg_ex()
+_05_NLP_preprocessing()
