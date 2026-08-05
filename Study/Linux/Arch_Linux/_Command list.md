@@ -20,5 +20,10 @@ genfstab
 
 cat 
 
+arch-chroot 
+
+pacman
+
+nano
 
 

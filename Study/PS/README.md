@@ -90,6 +90,38 @@ https://school.programmers.co.kr/learn/challenges?tab=algorithm_practice_kit
 
 ---
 
+#### 1. C++ STL 필수 재료 5개 손에 익히기
+
+프로그래머스 환경에서는 C++ 라이브러리를 얼마나 손쉽게 꺼내 쓰느냐가 속도를 결정합니다.
+
+- **`std::vector`:** `.push_back()`, Iterator 범위 생성자, `v.begin()`, `v.end()`
+    
+- **`std::unordered_map` / `unordered_set`:** 프로그래머스 '해시' 카테고리 필수 (O(1) 탐색).
+    
+- **`std::sort`:** Custom Comparator (람다 함수 또는 구조체 연산자 오버로딩)로 정렬 조건 자유자재로 주기.
+    
+- **`std::priority_queue`:** '힙(Heap)' 카테고리 필수 (기본은 최대힙, `greater<int>` 붙이면 최소힙).
+    
+- **`std::string` 전처리:** `substr()`, `find()`, `to_string()`, `stoi()` 등 문자열 조작.
+    
+
+#### 2. 프로그래머스 고득점 Kit 집중 공략
+
+- **Lv.1:** C++ 문법/STL 적응용입니다. 하루에 3~4개씩 빠르게 쳐내며 손가락 감각만 되찾으세요.
+    
+- **Lv.2 (메인 타깃):**
+    
+    - `해시` (전화번호 목록, 의상)
+        
+    - `스택/큐` (기능개발, 프로세스)
+        
+    - `DFS/BFS` (타겟 넘버, 게임 맵 최단거리)
+        
+    - `정렬` (가장 큰 수 - Comparator 연습하기 딱 좋습니다)
+
+
+---
+
 기초와는 별개로 코테 기초유형정리
 
 

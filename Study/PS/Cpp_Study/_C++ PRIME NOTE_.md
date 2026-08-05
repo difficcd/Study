@@ -344,7 +344,6 @@ int main() {
 
 세로 크기와 가로 크기 모두 실행 중에 마음대로 늘리고 줄일 수 있는 **진정한 동적 2차원 구조**입니다. C++에서 여러 개의 벡터를 다룰 때 가장 표준적이고 권장되는 방식입니다.
 
-C++
 
 ```cpp
 #include <iostream>
@@ -352,17 +351,21 @@ C++
 
 int main() {
     // 1. 완전히 비어있는 2차원 벡터 만들기
-    std::vector<std::vector<int>> v1;
+    vector<vector<int>> v1;
 
     // 2. 크기를 지정해서 만들기 (5행 0열)
-    std::vector<std::vector<int>> v2(5);
+    vector<vector<int>> v2(5);
 
-    // 3. 크기와 초기값 지정해서 만들기 (5행 3열을 모두 0으로 초기화)
-    std::vector<std::vector<int>> v3(5, std::vector<int>(3, 0));
+    // 3. 크기와 초기값 지정해서 만들기 
+    // (5행 3열을 모두 0으로 초기화)
+    vector<vector<int>> v3(
+	    5, vector<int>(3, 0)
+    );
 
     // 사용법은 동일합니다.
     v3[0].push_back(99); 
-    std::cout << v3[0][3] << std::endl; // 기존 3개 뒤에 push_back 되었으므로 4번째 원소 출력
+    cout << v3[0][3] << endl; 
+    // 기존 3개 뒤에 push_back 되었으므로 4번째 원소 출력
     
     return 0;
 }
@@ -477,6 +480,8 @@ int main() {
 
 # to_string, stoi, etc.
 
+\<string> 헤더
+
 | 변환 방향                 | 사용하는 방법                 | 예시                           |
 | --------------------- | ----------------------- | ---------------------------- |
 | **숫자 → 숫자**           | `static_cast<바꿀타입>(변수)` | `static_cast<float>(an_int)` |
@@ -573,6 +578,11 @@ C++에서 `std::sort`는 `<algorithm>` 헤더에 있으며, **평균 $O(N \log N
 
 (특정위치를 원하면 begin + i 처럼 포인터처럼써주면됨. iterator니까..)
 
+(또, 기본 벡터정렬은 기본 숫자, 문자열 모두 잘 정렬해줌.)
+
+!!! 내림차순 정렬 방법을 기억해주자.
+(참고로 내림차할때쓰는 greater 인자는 비교 도구임. 함수객체로, 앞의 원소가 뒤보다 크면 자리를 바꾸라는 기준 알려주는 비교도구. 비교 기준이 정반대로 뒤집하는거임. 기본은 작은 게 먼저.)
+
 ```C++
 #include <iostream>
 #include <vector>
@@ -616,6 +626,12 @@ sort(v.begin(), v.end(), [](const pair<int,int>& a, const pair<int,int>& b) {
 // 결과: {1, 2} -> {3, 2} -> {1, 4}
 ```
 
+a, b 인자로 잡았을 때 
+a > b (앞의것이 뒤보다 크면 자리 바꾸라 == 내림차)
+b > a (반대, 오름차.)
+
+정렬 함수(cmp)에서 `true`를 리턴한다는 건 "야, `a`가 `b`보다 우선순위가 높으니까 `a`를 더 앞으로 보내줘!"라는 뜻!!!
+
 #### ② 문자열 길이순 정렬 (길이가 같으면 사전순)
 
 
@@ -624,9 +640,9 @@ vector<string> words = {"apple", "cat", "banana", "dog"};
 
 sort(words.begin(), words.end(), [](const string& a, const string& b) {
     if (a.length() != b.length()) {
-        return a.length() < b.length(); // 1. 길이 짧은 순
+        return a.length() < b.length(); 
     }
-    return a < b; // 2. 길이가 같으면 사전순
+    return a < b; 
 });
 // 결과: "cat" -> "dog" -> "apple" -> "banana"
 ```
@@ -663,4 +679,81 @@ sort(students.begin(), students.end(), [](const Student& a, const Student& b) {
 
 
 
-# 
+# malloc, calloc (c style)
+
+C++에서는 메모리 동적 할당에 주로 `new`를 쓰지만, C 스타일의 `malloc`과 `calloc`은 `<cstdlib>` (또는 `<stdlib.h>`) 헤더를 포함한 뒤 다음과 같이 사용할 수 있습니다.
+
+### 0. realloc 
+
+```C++
+
+#include <cstdlib>
+
+// 1. 최초 5개 할당
+int* arr = (int*) malloc(5 * sizeof(int));
+
+// 2. 10개 크기로 재할당 (늘리기)
+int* temp = (int*) realloc(arr, 10 * sizeof(int));
+
+if (temp != NULL) {
+    arr = temp; // 재할당 성공 시 주소 업데이트
+} else {
+    // 메모리 부족 등으로 재할당 실패 처리
+}
+
+// 3. 해제
+free(arr);
+```
+
+### 💡 `realloc` 작동 방식
+
+1. **제자리 확장:** 기존 메모리 뒤쪽에 연속된 공간이 남아있으면, **그 자리 그대로** 크기만 늘려줍니다.
+    
+2. **이동 확장:** 뒤쪽 공간이 부족하면 **다른 빈 공간에 새로 메모리를 크게 잡고, 기존 데이터를 복사**한 뒤 이전 메모리는 알아서 해제해 줍니다.
+3. 
+
+### 1. `malloc` (Memory Allocation)
+
+- **특징:** 지정한 바이트 크기만큼 메모리를 할당합니다. **초기화되지 않아서 쓰레기값이 들어있습니다.**
+    
+- **문법:** `(타입*) malloc(개수 * sizeof(타입))`
+    
+```C++
+
+#include <cstdlib> // 또는 <stdlib.h>
+
+// int 5개짜리 동적 배열 할당
+int* arr = (int*) malloc(5 * sizeof(int));
+
+// 사용 후 반드시 free로 해제
+free(arr);
+```
+
+### 2. `calloc` (Clear Allocation)
+
+- **특징:** 메모리를 할당함과 동시에 **모든 비트를 0으로 초기화**합니다.
+    
+- **문법:** `(타입*) calloc(개수, sizeof(타입))` _(콤마로 개수와 크기를 전달)_
+    
+
+```C++
+#include <cstdlib>
+
+// int 5개짜리 동적 배열 할당 + 0으로 초기화
+int* arr = (int*) calloc(5, sizeof(int));
+
+// 사용 후 반드시 free로 해제
+free(arr);
+```
+
+### 💡 주의 및 요약
+
+1. C++에서는 반환되는 `void*` 타입을 목적 타입에 맞게 반드시 명시적 형변환 `(int*)`을 해주어야 합니다.
+    
+2. `malloc`과 `calloc`으로 할당한 메모리는 반드시 `free()`로 해제해야 메모리 누수가 나지 않습니다.
+    
+3. **C++ 실무/PS 팁:** C++에서는 단순 기본형 데이터가 아니면 생성자/소멸자를 호출해 주는 `new` / `delete`를 쓰거나, 가급적 `std::vector`를 쓰는 것이 메모리 관리 면에서 훨씬 안전하고 편리합니다.
+
+
+
+#
