@@ -12,12 +12,12 @@ updated: 2026-06-24
 
 ## 트랙 (대단원)
 - [[README]] — 대시보드 / 진도판
-- 01 · 클라우드 OCI → [[Cloud_basic/README]]
+- 01 · 클라우드 OCI → [[wishlist/Cloud_basic/README]]
 - 02 · Claude 활용 → [[AI_external/Claude/README]]
 - 03 · Transformer/minGPT → [[AI_basic/README]]
 - 04 · 에이전트 설계 → [[04_agent-design/_index]]
 - 05 · 리눅스 커널 → [[Linux/README]]
-- 06 · OpenClaw·멀티에이전트 → [[Openclaw_VM/README]]
+- 06 · OpenClaw·멀티에이전트 → [[wishlist/Openclaw_VM/README]]
 
 ## 노트 (한 줄 요약)
 | id | 제목 | tags |

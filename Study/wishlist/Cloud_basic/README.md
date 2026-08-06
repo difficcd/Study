@@ -22,5 +22,8 @@
 - 일일 실습 과제 40% · 출석(꾸준함) 10%
 - 모든 산출물 GitHub 업로드 (강의계획서 권장사항)
 
-## 모듈 노트
-- [[concept|모듈 1: 클라우드 기초]]
+
+
+[[Designing AI Serving Systems.pdf]]
+=> cloud part 참조
+

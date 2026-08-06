@@ -215,6 +215,78 @@ set, map 도 unordered 랑 동일한 사용법이지만 내부 구현이 다름.
 
 
 
-# 
+# priority_queue
+
+**"우선순위가 가장 높은 원소가 먼저 나오는"** 자료구조. 
+내부적으로는 힙(Heap) 트리 구조로 구현되어 있어서, 값을 넣고 뺄 때마다 자동으로 정렬됨.
+
+### 1. 기본 선언 및 헤더
+
+```C++
+#include <queue>
+using namespace std;
+```
+
+
+```C++
+// 1. 기본: 최대 힙 (숫자가 클수록 우선순위가 높음 = 큰 값이 튀어나옴)
+priority_queue<int> pq;
+
+// 2. 최소 힙 (숫자가 작을수록 우선순위가 높음 = 작은 값이 튀어나옴)
+priority_queue<int, vector<int>, greater<int>> min_pq;
+```
+
+### 2. 핵심 메서드 (기본 조작)
+
+큐(`queue`)나 스택(`stack`)이랑 인터페이스가 거의 동일
+
+- **`push(val)`**: 원소 추가 (로그 시간 $O(\log N)$)
+- **`pop()`**: 우선순위가 가장 높은 원소 삭제 (반환은 안 해줌!)
+- **`top()`**: 우선순위가 가장 높은 원소 **확인 (조회)**
+- **`empty()`**: 큐가 비었으면 `true`, 아니면 `false`
+- **`size()`**: 원소의 개수 반환
+
+### 3. 코드 예시
+
+
+```C++
+#include <iostream>
+#include <queue>
+
+using namespace std;
+
+int main() {
+    // 최대 힙 생성
+    priority_queue<int> pq;
+
+    // 데이터 삽입
+    pq.push(10);
+    pq.push(30);
+    pq.push(20);
+    pq.push(5);
+
+    // top()으로 가장 큰 값 확인하고 pop()으로 제거하기
+    while (!pq.empty()) {
+        cout << pq.top() << " "; // 출력: 30 20 10 5
+        pq.pop();
+    }
+
+    return 0;
+}
+```
+
+### 4. 커스텀 정렬 (구조체나 클래스를 넣을 때)
+
+앞서 배운 커스텀 정렬처럼, 입맛대로 우선순위를 정하고 싶을 때는 
+구조체와 연산자 오버로딩(`operator<`)을 쓰거나, 커스텀 비교 함수(Comparator)를 지정
+
+
+```C++
+// 예시: pair를 쓸 때 오름차순으로 정렬하고 싶다면?
+// priority_queue<T, Container, Compare> 구조를 가짐
+priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> custom_pq;
+```
+
+주로 **가장 큰 값을 빠르게 뽑아내거나(다익스트라, 그리디 등)** 할 때 자주 사용함.
 
 # 

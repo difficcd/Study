@@ -10,14 +10,14 @@
 | ----------------- | ------------------------------------------------------------------------------------------------- | --- | ----------------------------- |
 | **AI 기초**         | 딥러닝 기초(PyTorch) — [wikidocs 2788](https://wikidocs.net/book/2788) 기반 **학습 기록 + 실습** (ai internal) | 진행  | [[AI_basic/README]]           |
 | **AI 활용**         | 프롬프트·Claude Code·API·MCP 등 Claude 및 <br>여러 agent "잘" 쓰는 법 (external)                              | 진행  | [[AI_external/Claude/README]] |
-| **클라우드 기초**       | OCI 등 클라우드/데이터 파이프라인                                                                              | 대기  | [[Cloud_basic/README]]        |
-| **OpenClaw / VM** | 오픈클로 + 자율·멀티에이전트 실험 (VM 격리)                                                                       | 대기  | [[Openclaw_VM/README]]        |
+| **클라우드 기초**       | OCI 등 클라우드/데이터 파이프라인                                                                              | 대기  | [[wishlist/Cloud_basic/README]]        |
+| **OpenClaw / VM** | 오픈클로 + 자율·멀티에이전트 실험 (VM 격리)                                                                       | 대기  | [[wishlist/Openclaw_VM/README]]        |
 | **리눅스 커널**        | 리눅스 커널 소스 조금씩 읽으며 구조 이해 (+ VM, custom)                                                            | 대기  | [[Linux/README]]              |
 
 상태: 대기 · 진행 · 완료
 우선순위: **AI 기초 = Claude 활용** > 클라우드 기초 > OpenClaw > 리눅스 커널
 
-> 에이전트 이론 정리본은 [[_agent_basics]], 멀티에이전트 셋업은 [[Openclaw_VM/multi-agent-setup (testing)]]에 있음.
+> 에이전트 이론 정리본은 [[_agent_basics]], 멀티에이전트 셋업은 [[multi-agent-setup (testing)]]에 있음.
 
 ---
 

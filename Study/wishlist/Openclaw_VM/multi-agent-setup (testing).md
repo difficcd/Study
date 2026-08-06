@@ -10,7 +10,7 @@ links: [agent-basics, knowledge-base-design]
 
 # 멀티에이전트 구성 (본 PC) — 셋업 & 설계 노트
 
-[[Openclaw_VM/README|← 06 트랙]] · 시작 2026-06-24
+[[wishlist/Openclaw_VM/README|← 06 트랙]] · 시작 2026-06-24
 
 ## 1. 환경 확인 결과 (본 PC)
 | 도구 | 상태 | 역할 후보 |

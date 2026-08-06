@@ -29,6 +29,7 @@ https://wikidocs.net/book/2788
 - [ ] 경사하강법 ~> ADAM 발전과정, 성능테스트 https://hiddenbeginner.github.io/deeplearning/paperreview/2019/12/29/paper_review_AdamW.html (AdamW ck : 실무 SGD방법)
 - [ ] 나중에 실험해보기  => 이런 부분들 실습/실험 (시간효율위해남겨둔 부분들)
 - [ ] (http://cs231n.github.io/convolutional-networks) 읽어보기 (CNN)
+- [ ] n-gram 일반화(generalization) 방법 공부하기
 
 
 
