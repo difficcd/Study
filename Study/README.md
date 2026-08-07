@@ -6,45 +6,19 @@
 
 ## 학습 트랙
 
-| 트랙                | 내용                                                                                                | 상태  | 허브                            |
-| ----------------- | ------------------------------------------------------------------------------------------------- | --- | ----------------------------- |
-| **AI 기초**         | 딥러닝 기초(PyTorch) — [wikidocs 2788](https://wikidocs.net/book/2788) 기반 **학습 기록 + 실습** (ai internal) | 진행  | [[AI_basic/README]]           |
-| **AI 활용**         | 프롬프트·Claude Code·API·MCP 등 Claude 및 <br>여러 agent "잘" 쓰는 법 (external)                              | 진행  | [[AI_external/Claude/README]] |
-| **클라우드 기초**       | OCI 등 클라우드/데이터 파이프라인                                                                              | 대기  | [[wishlist/Cloud_basic/README]]        |
-| **OpenClaw / VM** | 오픈클로 + 자율·멀티에이전트 실험 (VM 격리)                                                                       | 대기  | [[wishlist/Openclaw_VM/README]]        |
-| **리눅스 커널**        | 리눅스 커널 소스 조금씩 읽으며 구조 이해 (+ VM, custom)                                                            | 대기  | [[Linux/README]]              |
+| 트랙        | 내용                                                                                                | 상태  | 허브                            |
+| --------- | ------------------------------------------------------------------------------------------------- | --- | ----------------------------- |
+| **AI 기초** | 딥러닝 기초(PyTorch) — [wikidocs 2788](https://wikidocs.net/book/2788) 기반 **학습 기록 + 실습** (ai internal) | 진행  | [[AI_basic/README]]           |
+| **AI 활용** | 프롬프트·Claude Code·API·MCP 등 Claude 및 <br>여러 agent "잘" 쓰는 법 (external)                              | 진행  | [[AI_external/Claude/README]] |
+| **리눅스**   | 아치리눅스 듀얼부팅(PC) + 로키리눅스 듀얼부팅(SSD) + 리눅스 커널 소스 읽으며 구조 이해                                            | 대기  | [[Linux/README]]              |
+| PS        | programmers                                                                                       | 진행  | PS/                           |
 
 상태: 대기 · 진행 · 완료
-우선순위: **AI 기초 = Claude 활용** > 클라우드 기초 > OpenClaw > 리눅스 커널
-
-> 에이전트 이론 정리본은 [[_agent_basics]], 멀티에이전트 셋업은 [[multi-agent-setup (testing)]]에 있음.
-
----
-
-## 지금 할 일 (Current Focus)
-
-- [ ] **AI 기초** — wikidocs 2788(PyTorch 딥러닝) 따라가며 학습 기록 + 코드 실습 → [[AI_basic/README]]
-- [ ] **AI 사용** -- 트렌트서칭 * 직접 활용하는방법 학습
-
----
-
-## 노트 작성 방식
-
-- **개념 학습** → 각 트랙 폴더의 노트(.md)에 정리
-- **실습** → 코드/결과/막힌 점 기록
-- **회고** → "오늘 뭘 알게 됐나" 한 줄
-
-## 내 학습 배경 (튜터 참고용)
-
-- 리눅스: 기초 명령어 가물가물(`ls`/`cd`), Ubuntu VM 세팅완료
-- 네트워크: 이번 학기 수강, IP/서브넷 개념 있음
-- SQL: MySQL 사용 경험, DB 이론 미수강
-- 선호: **실습 메인 개념 탑다운** 순서, 페이스는 직접 조절
-
+우선순위: **AI 기초 = PS > Claude 활용** > 리눅스
 
 ### 하고 싶은 공부 list
 
 - 보안 (진로 X) 
 - proglang 만들기 (proglang repo 발전, 컴파일러/언어다운 언어 만들기)
 - 리눅스 VM 커스텀하기
-- 
+

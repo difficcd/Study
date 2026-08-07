@@ -375,9 +375,7 @@ int main() {
 
 1번 방식(`vector<int> v[5]`)은 C 스타일의 배열이라 가끔 포인터로 오해받거나 안전성 문제가 생길 수 있습니다. 세로 크기가 고정된 벡터 여러 개를 만들고 싶다면 C++ 표준 스타일인 `std::array`를 섞어 쓰는 것이 더 안전합니다.
 
-C++
-
-```
+```C++
 #include <iostream>
 #include <vector>
 #include <array> // 필수
@@ -520,7 +518,7 @@ int main() {
     return 0;
 }
 ```
-# array
+# Array
 
 ```c++
 #include <iostream>
@@ -756,4 +754,121 @@ free(arr);
 
 
 
-#
+
+
+# array : new, fixed
+
+### 1. `new`를 이용한 배열 동적 할당
+
+동적 할당은 프로그램 실행 중(Runtime)에 크기를 결정할 때 사용합니다. 메모리의 **힙(Heap) 영역**에 할당되므로 사용이 끝난 뒤 **반드시 `delete[]`로 해제**해 주어야 메모리 누수(Memory Leak)가 발생하지 않습니다.
+
+```C++
+#include <iostream>
+
+int main() {
+    int size = 5; // 변수를 통해 크기 지정 가능
+
+    // 1. 메모리 할당
+    int* arr = new int[size]; 
+
+    // 2. 초기화와 동시에 할당하고 싶은 경우 (C++11 이상)
+    // int* arr = new int[size]{ 1, 2, 3, 4, 5 }; // 1, 2, 3, 4, 5로 초기화
+    // int* arr = new int[size]{};               // 모두 0으로 초기화
+
+    // 값 대입 및 사용
+    for (int i = 0; i < size; ++i) {
+        arr[i] = (i + 1) * 10;
+    }
+
+    // 출력
+    for (int i = 0; i < size; ++i) {
+        std::cout << arr[i] << " "; // 10 20 30 40 50
+    }
+
+    // 3. 메모리 해제 (배열은 반드시 delete[] 사용!)
+    delete[] arr;
+
+    return 0;
+}
+```
+
+### 2. 크기가 고정된 배열 선언법
+
+크기가 고정된 배열이라면 굳이 `new`를 쓸 필요 없이 **정적 배열**을 선언하는 것이 훨씬 간단하고 안전합니다. 정적 배열은 **스택(Stack) 영역**에 할당되며 함수가 끝날 때 자동으로 메모리가 해제됩니다.
+
+#### 방법 A: C 스타일 일반 배열
+
+```C++
+int arr[5];               // 쓰레기값 들어있음
+int arr2[5] = {1, 2, 3};  // {1, 2, 3, 0, 0} 로 초기화
+int arr3[5] = {};         // 모든 요소 0으로 초기화
+```
+
+_주의:_ `int arr[n];` 처럼 크기 자리에 변수를 넣는 것은 표준 C++에서 허용되지 않습니다 (크기는 컴파일 시점에 결정되는 상수여야 함).
+
+#### 방법 B: 현대 C++ 표준 배열 (`std::array`)
+
+고정 크기 배열을 쓸 때는 `<array>` 헤더의 `std::array`를 사용하는 것이 권장됩니다. 일반 배열처럼 가볍고 안전한 기능(크기 조회 등)을 제공합니다.
+
+```C++
+#include <array>
+
+std::array<int, 5> arr = {1, 2, 3, 4, 5};
+std::cout << arr.size(); // 5
+```
+
+### 요약 Guide
+
+|**구분**|**선언 방식**|**특징**|
+|---|---|---|
+|**고정 크기 (추천)**|`std::array<int, 5> arr;`|크기 고정, 자동 메모리 관리, C++ 표준 권장|
+|**고정 크기 (기본)**|`int arr[5];`|가장 기본적인 형태|
+|**동적 크기 (`new`)**|`int* arr = new int[n];`|실행 중 크기 변경 지정 가능, **`delete[]` 필수**|
+|**동적 크기 (실무 추천)**|`std::vector<int> arr(n);`|크기 가변, **자동 메모리 해제**, 가장 편리함|
+
+> **Tip:** C++ 실무나 현대적인 코드에서는 메모리를 직접 관리하는 `new`/`delete[]` 대신 **`std::vector`**를 훨씬 많이 사용합니다.
+
+
+
+
+# pair
+
+(헤더: `#include <utility>` 또는 `#include <vector>`, `#include <queue>` 등에 포함됨)
+
+### 1. 선언 및 초기화
+
+```C++
+#include <utility>
+
+pair<int, int> p1;                  // 기본 선언 (쓰레기값)
+pair<int, int> p2 = {10, 20};       // 값 초기화
+pair<int, int> p3 = make_pair(10, 20); // 함수로 초기화
+```
+
+### 2. 멤버 변수 접근
+
+- **`first`**: 첫 번째 값
+- **`second`**: 두 번째 값
+
+```C++
+cout << p2.first;  // 출력: 10
+cout << p2.second; // 출력: 20
+```
+
+### 3. 큐(`queue`)나 벡터(`vector`)와 조합할 때
+
+
+```C++
+queue<pair<int, int>> q;
+
+// 데이터 넣기
+q.push({priority, location}); // 또는 make_pair(priority, location)
+
+// 데이터 조회 및 사용
+int current_priority = q.front().first;
+int current_location = q.front().second;
+
+q.pop();
+```
+
+# 

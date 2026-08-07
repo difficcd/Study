@@ -289,4 +289,198 @@ priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> 
 
 주로 **가장 큰 값을 빠르게 뽑아내거나(다익스트라, 그리디 등)** 할 때 자주 사용함.
 
+# stack
+
+- **헤더:** `#include <stack>`
+
+- **주요 함수:**
+    
+    - `push(val)`: 맨 위에 데이터 추가
+    - `pop()`: 맨 위 데이터 삭제 (반환값 없음)
+    - `top()`: 맨 위 데이터 반환 (조회)
+    - `empty()`: 비어있으면 `true`, 아니면 `false`
+    - `size()`: 데이터 개수 반환
+
+
+```Cpp
+#include <iostream>
+#include <stack>
+
+using namespace std;
+
+int main() {
+    stack<int> s;
+
+    // 데이터 삽입
+    s.push(10);
+    s.push(20);
+    s.push(30); // 스택 상태: [10, 20, 30(Top)]
+
+    cout << "Top element: " << s.top() << "\n"; // 30
+
+    // 데이터 순차적으로 꺼내기
+    while (!s.empty()) {
+        cout << s.top() << " "; // 30 -> 20 -> 10 순서로 출력
+        s.pop();
+    }
+    cout << "\n";
+
+    return 0;
+}
+```
+
+
+
+# queue
+
+- **헤더:** `#include <queue>`
+    
+- **주요 함수:**
+    
+    - `push(val)`: 뒤(Tail)에 데이터 추가
+    - `pop()`: 앞(Head) 데이터 삭제 (반환값 없음)
+    - `front()`: 가장 앞에 있는 데이터 반환
+    - `back()`: 가장 뒤에 있는 데이터 반환
+    - `empty()`: 비어있으면 `true`, 아니면 `false`
+    - `size()`: 데이터 개수 반환
+    
+### 코드 예제
+
+```C++
+#include <iostream>
+#include <queue>
+
+using namespace std;
+
+int main() {
+    queue<int> q;
+
+    // 데이터 삽입
+    q.push(10);
+    q.push(20);
+    q.push(30); // 큐 상태: [10(Front) ... 30(Back)]
+
+    cout << "Front element: " << q.front() << "\n"; // 10
+    cout << "Back element: " << q.back() << "\n";   // 30
+
+    // 데이터 순차적으로 꺼내기
+    while (!q.empty()) {
+        cout << q.front() << " "; // 10 -> 20 -> 30 순서로 출력
+        q.pop();
+    }
+    cout << "\n";
+
+    return 0;
+}
+```
+
+
+# deque
+
+### (Double-Ended Queue - 양방향 큐)
+
+앞과 뒤 양쪽 모두에서 데이터의 삽입과 삭제가 가능한 유연한 자료구조입니다. 
+(`vector`처럼 인덱스로 조회도 가능)
+
+
+
+- **헤더:** `#include <deque>`
+    
+- **주요 함수:**
+    
+    - `push_front(val)`: 맨 앞에 데이터 추가
+    - `push_back(val)`: 맨 뒤에 데이터 추가
+    - `pop_front()`: 맨 앞 데이터 삭제
+    - `pop_back()`: 맨 뒤 데이터 삭제
+    - `front()` / `back()`: 앞/뒤 데이터 조회
+    - `dq[i]`: `vector`처럼 인덱스로 접근 가능 (`O(1)`)
+    - `empty()` / `size()`: 비어있는지 확인 / 개수 반환
+    
+
+### 코드 예제
+
+```C++
+#include <iostream>
+#include <deque>
+
+using namespace std;
+
+int main() {
+    deque<int> dq;
+
+    // 양방향 삽입
+    dq.push_back(20);  // 뒤에 넣기: [20]
+    dq.push_front(10); // 앞에 넣기: [10, 20]
+    dq.push_back(30);  // 뒤에 넣기: [10, 20, 30]
+
+    // 인덱스로 접근 가능
+    cout << "Index 1 value: " << dq[1] << "\n"; // 20
+
+    // 양방향 삭제 및 조회
+    cout << "Front: " << dq.front() << ", Back: " << dq.back() << "\n"; // Front: 10, Back: 30
+
+    dq.pop_front(); // 앞 제거 ([20, 30남음])
+    dq.pop_back();  // 뒤 제거 ([20만 남음])
+
+    cout << "Remaining size: " << dq.size() << "\n"; // 1
+
+    return 0;
+}
+```
+
+
+
+
+# max_element
+
+범위 안에서 가장 큰 값이 있는 "위치"(반복자, Iterator)를 찾아주는 함수. 
+(단, 실행 횟수를 고려해야 함. 데이터를 한 번 훑기 때문에 O(N))
+
+```C++
+#include <algorithm>
+
+vector<int> v = {1, 3, 9, 2, 5};
+
+// v에서 가장 큰 값 찾기 (반환값이 포인터/반복자 형태임)
+auto max_it = max_element(v.begin(), v.end());
+
+// 최댓값의 "값"을 보려면 *를 붙임
+int max_val = *max_it; // 9
+```
+
+
+
+# priority_queue
+
+일반 `queue`는 먼저 넣은 게 먼저 나오는 구조(`FIFO`)지만, 
+**우선순위 큐**는 넣은 값들 중에서 무조건 가장 큰(우선순위가 높은) 놈이 맨 앞으로 옴.
+
+```C++
+#include <queue>
+
+// 기본 선언 (기본적으로 숫자가 클수록 우선순위가 높음 -> 내림차순)
+priority_queue<int> pq;
+
+pq.push(3);
+pq.push(10);
+pq.push(5);
+
+// 현재 들어있는 것 중 가장 큰 값이 튀어나옴
+pq.top(); // 10 (pop하지 않고 보기만 함)
+
+pq.pop(); // 가장 큰 10을 삭제
+```
+
+- **두 번째 코드의 논리:**
+    
+    1. `q`에는 **`(위치, 중요도)`** 쌍을 넣고, `pq`에는 `중요도`만 몽땅 집어넣어.
+        
+    2. `pq.top()`을 하면 지금 남아있는 것 중 **가장 센 중요도**가 뭔지 0초 만에 알 수 있어.
+        
+    3. 큐의 맨 앞(`q.front().second`)과 `pq.top()`을 비교해서, 지금 꺼낸 녀석이 대장(최댓값)이 맞는지 곧바로 판정하는 거야.
+        
+
+
+
+
 # 
