@@ -39,7 +39,6 @@ nltk.download('stopwords')
 
 
 
-
 def _01_tokenization():
     print('\n단어 토큰화1 :',
           word_tokenize("Don't be fooled by the dark sounding name, "\
@@ -379,11 +378,8 @@ def _05_NLP_preprocessing():
             print('리뷰의 최소 길이 : %d' % min(len(l) for l in encoded))
             print('리뷰의 평균 길이 : %f' % (sum(map(len, encoded))/len(encoded)))
 
-            print(encoded[:3])
-            
-                                          
+            print(encoded[:3])                       
       Vocabulary_preprocess_basic()
-
 
 
 

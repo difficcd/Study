@@ -1110,8 +1110,9 @@ learning_rate = 0.1
 ```
 
 이제 문자 집합에 고유한 정수를 부여합니다.
+
 (enumerate(char_vocab) : 리스트 돌면서 인덱스, 글자 짝 만들어주는 함수.
-직관적으로 잘 보이겠지만 for문은 인덱스,글자 셋을 글자,인덱스 순으로 뒤집어서 char_to_index 에 저장하기 위한 작업을 해줌. )
+직관적으로 잘 보이겠지만 for문은 인덱스,글자 셋을 글자,인덱스 순으로 뒤집어서 char_to_index 에 저장하기 위한 작업을 해줌. ) ^d3b476
 
 ```python
 char_to_index = dict((c, i) for i, c in enumerate(char_vocab)) # 문자에 고유한 정수 인덱스 부여
