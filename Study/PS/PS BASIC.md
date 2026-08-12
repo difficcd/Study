@@ -215,79 +215,6 @@ set, map 도 unordered 랑 동일한 사용법이지만 내부 구현이 다름.
 
 
 
-# priority_queue
-
-**"우선순위가 가장 높은 원소가 먼저 나오는"** 자료구조. 
-내부적으로는 힙(Heap) 트리 구조로 구현되어 있어서, 값을 넣고 뺄 때마다 자동으로 정렬됨.
-
-### 1. 기본 선언 및 헤더
-
-```C++
-#include <queue>
-using namespace std;
-```
-
-
-```C++
-// 1. 기본: 최대 힙 (숫자가 클수록 우선순위가 높음 = 큰 값이 튀어나옴)
-priority_queue<int> pq;
-
-// 2. 최소 힙 (숫자가 작을수록 우선순위가 높음 = 작은 값이 튀어나옴)
-priority_queue<int, vector<int>, greater<int>> min_pq;
-```
-
-### 2. 핵심 메서드 (기본 조작)
-
-큐(`queue`)나 스택(`stack`)이랑 인터페이스가 거의 동일
-
-- **`push(val)`**: 원소 추가 (로그 시간 $O(\log N)$)
-- **`pop()`**: 우선순위가 가장 높은 원소 삭제 (반환은 안 해줌!)
-- **`top()`**: 우선순위가 가장 높은 원소 **확인 (조회)**
-- **`empty()`**: 큐가 비었으면 `true`, 아니면 `false`
-- **`size()`**: 원소의 개수 반환
-
-### 3. 코드 예시
-
-
-```C++
-#include <iostream>
-#include <queue>
-
-using namespace std;
-
-int main() {
-    // 최대 힙 생성
-    priority_queue<int> pq;
-
-    // 데이터 삽입
-    pq.push(10);
-    pq.push(30);
-    pq.push(20);
-    pq.push(5);
-
-    // top()으로 가장 큰 값 확인하고 pop()으로 제거하기
-    while (!pq.empty()) {
-        cout << pq.top() << " "; // 출력: 30 20 10 5
-        pq.pop();
-    }
-
-    return 0;
-}
-```
-
-### 4. 커스텀 정렬 (구조체나 클래스를 넣을 때)
-
-앞서 배운 커스텀 정렬처럼, 입맛대로 우선순위를 정하고 싶을 때는 
-구조체와 연산자 오버로딩(`operator<`)을 쓰거나, 커스텀 비교 함수(Comparator)를 지정
-
-
-```C++
-// 예시: pair를 쓸 때 오름차순으로 정렬하고 싶다면?
-// priority_queue<T, Container, Compare> 구조를 가짐
-priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> custom_pq;
-```
-
-주로 **가장 큰 값을 빠르게 뽑아내거나(다익스트라, 그리디 등)** 할 때 자주 사용함.
 
 # stack
 
@@ -414,7 +341,8 @@ int main() {
     dq.push_back(30);  // 뒤에 넣기: [10, 20, 30]
 
     // 인덱스로 접근 가능
-    cout << "Index 1 value: " << dq[1] << "\n"; // 20
+    cout << "Index 1 value: " << dq[1] << "\n"; 
+    // 20
 
     // 양방향 삭제 및 조회
     cout << "Front: " << dq.front() << ", Back: " << dq.back() << "\n"; // Front: 10, Back: 30
@@ -461,6 +389,9 @@ int max_val = *max_it; // 9
 // 기본 선언 (기본적으로 숫자가 클수록 우선순위가 높음 -> 내림차순)
 priority_queue<int> pq;
 
+priority_queue<int, vector<int>, greater<int>> min_pq;
+
+
 pq.push(3);
 pq.push(10);
 pq.push(5);
@@ -469,18 +400,30 @@ pq.push(5);
 pq.top(); // 10 (pop하지 않고 보기만 함)
 
 pq.pop(); // 가장 큰 10을 삭제
+
+
+
 ```
 
-- **두 번째 코드의 논리:**
+
+`priority_queue<T, Compare Container,>`
+
+1. **`int`**: 담을 데이터의 자료형
     
-    1. `q`에는 **`(위치, 중요도)`** 쌍을 넣고, `pq`에는 `중요도`만 몽땅 집어넣어.
+2. **`vector<int>`**: 데이터를 어떤 컨테이너(상자)에 담을 것인가? (기본이 `vector<int>`)
+    
+3. **`greater<int>`**: 어떤 기준으로 우선순위를 매길 것인가?
+    
+    - 기본값은 `less<int>` (큰 값이 우선)야.
         
-    2. `pq.top()`을 하면 지금 남아있는 것 중 **가장 센 중요도**가 뭔지 0초 만에 알 수 있어.
-        
-    3. 큐의 맨 앞(`q.front().second`)과 `pq.top()`을 비교해서, 지금 꺼낸 녀석이 대장(최댓값)이 맞는지 곧바로 판정하는 거야.
-        
+    - 이걸 `greater<int>`로 바꿔주면 "작은 값이 더 크다(우선순위가 높다)"고 판정해서 **최소 힙**이 되는 거지!
 
 
+
+
+- **`empty()`**: 힙이 비어있으면 `true`, 아니면 `false` 반환
+    
+- **`size()`**: 들어있는 원소의 개수 반환
 
 
 # 

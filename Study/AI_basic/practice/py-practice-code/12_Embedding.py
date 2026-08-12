@@ -1,8 +1,22 @@
 
 import torch
+import re
+import urllib.request
+import zipfile
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from lxml import etree
+from nltk.tokenize import word_tokenize, sent_tokenize
+
+from gensim.models import Word2Vec
+from gensim.models import KeyedVectors
+from tqdm import tqdm
 
 from konlpy.tag import Okt  
 okt = Okt()  
+
+
 
 def _01_One_hot_encoding():
     token = okt.morphs("나는 자연어 처리를 배운다")  
@@ -35,7 +49,100 @@ def _01_One_hot_encoding():
     print(torch.cosine_similarity(computer, netbook, dim=0))
     print(torch.cosine_similarity(netbook, book, dim=0), '\n')
 
+def _02_Word2Vec():
+
+    def Word2Vec_eng():
+        urllib.request.urlretrieve("https://raw.githubusercontent.com/ukairia777/" \
+                                    "tensorflow-nlp-tutorial/main/09.%20Word%20Embedding/" \
+                                    "dataset/ted_en-20160408.xml", 
+                                    filename="ted_en-20160408.xml")
+
+        targetXML = open('ted_en-20160408.xml', 'r', encoding='UTF8')
+        target_text = etree.parse(targetXML)
+
+        parse_text = '\n'.join(target_text.xpath('//content/text()'))
+        content_text = re.sub(r'\([^)]*\)', '', parse_text)
+
+        sent_text = sent_tokenize(content_text)
+
+        normalized_text = []
+        
+        for string in sent_text:
+            tokens = re.sub(r"[^a-z0-9]+", " ", string.lower())
+            normalized_text.append(tokens)
+
+        result = [word_tokenize(sentence) for sentence in normalized_text]
+
+        print('\n총 샘플의 개수 : {}'.format(len(result)), '\n')
+
+
+        for line in result[:3]:
+            print(line)
+
+
+        model = Word2Vec(sentences=result, vector_size=100, 
+                        window=5, min_count=5, workers=4, sg=0)
+        model_result = model.wv.most_similar("man")
+        print('\n', model_result)
+
+        # ==== Word2Vec model save/load ==== #
+        model.wv.save_word2vec_format('eng_w2v') 
+        loaded_model = KeyedVectors.load_word2vec_format("eng_w2v") 
+
+        model_result = loaded_model.most_similar("man")
+        print(model_result)
+
+        print('\n')
+    # Word2Vec_eng()
+
+    def Word2Vec_kor():
+        urllib.request.urlretrieve("https://raw.githubusercontent.com/" \
+                                    "e9t/nsmc/master/ratings.txt", 
+                                    filename="ratings.txt")
+        train_data = pd.read_table('ratings.txt')
+
+        # display(train_data[:5])
+        print(train_data[:5], '\n')
+        print(len(train_data), '\n') 
+        print(train_data.isnull().values.any(), '\n')
+
+        train_data = train_data.dropna(how = 'any') 
+        print(train_data.isnull().values.any(), '\n') 
+        print(len(train_data), '\n')
+
+
+        train_data['document'] = train_data['document'].str.replace(
+                                "[^ㄱ-ㅎㅏ-ㅣ가-힣 ]","", regex=True
+                                )
+
+        # display(train_data[:5])
+        print(train_data[:5], '\n')
+
+
+        stopwords = ['의','가','이','은','들','는','좀','잘','걍',
+                     '과','도','를','으로','자','에','와','한','하다']
+
+        okt = Okt()
+
+        tokenized_data = []
+        for sentence in tqdm(train_data['document']):
+            tokenized_sentence = okt.morphs(sentence, stem=True) 
+            stopwords_removed_sentence = [word for word in tokenized_sentence 
+                                          if not word in stopwords] 
+            tokenized_data.append(stopwords_removed_sentence)
+
+
+        print('리뷰의 최대 길이 :',max(len(review) for review in tokenized_data))
+        print('리뷰의 평균 길이 :',sum(map(len, tokenized_data))/len(tokenized_data))
+        
+        plt.hist([len(review) for review in tokenized_data], bins=50)
+        plt.xlabel('length of samples')
+        plt.ylabel('number of samples')
+        plt.show()
 
 
 
-_01_One_hot_encoding()
+
+
+#_01_One_hot_encoding()
+_02_Word2Vec()
