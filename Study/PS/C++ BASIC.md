@@ -266,6 +266,20 @@ it++은 규칙적 증가를 하니까 이상한 애를 가리킴.
 |           | `empty()`            | 비어있으면 `true` 반환.                 |
 |           |                      |                                  |
 
+벡터 값 실제로 변경하기 (참조로 원본값 직접 변경)
+
+```cpp
+// 1. 값 수정하기 (참조 & 사용)
+for (int& i : v) {
+    i--; // v 안의 실제 값이 1씩 감소함!
+}
+
+// 2. auto 활용 (권장)
+for (auto& i : v) {
+    i--;
+}
+```
+
 ### 2. 예시 코드
 
 가장 자주 쓰이는 방식들입니다.
@@ -677,6 +691,34 @@ sort(students.begin(), students.end(), [](const Student& a, const Student& b) {
 
 
 
+
+# swap
+
+
+```C++
+#include <iostream>
+#include <algorithm> // swap이 들어있는 헤더
+
+using namespace std;
+
+int main() {
+    int a = 10;
+    int b = 20;
+
+    cout << "전: a = " << a << ", b = " << b << "\n";
+
+    // a와 b의 값을 서로 맞바꿈!
+    swap(a, b);
+
+    cout << "후: a = " << a << ", b = " << b << "\n";
+    // 출력 결과: a = 20, b = 10
+}
+```
+
+
+
+
+
 # malloc, calloc (c style)
 
 C++에서는 메모리 동적 할당에 주로 `new`를 쓰지만, C 스타일의 `malloc`과 `calloc`은 `<cstdlib>` (또는 `<stdlib.h>`) 헤더를 포함한 뒤 다음과 같이 사용할 수 있습니다.
@@ -871,4 +913,5 @@ int current_location = q.front().second;
 q.pop();
 ```
 
-# 
+# do {} while () ;
+#

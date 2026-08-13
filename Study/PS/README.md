@@ -21,9 +21,9 @@ https://school.programmers.co.kr/learn/challenges?tab=algorithm_practice_kit
 
 - [x]  배열/벡터 활용 (투 포인터 전 단계)
 - [ ]  **스택** — `stack<T>`
-- [ ]  **큐** — `queue<T>`
+- [x]  **큐** — `queue<T>`
 - [ ]  **덱** — `deque<T>`
-- [ ]  **우선순위 큐(힙)** — `priority_queue`, 최소힙 만들기(`greater<T>`)
+- [x]  **우선순위 큐(힙)** — `priority_queue`, 최소힙 만들기(`greater<T>`)
 - [ ]  **해시맵/셋** — `unordered_map`, `unordered_set`, `map`과의 차이
 - [ ]  **연결 리스트** — 포인터 기반 노드 구현 1번
 		=> C 복기 겸 리눅스에서 구현해보기.
