@@ -1596,9 +1596,547 @@ tensor([[-0.1778, -1.9974, -1.2478],
 앞선 예제와 마찬가지로 단어 집합의 크기의 행을 가지는 임베딩 테이블이 생성되었습니다.
 (위가 직접 임베딩을 한 real 값들임.)
 
-# 12-07 사전 훈련된 워드 임베딩(Pre-trained Word Embedding)
+# 12-07 사전 훈련된 워드 임베딩 (Pre-trained Word Embedding)
 
-https://wikidocs.net/217110
+임베딩 벡터를 얻기 위해서 파이토치의 nn.Embedding()을 사용하기도 하지만, 
+때로는 << 이미 훈련되어져 있는 워드 임베딩을 불러서 이를 임베딩 벡터 >> 로 사용하기도 합니다. 
+
+<< 훈련 데이터가 부족한 상황 >> 이라면 모델에 파이토치의 nn.Embedding()을 사용하는 것보다 << 다른 텍스트 데이터로 사전 훈련되어 있는 임베딩 벡터를 불러오는 것이 나은 선택일 수 있습니다. >> 
+
+훈련 데이터가 적다면 파이토치의 nn.Embedding()으로 해당 문제에 충분히 특화된 임베딩 벡터를 만들어내는 것이 쉽지 않습니다. 이 경우, 해당 문제에 특화된 것은 아니지만 보다 일반적이고 보다 많은 훈련 데이터로 이미 Word2Vec이나 GloVe 등으로 학습되어져 있는 임베딩 벡터들을 사용하는 것이 성능의 개선을 가져올 수 있습니다.
+
+```python
+!pip install gensim
+```
+
+## 1. 사전 훈련된 임베딩을 사용하지 않는 경우
+
+```python
+import numpy as np
+from collections import Counter
+import gensim
+```
+
+문장의 긍, 부정을 판단하는 감성 분류 모델을 만들어봅시다. 
+
+문장과 레이블 데이터를 만들었습니다. 
+긍정인 문장은 레이블 1, 부정인 문장은 레이블이 0입니다.
+
+```python
+sentences = ['nice great best amazing', 'stop lies', 'pitiful nerd', 'excellent work', 'supreme quality', 'bad', 'highly respectable']
+y_train = [1, 0, 0, 1, 1, 0, 1]
+```
+
+각 샘플에 대해서 단어 토큰화를 수행합니다.
+
+```python
+tokenized_sentences = [sent.split() for sent in sentences]
+print('단어 토큰화 된 결과 :', tokenized_sentences)
+```
+
+```python
+단어 토큰화 된 결과 : [['nice', 'great', 'best', 'amazing'], ['stop', 'lies'], ['pitiful', 'nerd'], ['excellent', 'work'], ['supreme', 'quality'], ['bad'], ['highly', 'respectable']]
+```
+
+토큰화 된 결과를 바탕으로 단어 집합을 만들어봅시다. 
+
+우선 Counter() 모듈을 이용하여 각 단어의 등장 빈도수를 기록합니다.
+
+```python
+word_list = []
+for sent in tokenized_sentences:
+    for word in sent:
+      word_list.append(word)
+
+word_counts = Counter(word_list)
+print('총 단어수 :', len(word_counts))
+```
+
+```python
+총 단어수 : 15
+```
+
+현재 존재하는 총 단어의 수는 15개입니다. 
+
+이 단어들을 등장 빈도가 높은 순서부터 정렬합니다.
+
+```python
+# 등장 빈도순으로 정렬
+vocab = sorted(word_counts, key=word_counts.get, reverse=True)
+print(vocab)
+```
+
+```python
+['nice', 'great', 'best', 'amazing', 'stop', 'lies', 'pitiful', 'nerd', 'excellent', 'work', 'supreme', 'quality', 'bad', 'highly', 'respectable']
+```
+
+nice가 등장 빈도수로 가장 높은 단어이고, 그 다음은 great, 그 다음은 best로 등장 빈도가 높은 순서대로 단어가 정렬된 상태입니다. 
+
+이제 이로부터 단어 집합을 완성해봅시다. 0번은 패딩 토큰을 위한 용도로 사용하고, 1번은 단어 집합에 없는 단어가 등장하는 OOV(Out-Of-Vocabulary) 문제가 발생하면 사용하는 용도로 각각 할당합니다.
+
+```python
+word_to_index = {}
+word_to_index['<PAD>'] = 0
+word_to_index['<UNK>'] = 1
+
+for index, word in enumerate(vocab) :
+  word_to_index[word] = index + 2
+
+vocab_size = len(word_to_index)
+print('패딩 토큰, UNK 토큰을 고려한 단어 집합의 크기 :', vocab_size)
+```
+
+```python
+패딩 토큰, UNK 토큰을 고려한 단어 집합의 크기 : 17
+```
+
+단어 집합의 크기는 17입니다. 출력 결과는 다음과 같습니다.
+
+```python
+print(word_to_index)
+```
+
+```python
+{'<PAD>': 0, '<UNK>': 1, 'nice': 2, 'great': 3, 'best': 4, 'amazing': 5, 'stop': 6, 'lies': 7, 'pitiful': 8, 'nerd': 9, 'excellent': 10, 'work': 11, 'supreme': 12, 'quality': 13, 'bad': 14, 'highly': 15, 'respectable': 16}
+```
+
+단어 집합을 이용하여 정수 인코딩을 진행합니다. 
+
+단어 집합에 없는 단어가 등장할 경우에는 정수 1이 할당되지만 
+이번 실습에서는 학습 데이터에 단어 집합에 없는 단어가 존재하지 않으므로 해당되지 않습니다.
+
+```python
+def texts_to_sequences(tokenized_X_data, word_to_index):
+  encoded_X_data = []
+  for sent in tokenized_X_data:
+    index_sequences = []
+    for word in sent:
+      try:
+          index_sequences.append(word_to_index[word])
+      except KeyError:
+          index_sequences.append(word_to_index['<UNK>'])
+    encoded_X_data.append(index_sequences)
+  return encoded_X_data
+
+X_encoded = texts_to_sequences(tokenized_sentences, word_to_index)
+print(X_encoded)
+```
+
+```python
+[[2, 3, 4, 5], [6, 7], [8, 9], [10, 11], [12, 13], [14], [15, 16]]
+```
+
+현재 데이터의 최대 길이를 측정하고, 해당 길이로 패딩을 진행합니다.
+
+```python
+max_len = max(len(l) for l in X_encoded)
+print('최대 길이 :',max_len)
+```
+
+```python
+최대 길이 : 4
+```
+
+```python
+def pad_sequences(sentences, max_len):
+  features = np.zeros((len(sentences), max_len), dtype=int)
+  for index, sentence in enumerate(sentences):
+    if len(sentence) != 0:
+      features[index, :len(sentence)] = np.array(sentence)[:max_len]
+  return features
+
+X_train = pad_sequences(X_encoded, max_len=max_len)
+y_train = np.array(y_train)
+print('패딩 결과 :')
+print(X_train)
+```
+
+```python
+패딩 결과 :
+[[ 2  3  4  5]
+ [ 6  7  0  0]
+ [ 8  9  0  0]
+ [10 11  0  0]
+ [12 13  0  0]
+ [14  0  0  0]
+ [15 16  0  0]]
+```
+
+padding 코드 좀 더 자세히 이해하기 : 
+만약 `max_len = 5`이고, 두 번째 문장(`index = 1`)이 `[2, 34, 15]` (길이 3) 이라면:
+
+1. `len(sentence)` 는 `3`입니다.
+2. `features[1, :3]` 은 **1번째 행의 `0`, `1`, `2`번 열 영역**을 선택합니다.
+3. 여기에 `np.array(sentence)[:max_len]` 값인 `[2, 34, 15]`를 대입합니다.
+
+#### 대입 전 (0으로 차 있던 상태):
+
+$$\begin{pmatrix} 0 & 0 & 0 & 0 & 0 \\ \mathbf{0} & \mathbf{0} & \mathbf{0} & 0 & 0 \\ 0 & 0 & 0 & 0 & 0 \end{pmatrix}$$
+
+#### 대입 후 (`features[1, :3] = [2, 34, 15]`):
+
+$$\begin{pmatrix} 0 & 0 & 0 & 0 & 0 \\ \mathbf{2} & \mathbf{34} & \mathbf{15} & 0 & 0 \\ 0 & 0 & 0 & 0 & 0 \end{pmatrix}$$
+
+앞쪽 3칸만 실제 값으로 채워지고, 채워 넣지 않은 뒤쪽 2칸은 처음에 만들어둔 `0`이 그대로 남아 자연스럽게 뒤쪽 패딩(Post-padding)이 완성이 됩니다.
+
+---
+
+
+
+모든 데이터의 길이가 4로 변환된 것을 확인하였습니다. 
+이제 nn.Embedding()를 이용하여 모델을 설계합니다.
+
+```python
+import torch
+import torch.nn as nn
+from torch.optim import Adam
+from torch.utils.data import DataLoader, TensorDataset
+```
+
+```python
+class SimpleModel(nn.Module):
+    def __init__(self, vocab_size, embedding_dim):
+        super(SimpleModel, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.flatten = nn.Flatten()
+        self.fc = nn.Linear(embedding_dim * max_len, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        # embedded.shape == (배치 크기, 문장의 길이, 임베딩 벡터의 차원)
+        embedded = self.embedding(x)
+
+        # flattend.shape == (배치 크기, 문장의 길이 × 임베딩 벡터의 차원)
+        flattened = self.flatten(embedded)
+
+        # output.shape == (배치 크기, 1)
+        output = self.fc(flattened)
+        return self.sigmoid(output)
+```
+
+(단순한 DL 모델. 임베딩만 끼워졌을 뿐임.)
+
+### Flatten() 이란?
+
+`self.flatten = nn.Flatten()`은 **다차원 형태의 텐서를 1차원(배치 차원 제외)으로 펼쳐서(Flat) 다층 퍼셉트론(Linear / Fully Connected Layer)에 입력할 수 있는 일렬 형태로 변환해 주는 역할**을 합니다.
+
+#### 1. 왜 펼쳐야 할까요?
+
+이미지 데이터나 컨볼루션(CNN) 레이어를 거쳐 나온 출력값은 보통 **`[배치 크기, 채널, 높이, 너비]`** 처럼 **3~4차원의 고차원 형태**입니다.
+  
+하지만 문맥/의미 추론이나 분류를 수행하는 `nn.Linear` (선형 레이어)는 2차원 형태인 **`[배치 크기, 입력 피처 수]`** 만 입력으로 받을 수 있습니다.
+
+따라서 3D/4D 형태의 데이터를 선형 레이어에 넣기 직전에 "배치(Batch) 차원은 건드리지 않고, 나머지 차원들만 일렬로 길게 이어 붙여주는 작업"이 필요하며, 이를 수행해 주는 모듈이 바로 `nn.Flatten()`입니다.
+
+  
+#### 2. 입출력 차원 변화 예시
+
+예를 들어 크기가 `(28, 28)`인 흑백 이미지 데이터가 64개 들어온다고 해봅시다.
+
+- **입력 텐서 모양:** `[64, 1, 28, 28]`
+      
+    - `64`: 배치 크기(Batch size)
+        
+    - `1`: 채널 수(Channel)
+        
+    - `28, 28`: 가로 $\times$ 세로 크기
+        
+
+`nn.Flatten()`을 거치고 나면 다음과 같이 바뀝니다.
+
+
+- **출력 텐서 모양:** `[64, 784]`
+    
+    - `64`: 배치 크기는 그대로 유지됨
+        
+    - `784`: 나머지 차원($1 \times 28 \times 28$)이 곱해져 1차원으로 쫙 펼쳐짐
+    
+
+#### 3. `torch.flatten`이나 `.view()`와의 차이점
+
+- **`nn.Flatten()`:** `nn.Module` 객체 형태이므로 `nn.Sequential` 모델 구조 안에 깔끔하게 한 줄로 끼워 넣을 수 있습니다.
+    
+- **`x.view(x.size(0), -1)` 또는 `torch.flatten(x, 1)`:** `forward()` 메서드 안에서 직접 텐서의 형태를 변경할 때 주로 쓰이는 방식입니다.
+    
+
+#### 코드 비교
+
+```Python
+# nn.Sequential 내부에서 쓸 때
+model = nn.Sequential(
+    nn.Conv2d(1, 32, 3),
+    nn.ReLU(),
+    nn.Flatten(),  # [64, 32, 26, 26] -> [64, 21632] 로 자동 변환
+    nn.Linear(21632, 10)
+)
+```
+
+#### 💡 한 줄 요약
+
+`nn.Flatten()`은 "이미지나 다차원 특성 맵(Feature Map)을 선형 레이어(`nn.Linear`)에 집어넣기 위해, 배치(Batch) 단위를 유지한 채 나머지를 일렬 1차원으로 펴주는 도구"입니다!
+
+###
+
+모델 객체를 선언합니다. 임베딩 벡터의 크기는 100으로 정했습니다.
+
+```python
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+embedding_dim = 100
+simple_model = SimpleModel(vocab_size, embedding_dim).to(device)
+```
+
+출력층에 로지스틱 회귀를 이용한 "이진 분류 문제"를 푸는 모델이므로 
+손실 함수로는 바이너리 크로스 엔트로피 함수에 해당하는 nn.BCELoss()를 사용합니다.
+
+```python
+criterion = nn.BCELoss()
+optimizer = Adam(simple_model.parameters())
+```
+
+
+데이터를 배치 크기 2로 설정한 데이터로더로 변환합니다.
+
+```python
+train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.long), torch.tensor(y_train, dtype=torch.float32))
+train_dataloader = DataLoader(train_dataset, batch_size=2)
+```
+
+데이터가 7개였으므로 배치 크기 2로 묶으면 총 묶음은 4개(2개, 2개, 2개, 1개)가 됩니다.
+
+```python
+print(len(train_dataloader))
+```
+
+```python
+4
+```
+
+총 10번 학습합니다.
+
+```python
+for epoch in range(10):
+    for inputs, targets in train_dataloader:
+        # inputs.shape == (배치 크기, 문장 길이)
+        # targets.shape == (배치 크기)
+        inputs, targets = inputs.to(device), targets.to(device)
+
+        optimizer.zero_grad()
+
+        # outputs.shape == (배치 크기)
+        outputs = simple_model(inputs).view(-1) 
+
+        loss = criterion(outputs, targets)
+        loss.backward()
+
+        optimizer.step()
+
+    print(f"Epoch {epoch+1}, Loss: {loss.item()}")
+```
+
+```python
+Epoch 1, Loss: 0.46478426456451416
+Epoch 2, Loss: 0.4502693712711334
+Epoch 3, Loss: 0.40378859639167786
+Epoch 4, Loss: 0.3481767177581787
+Epoch 5, Loss: 0.2946138083934784
+Epoch 6, Loss: 0.24818778038024902
+Epoch 7, Loss: 0.21027232706546783
+Epoch 8, Loss: 0.18025405704975128
+Epoch 9, Loss: 0.15673018991947174
+Epoch 10, Loss: 0.13819283246994019
+```
+
+
+## 2. 사전 훈련된 임베딩을 사용하는 경우
+
+구글에서 사전 학습시킨 Word2Vec 모델을 사용하여 문제를 풀어봅시다. 
+우선 구글에서 사전 학습시킨 Word2Vec 모델을 다운로드 합니다.
+
+```python
+!pip install gdown
+!gdown https://drive.google.com/uc?id=1Av37IVBQAAntSe1X3MOAl5gvowQzd2_j
+```
+
+머신 러닝 라이브러리 gensim을 이용하여 해당 모델을 다운로드합니다.
+
+```python
+# 구글의 사전 훈련된 Word2vec 모델을 로드합니다.
+word2vec_model = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin.gz', binary=True) 
+```
+
+위 모델은 각 벡터가 300차원으로 구성되어져 있습니다. 
+풀고자 하는 문제의 단어 집합 크기의 행과 300개의 열을 가지는 행렬 생성합니다. 
+이 행렬의 값은 전부 0으로 채웁니다. 이 행렬에 사전 훈련된 임베딩 값을 넣어줄 것입니다.
+
+```python
+embedding_matrix = np.zeros((vocab_size, 300))
+print('임베딩 행렬의 크기 :', embedding_matrix.shape)
+```
+
+```python
+임베딩 행렬의 크기 : (17, 300)
+```
+
+word2vec_model에서 특정 단어를 입력하면 해당 단어의 임베딩 벡터를 리턴받을 텐데, 
+만약 word2vec_model에 특정 단어의 임베딩 벡터가 없다면 None을 리턴하도록 하는 함수 get_vector()를 구현합니다.
+
+```python
+def get_vector(word):
+    if word in word2vec_model:
+        return word2vec_model[word]
+    else:
+        return None
+```
+
+단어 집합으로부터 단어를 1개씩 호출하여 word2vec_model에 해당 단어의 임베딩 벡터값이 존재하는지 확인합니다. 만약 None이 아니라면 존재한다는 의미이므로 임베딩 행렬에 해당 단어의 인덱스 위치의 행에 임베딩 벡터의 값을 저장합니다.
+
+```python
+# <PAD>를 위한 0번과 <UNK>를 위한 1번은 실제 단어가 아니므로 맵핑에서 제외
+for word, i in word_to_index.items():
+    if i > 2:
+      temp = get_vector(word)
+      if temp is not None:
+          embedding_matrix[i] = temp
+```
+
+현재 풀고자하는 문제의 17개의 단어와 맵핑되는 임베딩 행렬이 완성됩니다. 
+0번 단어는 패딩을 위한 용도이므로 사전 훈련된 임베딩 벡터값이 불필요합니다. 
+이에 따라 초기값인 0벡터로 초기화가 되어져 있습니다. 
+embedding_matrix의 0번 위치의 벡터를 출력해봅시다.
+
+```python
+# <PAD>나 <UNK>의 경우는 사전 훈련된 임베딩이 들어가지 않아서 0벡터임
+print(embedding_matrix[0])
+```
+
+```python
+[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 1. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 2. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 3. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 4. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 5. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 6. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 7. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 8. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 9. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 10. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+ 11. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+```
+
+0이 300개 채워진 벡터임을 확인하였습니다. 이제 다른 단어들도 제대로 맵핑이 됐는지 확인해볼까요? 기존의 단어 집합에서 단어 'great'가 정수로 몇 번인지 확인합니다.
+
+```python
+word_to_index['great']
+```
+
+```python
+3
+```
+
+3번 임을 확인했습니다. 이에 따라서 사전 훈련된 word2vec_model에서의 'great' 벡터와 현재 사전 훈련된 임베딩 벡터가 맵핑된 embedding_matrix의 3번 벡터가 동일한지 확인합니다.
+
+```python
+# word2vec_model에서 'great'의 임베딩 벡터
+# embedding_matrix[3]이 일치하는지 체크
+np.all(word2vec_model['great'] == embedding_matrix[3])
+```
+
+```python
+True
+```
+
+동일한 것을 확인하였습니다. 이는 현재 3번 위치에 단어 'great' 벡터가 정상적으로 할당되었음을 의미합니다. 이제 << 사전 훈련된 임베딩을 이용한 모델 >> 을 구현합니다.
+
+```python
+class PretrainedEmbeddingModel(nn.Module):
+    def __init__(self, vocab_size, embedding_dim):
+        super(PretrainedEmbeddingModel, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.embedding.weight = nn.Parameter(torch.tensor(embedding_matrix, dtype=torch.float32))
+        self.embedding.weight.requires_grad = True
+        self.flatten = nn.Flatten()
+        self.fc = nn.Linear(embedding_dim * max_len, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        embedded = self.embedding(x)
+        flattened = self.flatten(embedded)
+        output = self.fc(flattened)
+        return self.sigmoid(output)
+```
+
+모델 객체를 선언합니다. 
+이때 임베딩 벡터의 크기는 embedding_matrix에서 이미 정해진 임베딩 벡터의 차원인 300으로 해야만 합니다.
+
+```python
+pretraiend_embedding_model = PretrainedEmbeddingModel(vocab_size, 300).to(device)
+```
+
+출력층에 로지스틱 회귀를 이용한 이진 분류 문제를 푸는 모델이므로 손실 함수로는 바이너리 크로스엔트로피 함수에 해당하는 nn.BCELoss()를 사용합니다.
+
+```python
+criterion = nn.BCELoss()
+optimizer = Adam(pretraiend_embedding_model.parameters())
+```
+
+데이터를 배치 크기 2로 설정한 데이터로더로 변환합니다.
+
+```python
+train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.long), torch.tensor(y_train, dtype=torch.float32))
+train_dataloader = DataLoader(train_dataset, batch_size=2)
+```
+
+데이터가 7개였으므로 배치 크기 2로 묶으면 총 묶음은 4개(2개, 2개, 2개, 1개)가 됩니다.
+
+```python
+print(len(train_dataloader))
+```
+
+```python
+4
+```
+
+총 10번 학습합니다.
+
+```python
+for epoch in range(10):
+    for inputs, targets in train_dataloader:
+        # inputs.shape == (배치 크기, 문장 길이)
+        # targets.shape == (배치 크기)
+        inputs, targets = inputs.to(device), targets.to(device)
+
+        optimizer.zero_grad()
+
+        # outputs.shape == (배치 크기)
+        outputs = pretraiend_embedding_model(inputs).view(-1) 
+
+        loss = criterion(outputs, targets)
+        loss.backward()
+
+        optimizer.step()
+
+    print(f"Epoch {epoch+1}, Loss: {loss.item()}")
+```
+
+```python
+Epoch 1, Loss: 0.6623443365097046
+Epoch 2, Loss: 0.6018906235694885
+Epoch 3, Loss: 0.5419147610664368
+Epoch 4, Loss: 0.4856065809726715
+Epoch 5, Loss: 0.43379512429237366
+Epoch 6, Loss: 0.38664519786834717
+Epoch 7, Loss: 0.3440646231174469
+Epoch 8, Loss: 0.3058430850505829
+Epoch 9, Loss: 0.2717098295688629
+Epoch 10, Loss: 0.24136123061180115
+```
+
+사전 훈련된 임베딩을 이용하여 기존 모델 대비 더 높은 성능을 얻는 예시는 '사전 훈련된 임베딩을 이용한 성능 상승 시키기(https://wikidocs.net/217099)' 실습을 참고하시기 바랍니다.
+
+
 
 
 # 12-08 엘모(Embeddings from Language Model, ELMo)

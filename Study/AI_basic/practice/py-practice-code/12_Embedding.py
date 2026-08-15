@@ -1,6 +1,8 @@
 
 import torch
 import torch.nn as nn
+from torch.optim import Adam
+from torch.utils.data import DataLoader, TensorDataset
 
 import re
 import urllib.request
@@ -9,7 +11,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import gensim
 import nltk
+import numpy as np
 
+from collections import Counter
 from lxml import etree
 from nltk.tokenize import word_tokenize, sent_tokenize
 
@@ -251,9 +255,212 @@ def _03_Embedding():
 
     print(embedding_layer.weight, '\n')
 
+def _04_Pretrained_Embedding():
+
+    """ sentiment analysis """
+
+    sentences = ['nice great best amazing', 'stop lies', 
+                'pitiful nerd', 'excellent work', 'supreme quality', 
+                'bad', 'highly respectable']
+    y_train = [1, 0, 0, 1, 1, 0, 1]
+
+    tokenized_sentences = [sent.split() for sent in sentences]
+    print('\n단어 토큰화 된 결과 :', tokenized_sentences,'\n')
+
+    word_list = []
+    for sent in tokenized_sentences:
+        for word in sent:
+            word_list.append(word)
+            
+    word_counts = Counter(word_list)
+    print('총 단어수 :', len(word_counts), '\n')
+
+    vocab = sorted(word_counts, key=word_counts.get, reverse=True)
+    print(vocab,'\n')
+
+
+    word_to_index = {}
+    word_to_index['<PAD>'] = 0
+    word_to_index['<UNK>'] = 1
+
+    for index, word in enumerate(vocab) :
+        word_to_index[word] = index + 2
+
+    vocab_size = len(word_to_index)
+    print('패딩 토큰, UNK 토큰을 고려한 단어 집합의 크기 :', vocab_size, '\n')
+    print(word_to_index, '\n')
+
+    def texts_to_sequences(tokenized_X_data, word_to_index):
+        encoded_X_data = []
+
+        for sent in tokenized_X_data:
+            index_sequences = []
+            for word in sent:
+                try:
+                    index_sequences.append(word_to_index[word])
+                except KeyError:
+                    index_sequences.append(word_to_index['<UNK>'])
+            encoded_X_data.append(index_sequences)
+
+        return encoded_X_data
+
+    X_encoded = texts_to_sequences(tokenized_sentences, word_to_index)
+    print('X_encoded: ', X_encoded)
+
+    max_len = max(len(l) for l in X_encoded)
+    print('최대 길이 :',max_len,'\n')
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+    def pad_sequences(sentences, max_len):
+        features = np.zeros((len(sentences), max_len), dtype=int)
+
+        for index, sentence in enumerate(sentences):
+            if len(sentence) != 0:
+                features[index, :len(sentence)] = np.array(sentence)[:max_len]
+        return features
+
+    X_train = pad_sequences(X_encoded, max_len=max_len)
+    y_train = np.array(y_train)
+
+    print('패딩 결과 :')
+    print(X_train, '\n')
+
+
+    def normal_embedding():
+
+        class SimpleModel(nn.Module):
+            def __init__(self, vocab_size, embedding_dim):
+                super(SimpleModel, self).__init__()
+                self.embedding = nn.Embedding(vocab_size, embedding_dim)
+                self.flatten = nn.Flatten()
+                self.fc = nn.Linear(embedding_dim * max_len, 1)
+                self.sigmoid = nn.Sigmoid()
+
+            def forward(self, x):
+                embedded = self.embedding(x)
+                flattened = self.flatten(embedded)
+
+                output = self.fc(flattened)
+                return self.sigmoid(output)
+
+
+        embedding_dim = 100
+        simple_model = SimpleModel(vocab_size, embedding_dim).to(device)
+
+        criterion = nn.BCELoss()
+        optimizer = Adam(simple_model.parameters())
+
+        train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.long), 
+                                    torch.tensor(y_train, dtype=torch.float32))
+        train_dataloader = DataLoader(train_dataset, batch_size=2)
+
+        print(len(train_dataloader), '\n')
+
+        for epoch in range(10):
+            for inputs, targets in train_dataloader:
+                inputs, targets = inputs.to(device), targets.to(device)
+
+                optimizer.zero_grad()
+
+                outputs = simple_model(inputs).view(-1) 
+
+                loss = criterion(outputs, targets)
+                loss.backward()
+
+                optimizer.step()
+
+            print(f"Epoch {epoch+1}, Loss: {loss.item()}")
+        print('\n')
+    # normal_embedding()
+
+
+    def pretrained_embedding(): # colab
+        """
+        !pip install gdown
+        !gdown https://drive.google.com/uc?id=1Av37IVBQAAntSe1X3MOAl5gvowQzd2_j
+        """
+        word2vec_model = gensim.models.KeyedVectors.load_word2vec_format(
+                        'GoogleNews-vectors-negative300.bin.gz', binary=True
+                        ) 
+        
+        embedding_matrix = np.zeros((vocab_size, 300))
+        print('\n임베딩 행렬의 크기 :', embedding_matrix.shape, '\n')
+
+        def get_vector(word):
+            if word in word2vec_model:
+                return word2vec_model[word]
+            else:
+                return None
+
+        for word, i in word_to_index.items():
+            if i > 2:
+                temp = get_vector(word)
+                if temp is not None:
+                    embedding_matrix[i] = temp
+
+        print(embedding_matrix[0], '\n')
+        word_to_index['great']
+
+        np.all(word2vec_model['great'] == embedding_matrix[3])
+
+        class PretrainedEmbeddingModel(nn.Module):
+            def __init__(self, vocab_size, embedding_dim):
+                super(PretrainedEmbeddingModel, self).__init__()
+                self.embedding = nn.Embedding(vocab_size, embedding_dim)
+                self.embedding.weight = nn.Parameter(torch.tensor(
+                                        embedding_matrix, dtype=torch.float32))
+                self.embedding.weight.requires_grad = True
+
+                self.flatten = nn.Flatten()
+
+                self.fc = nn.Linear(embedding_dim * max_len, 1)
+                self.sigmoid = nn.Sigmoid()
+
+            def forward(self, x):
+                embedded = self.embedding(x)
+                flattened = self.flatten(embedded)
+                output = self.fc(flattened)
+                return self.sigmoid(output)
+
+
+        pretraiend_embedding_model = PretrainedEmbeddingModel(vocab_size, 300).to(device)
+
+        criterion = nn.BCELoss()
+        optimizer = Adam(pretraiend_embedding_model.parameters())
+
+
+        train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.long), 
+                                      torch.tensor(y_train, dtype=torch.float32))
+        train_dataloader = DataLoader(train_dataset, batch_size=2)
+
+        print(len(train_dataloader), '\n')
+
+
+        for epoch in range(10):
+            for inputs, targets in train_dataloader:
+                inputs, targets = inputs.to(device), targets.to(device)
+
+                optimizer.zero_grad()
+
+                outputs = pretraiend_embedding_model(inputs).view(-1) 
+
+                loss = criterion(outputs, targets)
+                loss.backward()
+
+                optimizer.step()
+
+            print(f"Epoch {epoch+1}, Loss: {loss.item()}")
+    pretrained_embedding()
+
+
+
+
 
 
 
 #_01_One_hot_encoding()
 #_02_Word2Vec()
-_03_Embedding()
+#_03_Embedding()
+_04_Pretrained_Embedding()
