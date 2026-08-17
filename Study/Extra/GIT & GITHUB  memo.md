@@ -21,6 +21,9 @@ remote 브랜치 확인하기 => git branch -a
 
 remote 브랜치 정밀하게 커밋까지 확인하기 => git branch -v
 
+브랜치로 이동하기 =>  git checkout <브랜치이름> 
+
+
 
 
 ## git pull (fetch & merge)
@@ -68,6 +71,9 @@ From https://github.com/difficcd/Study
 
 
 ## commit 관리
+
+git 
+
 
 방금 한 git add . 취소하기 => git restore --staged  (구버전이면 git reset)
 

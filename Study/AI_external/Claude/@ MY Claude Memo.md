@@ -182,4 +182,7 @@ Claude Code, Codex, Gemini 같은 에이전트한테 GitHub 이슈 던지듯 태
 - Claude Code, Codex, Gemini, Cursor Agent 등 멀티 에이전트 지원
 - 로컬 데몬 + 클라우드 런타임 통합
 
-## 
+## MCP : playwright
+
+적어두고 
+카카오톡, 옵시디언, x 등에대한 MCP 하나하나 시도..

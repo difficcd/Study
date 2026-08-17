@@ -2140,7 +2140,636 @@ Epoch 10, Loss: 0.24136123061180115
 
 
 # 12-08 엘모(Embeddings from Language Model, ELMo)
+
+![](https://static.wikidocs.net/images/page/33930/elmo_DSHQjZD.png)
+
+논문 링크 : https://aclweb.org/anthology/N18-1202
+
+ELMo(Embeddings from Language Model)는 2018년에 제안된 새로운 워드 임베딩 방법론입니다. ELMo라는 이름은 세서미 스트리트라는 미국 인형극의 케릭터 이름이기도 한데, 
+뒤에서 배우게 되는 BERT나 최근 마이크로소프트가 사용한 Big Bird라는 NLP 모델 또한 ELMo에 이어 세서미 스트리트의 캐릭터의 이름을 사용했습니다. 
+
+ELMo는 Embeddings from Language Model의 약자입니다. 
+해석하면 '언어 모델로 하는 임베딩'입니다. ELMo의 가장 큰 특징은 **사전 훈련된 언어 모델(Pre-trained language model)** 을 사용한다는 점입니다. 이는 ELMo의 이름에 LM이 들어간 이유입니다.
+
+## 1. ELMo(Embeddings from Language Model)
+
+Bank라는 단어를 생각해봅시다. 
+Bank Account(은행 계좌)와 River Bank(강둑)에서의 Bank는 전혀 다른 의미를 가지는데, Word2Vec이나 GloVe 등으로 표현된 임베딩 벡터들은 이를 제대로 반영하지 못한다는 단점이 있습니다. 예를 들어서 Word2Vec이나 GloVe 등의 임베딩 방법론으로 Bank란 단어를 \[0.2 0.8 -1.2]라는 임베딩 벡터로 임베딩하였다고 하면, 이 단어는 Bank Account(은행 계좌)와 River Bank(강둑)에서의 Bank는 전혀 다른 의미임에도 불구하고 두 가지 상황 모두에서 \[0.2 0.8 -1.2]의 벡터가 사용됩니다.
+
+같은 표기의 단어라도 << 문맥에 따라서 다르게 워드 임베딩 >> 을 할 수 있으면 자연어 처리의 성능을 올릴 수 있을 것입니다. 워드 임베딩 시 문맥을 고려해서 임베딩을 하겠다는 아이디어가 **문맥을 반영한 워드 임베딩(Contextualized Word Embedding)** 입니다.
+
+## 2. biLM(Bidirectional Language Model)의 사전 훈련
+
+다음 단어를 예측하는 작업인 언어 모델링을 상기해봅시다. 
+아래의 그림은 은닉층이 2개인 일반적인 단방향 RNN 언어 모델의 언어 모델링을 보여줍니다.
+
+![](https://static.wikidocs.net/images/page/33930/deepbilm.PNG)
+
+RNN 언어 모델은 문장으로부터 단어 단위로 입력을 받는데, 
+RNN 내부의 은닉 상태 $h_{t}$는 시점(time step)이 지날수록 점점 업데이트되갑니다. 
+
+이는 결과적으로 RNN의 $h_{t}$의 값이 문장의 << 문맥 정보를 점차적으로 반영한다 >> 고 말할 수 있습니다. 그런데 ELMo는 위의 그림의 순방향 RNN 뿐만 아니라, 위의 그림과는 반대 방향으로 문장을 스캔하는 << 역방향 RNN 또한 활용합니다. ELMo는 양쪽 방향의 언어 모델을 둘 다 학습하여 활용한다고하여 이 언어 모델을 **biLM(Bidirectional Language Model)** 이라고 합니다. >>  
+
+(단어를 고정된 값으로 보지 않고, 사람이 앞뒤 문맥을 모두 살피며 고차원적으로 의미를 파악하는 방식을 본떠 양방향(biLM) 텍스트 표현을 완성한 것이라고 볼 수 있음.)
+
+ELMo에서 말하는 biLM은 기본적으로 다층 구조(Multi-layer)를 전제로 합니다. 
+은닉층이 최소 2개 이상이라는 의미입니다. 
+아래의 그림은 은닉층이 2개인 순방향 언어 모델과 역방향 언어 모델의 모습을 보여줍니다.
+
+![](https://static.wikidocs.net/images/page/33930/forwardbackwordlm2.PNG)
+
+이때 biLM의 각 시점의 입력이 되는 단어 벡터는 이번 챕터에서 설명한 임베딩 층(embedding layer)을 사용해서 얻은 것이 아니라 합성곱 신경망을 이용한 문자 임베딩(character embedding)을 통해 얻은 단어 벡터입니다. 
+
+### 합성곱 신경망을 이용한 문자 임베딩 벡터란? (추가학습)
+
+단어를 통째로 표에서 꺼내오는 일반적인 임베딩(`nn.Embedding` / Word2Vec) 대신, 단어의 스펠링(알파벳) 하나하나를 CNN(합성곱 신경망)에 통과시켜 단어 벡터를 실시간으로 조립해낸다는 의미라고 함. :
+
+RNN(biLM)에 들어가기 전, 입력 벡터를 준비하는 단계의 차이입니다.
+
+**1. 입력 벡터를 만드는 방식의 차이**
+
+- **기존 일반 임베딩:** 단어(`apple`) $\rightarrow$ 단어 사전(Lookup Table)에서 해당 인덱스의 고정된 벡터를 그냥 꺼내옴.
+    
+- **ELMo의 Char-CNN 방식:** 단어(`apple`) $\rightarrow$ 글자 단위 분해(`a, p, p, l, e`) $\rightarrow$ **CNN 알고리즘 통과** $\rightarrow$ << 이미지의 특징을 뽑아내듯 글자들의 패턴을 조합 >> 하여 단어 벡터를 새로 빚어냄.
+    
+
+**2. 왜 굳이 CNN으로 '문자 임베딩'을 했을까?**
+
+이미 공부하셨던 **FastText의 서브워드(n-gram) 원리**와 목적이 완벽히 똑같습니다!
+
+- **형태소적 특징 추출:** `run`, `running`, `runs` 같은 단어들이 들어올 때, CNN 필터가 공통된 스펠링 패턴(`r-u-n`)을 시각적 특징처럼 잡아내어 비슷한 벡터로 만들어줍니다.
+    
+- **OOV(미등록 단어) 방어:** 학습 데이터에 없던 신조어나 오타가 들어와도, 스펠링을 CNN으로 분석해 그럴싸한 의미 벡터를 유추해 냅니다.
+    
+
+**3. "RNN 임베딩이라 재귀라서 안 쓴 건가?"에 대한 정정**
+
+- '임베딩 층' 자체가 재귀(RNN) 성질을 가져서 피한 것이 아닙니다. 단순 임베딩 층(`nn.Embedding`)은 재귀 연산 없이 그냥 메모리에서 값을 꺼내오는 단순 매핑에 불과합니다.
+    
+- ELMo 연구진은 단순히 딕셔너리에서 값을 꺼내오는 것을 넘어, "본격적인 문맥 파악(RNN)을 시작하기 전에, 입력 단어의 스펠링 구조부터 딥러닝(CNN)으로 쫙 분석해서 더 질 좋은 초기 벡터를 만들자"라고 설계한 것입니다.
+    
+
+즉, "CNN으로 스펠링을 씹고 뜯어서 만든 고품질 단어 벡터 $\rightarrow$ 양방향 문맥을 읽는 RNN(biLM)"의 2단 콤보 구조입니다!
+
+
+### ELMo 는 최근에 자주 쓰이는 방식인가?
+
+**현재는 ELMo를 실무나 최신 연구에서 직접 쓰는 경우가 거의 없습니다.**
+
+BERT, GPT 같은 **트랜스포머(Transformer)** 기반 모델들이 NLP 시장을 완전히 통일했기 때문입니다. ELMo는 NLP 발전사에서 '역사적인 분기점이 된 중요 모델'이지만, 기술적으로는 **BERT에게 완벽하게 자리를 넘겨준 조상님 격 기술**입니다.
+
+#### 1. ELMo의 위치: 징검다리 역할
+
+NLP의 발전 흐름을 보면 ELMo의 위치가 명확해집니다.
+
+- **1세대 (Static Embedding):** Word2Vec, GloVe
+    
+    - 단어의 문맥을 못 읽음 (사과 = 먹는 사과 / Apology 동일 취급)
+        
+- **2세대 (Contextualized Embedding):** **ELMo (biLM)**
+    
+    - 문맥을 반영하는 가변 임베딩의 시대를 엶
+        
+- **3세대 (Self-Attention & Transformer):** **BERT, GPT**
+    
+    - ELMo의 한계를 완전히 뛰어넘으며 NLP 대통일 시대를 열음
+
+#### 2. 왜 ELMo 대신 BERT를 쓸까?
+
+|**비교 항목**|**ELMo (biLM)**|**BERT (Transformer)**|
+|---|---|---|
+|**기반 아키텍처**|**RNN (Bi-LSTM)**|**Transformer Encoder**|
+|**문맥 반영 방식**|순방향 RNN + 역방향 RNN의 **결합(Concatenate)**|문장 전체의 단어들을 **동시에 양방향(Self-Attention)**으로 참조|
+|**병렬 처리 (속도)**|불가능 (시점 t 순서대로 계산해야 함)|**완벽한 병렬 처리 가능 (GPU 효율 극대화)**|
+|**장기 의존성**|문장이 길어지면 앞쪽 정보가 희미해짐|문장이 아무리 길어도 모든 단어 간 관계 직접 계산|
+
+ELMo의 Bi-LSTM은 **"앞에서 뒤로 읽은 결과"와 "뒤에서 앞으로 읽은 결과"를 나중에 단순히 합친 수준**이었습니다. 반면 BERT는 트랜스포머의 **Self-Attention** 메커니즘을 통해 **모든 단어가 서로를 한 번에 지켜보며 진정한 의미의 양방향 맥락**을 획득했습니다.
+
+#### 💡 한 줄 요약
+
+ELMo는 "문맥에 따라 단어 벡터가 변해야 한다"는 위대한 아이디어를 제시하여 BERT가 나올 수 있는 판을 깔아준 **역사적 명작**이지만, 현재 실무나 연구에서는 **BERT, RoBERTa, DeBERTa, 그리고 최신 LLM(GPT, LLaMA 등)에 밀려 거의 쓰이지 않습니다.**
+
+
+
+###
+
+
+문자 임베딩에 대한 설명은 'NLP를 위한 합성곱 신경망' 챕터에서 다루는 내용으로 여기서는 임베딩층, Word2Vec 등 외에 단어 벡터를 얻는 또 다른 방식도 있다고만 알아둡시다.
+
+문자 임베딩은 마치 서브단어(subword)의 정보를 참고하는 것처럼 문맥과 상관없이 dog란 단어와 doggy란 단어의 연관성을 찾아낼 수 있습니다. 또한 이 방법은 OOV에도 견고한다는 장점이 있습니다.
+
+주의할 점은 앞서 설명한 **양방향 RNN**과 ELMo에서의 **biLM**은 다릅니다. 
+양방향 RNN은 순방향 RNN의 은닉 상태와 역방향의 RNN의 은닉 상태를 연결(concatenate)하여 다음층의 입력으로 사용합니다.(층마다 순/역방향 결과 종합해서 의미 합성)
+반면, biLM의 순방향 언어모델과 역방향 언어모델이라는 두 개의 언어 모델을 별개의 모델로 보고 학습합니다. (끝날 때까지 순방향/역방향 별개 모델로 따로 굴린 뒤 맨 마지막에만 연결.)
+
+## 3. biLM의 활용
+
+biLM이 언어 모델링을 통해 학습된 후 
+ELMo가 사전 훈련된 biLM을 통해 
+입력 문장으로부터 단어를 임베딩하기 위한 과정을 보겠습니다.
+
+![](https://static.wikidocs.net/images/page/33930/playwordvector.PNG)
+
+이 예제에서는 play란 단어가 임베딩이 되고 있다는 가정 하에 ELMo를 설명합니다. 
+play라는 단어를 임베딩 하기위해서 ELMo는 위의 점선의 사각형 내부의 각 층의 결과값을 재료로 사용합니다. 다시 말해 해당 시점(time step)의 BiLM의 각 층의 출력값을 가져옵니다. 
+
+그리고 순방향 언어 모델과 역방향 언어 모델의 각 층의 출력값을 연결(concatenate)하고 추가 작업을 진행합니다. (위에 적어뒀듯 한번 쭉 돌린 다음 마지막에 연결하는 것. bi-RNN처럼 층마다 섞으면 미래 나올 정보를 커닝할 수 있기 때문.. LM으로서 정상적인 학습을 시키기 위해 분리해두어 제대로 학습시키기 위한 것임.)
+
+여기서 각 층의 출력값이란 첫번째는 임베딩 층을 말하며, 나머지 층은 각 층의 은닉 상태를 말합니다. ELMo의 직관적인 아이디어는 각 층의 출력값이 가진 정보는 전부 서로 다른 종류의 정보를 갖고 있을 것이므로, 이들을 모두 활용한다는 점에 있습니다. 
+
+(단어 하나를 단순한 벡터 하나로 퉁치지 않고, 
+딥러닝 신경망의 '모든 레이어(층)'에서 나온 결과물을 전부 긁어모아 연결한다는 뜻임.)
+
+아래는 ELMo가 임베딩 벡터를 얻는 과정을 보여줍니다.
+
+### 1) 각 층의 출력값을 연결(concatenate)한다.
+
+![](https://static.wikidocs.net/images/page/33930/concatenate.PNG)
+
+### 2) 각 층의 출력값 별로 가중치를 준다.
+
+![](https://static.wikidocs.net/images/page/33930/weight.PNG)
+
+이 가중치를 여기서는 $s_{1}$, $s_{2}$, $s_{3}$라고 합시다.
+
+### 3) 각 층의 출력값을 모두 더한다.
+
+![](https://static.wikidocs.net/images/page/33930/weightedsum.PNG)
+
+2)번과 3)번의 단계를 요약하여 가중합(Weighted Sum)을 한다고 할 수 있습니다.
+
+### 4) 벡터의 크기를 결정하는 스칼라 매개변수를 곱한다.
+
+![](https://static.wikidocs.net/images/page/33930/scalarparameter.PNG)
+
+이 스칼라 매개변수를 여기서는 $γ$이라고 합시다.
+
+이렇게 완성된 벡터를 ELMo 표현(representation)이라고 합니다. 
+
+지금까지는 ELMo 표현을 얻기 위한 과정이고 이제 ELMo를 입력으로 사용하고 수행하고 싶은 텍스트 분류, 질의 응답 시스템 등의 자연어 처리 작업이 있을 것입니다. 
+예를 들어 텍스트 분류 작업을 하고 싶다고 가정합시다. 
+
+그렇다면 ELMo 표현을 어떻게 텍스트 분류 작업에 사용할 수 있을까요?
+
+ELMo 표현을 << 기존의 임베딩 벡터와 함께 사용 >>할 수 있습니다. 
+
+우선 텍스트 분류 작업을 위해서 GloVe와 같은 기존의 방법론을 사용한 임베딩 벡터를 준비했다고 합시다. 이때, GloVe를 사용한 임베딩 벡터만 텍스트 분류 작업에 사용하는 것이 아니라 이렇게 준비된 ELMo 표현을 GloVe 임베딩 벡터와 연결(concatenate)해서 입력으로 사용할 수 있습니다. 
+
+그리고 이때 biLM의 가중치는 고정시키고, 
+위에서 사용한 $s_{1}$, $s_{2}$, $s_{3}$와 $γ$는 훈련 과정에서 학습됩니다.
+
+![](https://static.wikidocs.net/images/page/33930/elmorepresentation.PNG)
+
+위의 그림은 ELMo 표현이 기존의 GloVe 등과 같은 임베딩 벡터와 함께 NLP 태스크의 입력이 되는 것을 보여줍니다.
+(두 임베딩을 적당히 섞어서 중간값으로 맞춘다'라기보다는, "기존의 고정된 기본 임베딩 벡터 옆에 ELMo가 추출한 고차원 문맥 벡터를 덧붙여서(Concatenate) 단어의 표현력을 극대화한 뒤 학습 자원으로 쓴 것. 이 방법이 나온 당시에는, 모델 전체를 새로 훈련시킬 필요 없이 ELMo 벡터만 덧붙여주니 NLP 태스크들의 성능, 정확도가 비약적으로 상승했다고 함.)
+
+### ELMo에 대해서
+
+#### 1. 두 벡터의 결합 방식 (Concatenation)
+
+기존 임베딩(GloVe)과 ELMo 임베딩은 서로 '대체'하는 관계가 아니라 '보완'하는 관계로 결합됩니다.
+
+- GloVe (기본 임베딩): 문맥과 상관없는 단어 고유의 불변하는 기초 의미를 제공합니다. (예: apple은 기본적으로 과일/기업 관련 단어다.)
+
+- ELMo (문맥 임베딩): 문장 전체를 읽고 현재 문장 속에서의 생생한 역동적 의미를 제공합니다. (예: 이 문장에서 apple은 '먹는 사과'가 아니라 '아이폰 만드는 회사'다.)
+
+- 결합 ($[\text{GloVe} ; \text{ELMo}]$): 두 벡터를 이어 붙여 "기본 의미 + 현재 문맥 맥락"이 모두 담긴 빵빵한 입력 벡터를 만들어 냅니다.
+
+
+#### 2. 왜 당시에 이 방법이 '미친 효율성'으로 극찬받았을까?
+
+ELMo 이전에는 새로운 NLP 문제를 풀 때마다 모델 전체를 처음부터 새로 다 학습시켜야 했습니다. 하지만 ELMo는 **플러그인(Plug-in) 방식**을 가능하게 만들었습니다.
+
+1. **사전 학습(Pre-train)의 힘:** 대용량 텍스트로 미리 잘 학습시켜 둔 ELMo 모델을 가져옵니다.
+    
+2. **동결(Freeze):** ELMo 내부의 거대한 파라미터는 새로 학습시키지 않고 그대로 고정(Freeze)해 둡니다.
+    
+3. **가벼운 붙이기:** 기존에 잘 쓰던 모델(예: 분류기, 번역기 등)의 입력층에 **ELMo 벡터만 추가로 쓱 꽂아 넣기만** 하면 되었습니다.
+    
+
+> **결과:** 모델 전체를 새로 훈련시킬 필요 없이, 단지 입력 데이터에 ELMo 벡터만 덧붙여 주었을 뿐인데 기존 NLP 태스크들의 **성능(정확도)이 비약적으로 폭발**했습니다.
+
+#### 3. NLP 역사에서의 의미: 'Transfer Learning(전이 학습)'의 시작
+
+이미지 처리(CV) 분야에서는 이미 잘 만들어진 모델(ImageNet pre-trained)을 가져와 쓰는 전이 학습이 흔했지만, **NLP 분야는 ELMo의 등장으로 비로소 본격적인 전이 학습 시대를 열었습니다.**
+
+*"미리 언어의 맥락을 깊게 공부한 거대 모델(ELMo)을 가져와서, 내 작업(감정 분석, 질문 답변 등)의 입력 피처로 부품처럼 가져다 쓴다"*는 이 아이디어는 훗날 **BERT와 GPT로 이어지는 현대 LLM 파이프라인의 결정적 기초**가 되었습니다.
+
+#### !!! 우리가 가져다 쓸 때 (내 데이터셋에서의 동작 방식)
+
+사전 학습된 ELMo를 내 데이터셋(예: 특정 영화 리뷰 데이터)에 끌어다 쓸 때, **ELMo가 내 데이터의 문맥을 새로 읽어내서 벡터를 생성**합니다.
+
+- **고정된 단어장(Lookup Table)을 가져오는 게 아닙니다.**
+    
+    - Word2Vec은 `apple` = `[0.1, -0.5, ...]`처럼 완성된 정적 벡터 수치표만 가져옵니다.
+        
+- **'문맥을 읽는 지능(RNN 가중치)' 자체를 가져옵니다.**
+    
+    - 이미 온갖 문맥을 읽어본 영리한 ELMo 모델을 가져와 내 영화 리뷰 문장(`"This movie is bad"`)을 집어넣으면, ELMo가 그 문장을 **실시간으로 스캔**하면서 _"아, 이 문장에서 `bad`는 영화의 품질을 뜻하는 맥락이구나"_ 하고 **그 문장에 딱 맞는 최적의 문맥 벡터를 즉석에서 계산해 출력**해 줍니다.
+
+
+#### 💡 한 줄 요약
+
+**"단어 고유의 기초 의미(GloVe)에 ELMo가 추출한 고차원 문맥 정보(ELMo)를 덧붙여 극상의 단어 벡터를 만든 것이며, 기존 모델에 부품처럼 꽂기만 하면 성능이 폭발했기 때문에 당대에 대혁명으로 통했습니다!"**
+
+
+
+
+
+
 # 12-09 단어 단위 RNN - 임베딩 사용
+
+이번 챕터에서는 이전의 RNN 챕터에서 문자 단위 RNN을 구현했던 것과는 달리 
+<< RNN의 입력 단위를 단어 단위로 >> 사용합니다. 
+
+그리고 단어 단위를 사용함에 따라서 
+Pytorch에서 제공하는 임베딩 층(embedding layer)를 사용하겠습니다.
+(ELMo내부에서 벌어지는 RNN기반의 단어임베딩과정 재현해보기.
+다만, Char-CNN + Bi-LSTM 구현하기에는 코드가 너무 복잡하니..
+기초적인 부분 nn.Embedding + RNN  학습하기 위한 목적이라고 생각하면 됨.)
+
+## 1. 훈련 데이터 전처리하기
+
+우선 실습을 위해 필요한 도구들을 임포트합니다.
+
+```python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+```
+
+실습을 위해 임의의 문장을 만듭니다.
+
+```python
+sentence = "Repeat is the best medicine for memory".split()
+```
+
+우리가 만들 RNN은 'Repeat is the best medicine for'을 입력받으면 'is the best medicine for memory'를 출력하는 RNN입니다. 
+
+위의 임의의 문장으로부터 단어장(vocabulary)을 만듭니다.
+
+```python
+vocab = list(set(sentence))
+print(vocab)
+```
+
+```css
+['best', 'memory', 'the', 'is', 'for', 'medicine', 'Repeat']
+```
+
+이제 단어장의 단어에 고유한 정수 인덱스를 부여합니다. 
+그리고 그와 동시에 모르는 단어를 의미하는 UNK 토큰도 추가하겠습니다.
+
+* `enumerate(iterable, start)`에서 **두 번째 인자(`1`)는 숫자를 몇부터 시작할지 지칭하는 '시작 값(start)'** 역할. (+ enumerate는 항상 숫자, 요소 순서로 튜플반환함. )
+
+```python
+word2index = {tkn: i for i, tkn in enumerate(vocab, 1)}  
+			   # 단어에 고유한 정수 부여
+word2index['<unk>']=0
+```
+
+```python
+print(word2index)
+```
+
+```bash
+{'best': 1, 'memory': 2, 'the': 3, 'is': 4, 'for': 5, 'medicine': 6, 'Repeat': 7, '<unk>': 0}
+```
+
+이제 word2index가 우리가 사용할 최종 단어장인 셈입니다. 
+word2index에 단어를 입력하면 맵핑되는 정수를 리턴합니다.
+
+```python
+print(word2index['memory'])
+```
+
+```undefined
+2
+```
+
+단어 'memory'와 맵핑되는 정수는 2입니다. 
+
+
+예측 단계에서 예측한 문장을 확인하기 위해 idx2word도 만듭니다.
+
+```python
+# 수치화된 데이터를 단어로 바꾸기 위한 사전
+index2word = {v: k for k, v in word2index.items()}
+print(index2word)
+```
+
+```css
+{1: 'best', 2: 'memory', 3: 'the', 4: 'is', 5: 'for', 6: 'medicine', 7: 'Repeat', 0: '<unk>'}
+```
+
+idx2word는 정수로부터 단어를 리턴하는 역할을 합니다. 정수 2를 넣어봅시다.
+
+```python
+print(index2word[2])
+```
+
+```undefined
+memory
+```
+
+정수 2와 맵핑되는 단어는 memory인 것을 확인할 수 있습니다. 
+(set이 unordered 라서 실행 시마다 바뀔 수 있음)
+
+이제 데이터의 각 단어를 정수로 인코딩하는 동시에, 
+<< 입력 데이터와 레이블 데이터를 만드는 >> build_data라는 함수를 만들어보겠습니다.
+
+```ruby
+def build_data(sentence, word2index):
+    encoded = [word2index[token] for token in sentence] # 각 문자를 정수로 변환. 
+    input_seq, label_seq = encoded[:-1], encoded[1:] # 입력 시퀀스와 레이블 시퀀스를 분리
+    input_seq = torch.LongTensor(input_seq).unsqueeze(0) # 배치 차원 추가
+    label_seq = torch.LongTensor(label_seq).unsqueeze(0) # 배치 차원 추가
+    return input_seq, label_seq
+```
+
+('Repeat is the best medicine for'을 입력받으면 'is the best medicine for memory'를 출력하는 RNN을 만드는 것이 목표이므로, input과 label을 각각 저런 식으로 세팅해주어야 함.)
+
+
+만들어진 함수로부터 입력 데이터와 레이블 데이터를 얻습니다.
+
+```python
+X, Y = build_data(sentence, word2index)
+```
+
+입력 데이터와 레이블 데이터가 정상적으로 생성되었는지 출력해봅시다.
+
+```python
+print(X)
+print(Y)
+```
+
+```lua
+tensor([[7, 4, 3, 1, 6, 5]]) # Repeat is the best medicine for을 의미
+tensor([[4, 3, 1, 6, 5, 2]]) # is the best medicine for memory을 의미
+```
+
+## 2. 모델 구현하기
+
+이제 모델을 설계합니다. 
+
+이전 모델들과 달라진 점은 ==임베딩 층을 추가했다==는 점입니다. 
+파이토치에서는 nn.Embedding()을 사용해서 임베딩 층을 구현합니다.
+
+임베딩층은 크게 두 가지 인자를 받는데 첫번째 인자는 단어장의 크기이며,
+두번째 인자는 임베딩 벡터의 차원입니다.
+
+```python
+class Net(nn.Module):
+    def __init__(self, vocab_size, input_size, hidden_size, batch_first=True):
+        super(Net, self).__init__()
+        self.embedding_layer = nn.Embedding(num_embeddings=vocab_size, 
+                                            embedding_dim=input_size)
+                                            # 워드 임베딩
+        self.rnn_layer = nn.RNN(input_size, hidden_size, 
+                                batch_first=batch_first)
+                                # 입력 차원, 은닉 상태의 크기 정의
+        self.linear = nn.Linear(hidden_size, vocab_size) 
+        # 출력은 원-핫 벡터의 크기를 가져야함. 
+        # 또는 단어 집합의 크기만큼 가져야함.
+
+    def forward(self, x):
+        # 1. 임베딩 층
+        # 크기변화: (배치 크기, 시퀀스 길이) 
+		#           => (배치 크기, 시퀀스 길이, '임베딩 차원')
+        output = self.embedding_layer(x)
+        
+        # 2. RNN 층
+        # 크기변화: (배치 크기, 시퀀스 길이, 임베딩 차원)
+        # => output (배치 크기, 시퀀스 길이, '은닉층 크기'), 
+        #    hidden ('1', 배치 크기, 은닉층 크기)
+        output, hidden = self.rnn_layer(output)
+        
+        # 3. 최종 출력층
+        # 크기변화: (배치 크기, 시퀀스 길이, 은닉층 크기) 
+        #       => (배치 크기, 시퀀스 길이, '단어장 크기')
+        output = self.linear(output)
+        
+        # 4. view를 통해서 배치 차원 제거
+        # 크기변화: (배치 크기, 시퀀스 길이, 단어장 크기) 
+        #        => (배치 크기*시퀀스 길이, 단어장 크기)
+        return output.view(-1, output.size(2))
+```
+
+### 추가 이해
+
+- super안에 Net, self 넣는 이유 : Net 기준으로 상위부모클래스 찾는 역할 + self로 자기자신 객체를 넘겨서 부모의 init함수 실행.
+
+#### 1. 임베딩 층 (`self.embedding_layer`)
+
+- **역할:** 숫자로 된 단어 번호(정수 인덱스)를 고차원 의미 공간의 연속적인 수치 벡터(Dense Vector)로 바꿔줍니다.
+    
+- **차원 변화:** `(batch_size, seq_len)` → **`(batch_size, seq_len, embedding_dim)`**
+    
+- **의미:**
+    
+    - 입력 `x`가 `[7, 4, 3, 1, 6, 5]`(단어 6개)라면, 각 숫자가 예: `[0.12, -0.45, 0.88...]` 같은 100차원(예시) 크기의 벡터로 팽창합니다.
+
+#### 2. RNN 층 (`self.rnn_layer`)
+
+- **역할:** 단어 벡터들을 순서대로(Sequence) 읽어 나가며 **앞뒤 문맥과 흐름(Context)을 파악**합니다.
+	[[07 Recurrent Neural Network#^d45509]] => batch_first 복습.
+
+- **차원 변화:** `(batch_size, seq_len, embedding_dim)` 
+			→ **`output: (batch_size, seq_len, hidden_size)`**, 
+			  **`hidden: (1, batch_size, hidden_size)`**
+    
+- **의미:**
+    
+    - **`output` (전체 시점 출력):** 각 위치의 단어가 주변 문맥까지 흡수한 '문맥 반영 벡터'입니다. 단어 개수(`seq_len`)만큼 모두 유지됩니다.
+        
+    - **`hidden` (최종 은닉 상태):** 문장 전체를 다 읽고 난 뒤, 맨 마지막 시점에 남은 '문장 전체의 요약본 메모리'입니다. (1개 층이라 제일 앞 차원이 `1`입니다.)
+
+
+#### 3. 최종 출력층 (`self.linear`)
+
+- **역할:** RNN이 만든 문맥 벡터를 바탕으로 "다음 위치에 올 단어는 단어장의 수많은 단어들 중 몇 번 단어일까?"에 대한 예측 점수(Logits)를 계산합니다.
+    
+- **차원 변화:** `(batch_size, seq_len, hidden_size)` 
+			→ **`(batch_size, seq_len, vocab_size)`**
+    
+- **의미:**
+    - 단어장 크기가 1,000개라면, 
+    - 매 시점마다 **1,000개의 모든 단어에 대한 예측 점수표**를 뽑아냅니다.
+
+#### 4. 차원 평탄화 (`output.view(-1, output.size(2))`)
+
+- **역할:** 손실 함수(`nn.CrossEntropyLoss`)에 넣어 정답과 비교하기 위해 **3차원 텐서를 2차원 행렬로 펴주는 작업**입니다. 
+    
+- **차원 변화:** `(batch_size, seq_len, vocab_size)` 
+			→ **`(batch_size * seq_len, vocab_size)`**
+    
+- **의미:**
+    
+    - CrossEntropyLoss는 보통 `(전체 예측 개수, 클래스 개수)` 형태의 2차원 입력을 받습니다.
+        
+    - 따라서 "문장 단위/배치 단위"로 나뉘어 있던 틀을 깨고, "총 N개의 단어 예측 문제들"로 납작하게 줄지어 펼쳐놓는 것입니다.
+
+#### ==한 눈에 보는 차원 흐름 예시
+
+만약 **`batch_size=1`**, **`seq_len=6`**, **`vocab_size=10`** 이라면:
+
+1. **입력 X:** `(1, 6)` → 단어 6개
+    
+2. **임베딩:** `(1, 6, 100)` → 단어 6개가 각각 100차원(특성) 벡터가 됨
+    
+3. **RNN:** `(1, 6, 250)` → 은닉층 크기(250)로 문맥 정보 압축
+    
+4. **Linear:** `(1, 6, 10)` → 단어 6개 각각에 대해 10개 단어 후보 점수 출력
+    
+5. **View:** **`(6, 10)`** → 손실 계산을 위해 총 6개의 단어 예측 점수표로 평탄화
+
+
+###
+
+
+
+이제 모델을 위해 하이퍼파라미터를 설정합니다.
+
+```python
+# 하이퍼 파라미터
+vocab_size = len(word2index)  # 단어장의 크기는 임베딩 층, 최종 출력층에 사용된다. <unk> 토큰을 크기에 포함한다.
+input_size = 5  # 임베딩 된 차원의 크기 및 RNN 층 입력 차원의 크기
+hidden_size = 20  # RNN의 은닉층 크기
+```
+
+모델을 생성합니다.
+
+```python
+# 모델 생성
+model = Net(vocab_size, input_size, hidden_size, batch_first=True)
+# 손실함수 정의
+loss_function = nn.CrossEntropyLoss() 
+               # 소프트맥스 함수 포함이며 실제값은 원-핫 인코딩 안 해도 됨.
+  
+# 옵티마이저 정의
+optimizer = optim.Adam(params=model.parameters())
+```
+
+모델에 입력을 넣어서 출력을 확인해봅시다.
+
+```python
+# 임의로 예측해보기. 가중치는 전부 랜덤 초기화 된 상태이다.
+output = model(X)
+print(output)
+```
+
+```lua
+tensor([[ 0.1198,  0.0473,  0.1735,  0.6194,  0.2807, -0.2106,  0.0770, -0.4386],
+        [ 0.0374, -0.0778,  0.2033,  0.3874, -0.0493, -0.0961,  0.0201, -0.4601],
+        [ 0.0167, -0.0092,  0.0669,  0.2091, -0.0390, -0.0250,  0.1512, -0.2769],
+        [-0.0784, -0.0491,  0.1702,  0.2962,  0.0476, -0.1790, -0.3025, -0.2063],
+        [ 0.1245,  0.1390,  0.2189,  0.3938,  0.2040, -0.1574, -0.2011, -0.1248],
+        [ 0.1940,  0.0897,  0.3987,  0.3072,  0.2123, -0.0825,  0.1198, -0.2285]],
+       grad_fn=<ViewBackward>)
+```
+
+모델이 어떤 예측값을 내놓기는 하지만 
+현재 가중치는 랜덤 초기화되어 있어 의미있는 예측값은 아닙니다. 
+
+
+예측값의 크기를 확인해봅시다.
+
+```python
+print(output.shape)
+```
+
+```css
+torch.Size([6, 8])
+```
+
+예측값의 크기는 (6, 8)입니다. 이는 각각 (시퀀스의 길이, 은닉층의 크기)에 해당됩니다. 
+
+
+모델은 훈련시키기 전에 예측을 제대로 하고 있는지 
+예측된 정수 시퀀스를 다시 단어 시퀀스로 바꾸는 decode 함수를 만듭니다.
+
+```python
+# 수치화된 데이터를 단어로 전환하는 함수
+decode = lambda y: [index2word.get(x) for x in y]
+```
+
+약 200 에포크 학습합니다.
+
+```python
+# 훈련 시작
+for step in range(201):
+    # 경사 초기화
+    optimizer.zero_grad()
+    # 순방향 전파
+    output = model(X)
+    # 손실값 계산
+    loss = loss_function(output, Y.view(-1)) # view(-1) == nd=>1d로 펼치기
+											 # CrossEntropyLoss : 1d여야함.
+    # 역방향 전파
+    loss.backward()
+    # 매개변수 업데이트
+    optimizer.step()
+    # 기록
+    if step % 40 == 0:
+        print("[{:02d}/201] {:.4f} ".format(step+1, loss))
+        pred = output.softmax(-1).argmax(-1).tolist()
+        print(" ".join(["Repeat"] + decode(pred)))
+        print()
+```
+
+```scss
+[01/201] 2.0184 
+Repeat the the the the medicine best
+
+[41/201] 1.3917 
+Repeat is the best medicine for memory
+
+[81/201] 0.7013 
+Repeat is the best medicine for memory
+
+[121/201] 0.2992 
+Repeat is the best medicine for memory
+
+[161/201] 0.1552 
+Repeat is the best medicine for memory
+
+[201/201] 0.0964 
+Repeat is the best medicine for memory
+```
+
+![[Pasted image 20260817181332.png|434]]
+
+### 1. 출력 결과가 의미하는 것
+
+- **\[01/201] 시점:** 모델 가중치가 무작위(Random) 상태라 아무 단어나 막 뱉습니다. (`for for the for...`)
+    
+- **\[81/201] 이후:** Loss가 떨어지면서 모델이 "아, `Repeat` 다음엔 `is`가 오고, `is` 다음엔 `the`가 나오는구나!"라는 흐름(다음 단어 예측 규칙)을 완전히 학습했습니다.
+    
+
+### 2. 임베딩(Embedding)과 모델 학습이 동시에 이루어지는 원리
+
+"임베딩을 먼저 만들어두고 학습시키는 게 아닌가?" 싶으실 수 있지만, `nn.Embedding` 역시 이 신경망의 일부(가중치)입니다.
+
+- **역전파(Backpropagation)의 동시 업데이트:**
+    
+    - 모델이 틀릴 때마다 오차(Loss)가 발생합니다.
+        
+    - 이 오차가 뒤로 흘러 들어가면서 **1) 출력층(Linear)**, **2) RNN 층**, 그리고 **3) 맨 밑의 `nn.Embedding` 가중치**까지 동시에 전부 수정(업데이트)됩니다.
+        
+- **결과적으로 얻는 것:**
+    
+    - **RNN과 출력층:** 문맥을 이어받아 다음 단어를 예측하는 능력 정립
+        
+    - **임베딩 층:** '다음 단어를 잘 맞추기 위해' 단어들의 의미적 관계와 특징이 수치로 각인된 **학습된 단어 임베딩 벡터** 생성
+        
+
+### 💡 한 줄 요약
+
+"다음 단어 맞추기(언어 모델 학습)라는 목표 하나를 향해 달려가면서, 
+그 부산물이자 기반으로서 `nn.Embedding` 안의 단어 벡터들도 함께 똑똑해지는 과정"입니다!
+
+
+
 
 
 # 용어 정리
@@ -2251,4 +2880,36 @@ $$A \approx U_k \Sigma_k V_k^T$$
 * 비유하자면, "수천 개의 단어 칼럼을 50~100개의 '핵심 주제(Topic)' 칼럼으로 압축 요약한 기술"이라고 이해하시면 됩니다.
 
 
-## 
+## Torch.nn.Embedding() 
+
+`torch.nn.Embedding`은 특정 알고리즘(Word2Vec, GloVe, FastText 등)을 미리 적용해서 벡터를 가져오는 방식이 아니라, "학습 가능한 무작위 가중치 행렬(Lookup Table)"을 생성한 뒤 **경사하강법(Backpropagation)을 통해 모델이 직접 스스로 학습하는 방식**을 사용합니다.
+
+### 1. `torch.nn.Embedding`의 작동 방식
+
+- **초기화:** 맨 처음 선언될 때는 무작위 난수(Random Values)로 가중치 테이블이 만들어집니다.
+    
+- **Lookup (조회):** 입력으로 들어온 단어 번호(정수 인덱스)에 해당하는 행(Row)의 벡터를 **그대로 꺼내오기만** 합니다. (복잡한 연산 없이 O(1) 속도로 조회)
+    
+- **학습 (Update):** 모델이 역전파를 수행할 때, 발생한 손실(Loss)에 따라 이 **임베딩 벡터의 수치들도 단어의 의미에 맞게 점점 업데이트**됩니다.
+    
+
+### 2. Word2Vec / GloVe와의 차이
+
+|구분|`torch.nn.Embedding` (기본)|Word2Vec / GloVe|
+|---|---|---|
+|**원리**|**Lookup Table (가중치 행렬)**|통계적/맥락적 사전 학습 알고리즘|
+|**초기값**|**무작위 (Random Initialization)**|의미론적 거리가 반영된 사전 학습 벡터|
+|**학습 주체**|내 NLP 모델이 학습하며 **함께 업데이트**|이미 학습 완료된 고정/미세조정 벡터|
+
+### 3. 사전 학습된 임베딩(Word2Vec 등)을 가져다 쓰고 싶다면?
+
+만약 Word2Vec이나 FastText 같은 외부 사전 학습 벡터를 파이토치에서 쓰고 싶다면, `from_pretrained` 메서드를 이용해 `torch.nn.Embedding`에 가중치를 직접 주입합니다.
+
+```Python
+# 사전 학습된 가중치(weights)를 주입해서 생성하는 방식
+embedding = nn.Embedding.from_pretrained(pretrained_weights, freeze=False)
+```
+
+### 💡 한 줄 요약
+
+`torch.nn.Embedding`은 기본적으로 Word2Vec 같은 특정 알고리즘이 아니며, **"단어 번호로 벡터를 즉시 찾아오는 무작위 가중치 표(Lookup Table)"를 만들어 두고 딥러닝 모델이 직접 의미를 학습하게 만드는 방식**입니다!

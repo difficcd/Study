@@ -300,7 +300,7 @@ inputs = torch.Tensor(1, 10, 5)
 인자로 입력의 크기, 은닉 상태의 크기를 정의해주고, 
 batch_first=True를 통해서 
 입력 텐서의 첫번째 차원이 배치 크기임을 알려줍니다.
-(false : 과거 기본값으로, timesteps, batch_size, input_size 순서였음.)
+(false : 과거 기본값으로, timesteps, batch_size, input_size 순서였음.) ^d45509
 
 ```python
 cell = nn.RNN(input_size, hidden_size, batch_first=True)

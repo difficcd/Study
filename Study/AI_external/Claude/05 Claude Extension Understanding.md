@@ -39,7 +39,7 @@ plugin-name/
 
 ### `/plugin` 명령어 흐름
 
-[[Claude Code Slash Command]] 참조..
+[[@ Claude Code Slash Command]] 참조..
 
 `claude-plugins-official`은 Claude Code를 처음 실행할 때 자동으로 등록돼요. [Claude Code Docs](https://code.claude.com/docs/en/plugins)
 

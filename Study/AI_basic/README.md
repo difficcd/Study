@@ -32,6 +32,8 @@ https://wikidocs.net/book/2788
 - [ ] n-gram 일반화(generalization) 방법 공부하기
 - [ ] item2vec 공부하기 (word2vec 연계..)
 - [ ] https://arxiv.org/pdf/1611.05469v1.pdf 읽기 (word2vec)
+- [ ] https://aclanthology.org/N18-1202/ 읽기 (ELMo)
+- [ ] 
 
 
 
