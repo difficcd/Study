@@ -10,6 +10,8 @@
 
 ### 학습 자료
 https://wikidocs.net/book/2788
+https://wikidocs.net/152836
+
 
 ### MEMO
 - pytorch-nlp-torch 폴더는 복습용으로 활용 (각 함수 기능 복기)
