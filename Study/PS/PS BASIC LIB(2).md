@@ -578,7 +578,7 @@ int main() {
 }
 ```
 
-# sort
+# ==sort
 
 C++에서 `std::sort`는 `<algorithm>` 헤더에 있으며, **평균 $O(N \log N)$** 속도를 보장하는 가장 강력한 정렬 함수입니다.
 
@@ -913,5 +913,60 @@ int current_location = q.front().second;
 q.pop();
 ```
 
-# do {} while () ;
+# accumulate
+
+### 기본 사용법 및 주의점
+
+`std::accumulate`는 `<numeric>` 헤더에 정의되어 있으며, 컨테이너의 특정 범위 내 원소들의 누적 합을 계산할 때 사용함.
+
+```C++
+#include <iostream>
+#include <vector>
+#include <numeric> // accumulate 사용을 위해 필수 포함
+
+using namespace std;
+
+int main() {
+    vector<int> v = {1, 2, 3, 4, 5};
+
+    // 1. 기본 사용법 (int 범위 연산)
+    int sum_int = accumulate(v.begin(), v.end(), 0); 
+
+    // 2. 오버플로우 방지 (long long 범위 연산)
+    long long sum_ll = accumulate(v.begin(), v.end(), 0ll); 
+}
+```
+
+### `0ll`을 지정하는 이유 (타입 추론 원리)
+
+`std::accumulate` 세 번째 인수로 전달되는 **초기값(init)의 타입**에 의해 내부 연산과 최종 반환 타입이 결정됨.
+
+- **`accumulate(v.begin(), v.end(), 0)`**
+    
+    - 세 번째 인수가 ==`int` 타입 `0`이므로== 내부적으로 `int` 연산을 수행
+        
+    - 누적 합이 $21$억(`int` 최대 한계)을 초과할 경우 오버플로우가 발생함
+        
+- **`accumulate(v.begin(), v.end(), 0ll)`**
+    
+    - 세 번째 인수가 `long long` 타입 `0ll`이므로 내부적으로 `long long` 연산을 수행
+        
+    - 오버플로우 없이 안전한 계산이 가능
+        
+
+### 기타 연산 응용 (곱셈 등)
+
+네 번째 인수로 연산자 플러그인을 전달하여 덧셈 외의 누적 연산(곱셈 등)을 수행함.
+
+```C++
+vector<int> v = {1, 2, 3, 4};
+
+// 모든 원소의 곱 계산 (초기값 1 지정)
+int product = accumulate(v.begin(), v.end(), 1, multiplies<int>()); 
+```
+
+알고리즘 문제 풀이 시 TIP:
+`long long` 범위의 합을 구할 경우 세 번째 인수에 `0ll`을 명시하는 방식을 권장함.
+
+
 #

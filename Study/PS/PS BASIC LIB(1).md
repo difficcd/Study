@@ -1,5 +1,7 @@
 
 > C++ 기준, 자료구조/알고리즘에 필요한 lib 사용지식 정리
+> 
+> 기본 PS 기초는 [[PS BASIC LIB(2)]] 에 정리.
 
 
 
@@ -426,4 +428,44 @@ pq.pop(); // 가장 큰 10을 삭제
 - **`size()`**: 들어있는 원소의 개수 반환
 
 
-# 
+# binary_search
+### `std::binary_search` 특징
+
+- **리턴 타입:** `bool` (`true` 또는 `false`)
+    
+- **역할:** 해당 값이 벡터 안에 "존재하는지 안 하는지"만 확인해 줌.
+    
+- **단점:** 위치(인덱스이나 이테레이터)나 중복 개수는 알려주지 않음.
+    
+```C++
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+int main() {
+    vector<int> v = {1, 2, 2, 2, 3, 4, 5};
+    // binary_search 사용 전에도 반드시 오름차순 정렬되어 있어야 함!
+
+    // 1. 값 존재 여부만 단순 확인 (bool 반환)
+    if (binary_search(v.begin(), v.end(), 2)) {
+        cout << "2가 존재합니다!" << endl;
+    }
+
+    if (!binary_search(v.begin(), v.end(), 99)) {
+        cout << "99는 존재하지 않습니다!" << endl;
+    }
+}
+```
+
+### 한눈에 보는 용도 차이
+
+|**함수**|**리턴 값**|**주요 용도**|
+|---|---|---|
+|**`std::binary_search`**|`bool`|값이 **있나 없나만** 빠르게 확인할 때|
+|**`std::lower_bound`**|`iterator`|값의 **위치(인덱스)**나 **중복 개수**를 구해야 할 때|
+
+단순히 "이 숫자 배열에 존재하나?" 체크할 때는 `binary_search`가 코드가 훨씬 깔끔함!
+
+#
