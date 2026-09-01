@@ -35,7 +35,7 @@ https://wikidocs.net/152836
 - [ ] item2vec 공부하기 (word2vec 연계..)
 - [ ] https://arxiv.org/pdf/1611.05469v1.pdf 읽기 (word2vec)
 - [ ] https://aclanthology.org/N18-1202/ 읽기 (ELMo)
-- [ ] 
+- [ ] https://arxiv.org/pdf/1508.07909 읽기 (BPE)
 
 
 

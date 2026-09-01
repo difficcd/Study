@@ -356,4 +356,95 @@ N을 위해 N-1개를 치워두고 to를 비워둔다는 발상을 재귀적으�
 과정을 
 
 
+# 피로도 (재귀 bfs)
+
+#### 초기 코드
+
+```cpp
+
+#include <string>
+#include <vector>
+
+using namespace std;
+
+int solution(int k, vector<vector<int>> dungeons) {
+    int answer = -1;
+    
+    // 최대한 많은 곳을 탐색하려면
+    // 예외 케이스 : 나한테 20정도가 있는데 [20 10], [5 5]*4 일때
+    // 던전개수가 최대 8, 최소>=소모 임.
+    
+    for (int i=0; i<dungeons.size(); i++){
+        vector<int> visited(dungeons.size());
+        vector<int> temp = dungeons[i];   
+        
+        visited[i] = true; 
+        int cnt=0;
+        int capa=k;
+        
+        while(1){
+            int flag=1;
+            
+            for(int j=0; j<visited.size(); j++){
+                if(visited[j] == false){
+                    if(temp[0]>=capa){
+                        visited[j] == true;
+                        cnt++;
+                        capa-=temp[1]
+                        flag = 0;
+                    }
+                }
+            }
+            
+            if(flag==0) {
+                visited[i] = false;
+                break;
+            }
+            
+        }
+    }
+    return answer;
+}
+```
+
+
+bfs 를 스택없이 재귀로 구성할 줄 알아야 했어서 어려웠음.
+기초적인 틀은 알지만, 직관으로 확실하게 이해하고 있지 못한 PS방법중 하나가 dfs bfs이기도 했고 작년에 로직을 배우고 나서 오랜만에 PS해서 풀기 어려웠음.
+
+특히 정형화된 dfs bfs 가 아니라
+dfs + 재귀 방식으로 if문을 재귀를 사용하면서 달아줘야함 + 
+완전탐색을 한다 => 오버헤드때문에 생각도 잘 안드는 필드라서 여러번 연습이 필요할 것 같음.
+
+#### dfs 재귀버전은 PS BASIC SOL.md 참조
+
+위의 문제 : 최소피로도 소모피로도 있는 피로도문제인데
+
+| k   | dungeons                   | result |
+| --- | -------------------------- | ------ |
+| 80  | \[[80,20],[50,40],[30,10]] | 3      |
+이렇게 sort,직관 등으로 풀기 힘든 예외 case도
+
+![[Pasted image 20260831203910.png|364]]
+
+당연하지만 k와 cnt 가 오락가락하면서 잘 탐색함
+
+코어 로직만 다시 분해해보면...
+
+dfs :
+최대값 갱신함
+시작점 고르는 루프 {
+		방문 가능하다는 전제조건 하에서 : 방문하지 않은 애들 찾는 루프 {
+			 1 방문하지 않은 애 중 하나를 방문처리 하고
+			 2 dfs다시 돌리기 (지금 방문처리한 애를 방문한 환경에서 또 dfs로 들어감)
+			 3  이 모든 과정을 다시 돌렸으니까 (방문처리한 애 기준으로 더 깊게 들어갔다
+			    온 시점이니까) : 방문처리했던거 빼고 나서 다음 시작점 기준으로 가기
+		}
+}
+
+==중요한 것 :
+1. max cnt든 min cnt든 전역으로 두는게 편함
+2. cnt와 함께 bool vector(fixed size array) 하나 두고
+3. dfs 함수 : 위와 같은 로직으로 구현해라
+
+
 #

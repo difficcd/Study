@@ -511,7 +511,7 @@ def _05_word_RNN_Embedding():
     loss_function = nn.CrossEntropyLoss() 
     optimizer = optim.Adam(params=model.parameters())
 
-    output = model(X)
+    output = model(X) 
     print('output test:\n',output,'\n')
     print('output shape: ', output.shape, '\n')
 
