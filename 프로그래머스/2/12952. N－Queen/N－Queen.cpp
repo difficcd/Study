@@ -4,7 +4,7 @@
 using namespace std;
 
 
-bool isOk(int x, int y, vector<int> board){
+bool isOk(int x, int y, const vector<int> &board){
     for(int i=0; i<board.size(); i++){
         if(board[i] != -1){
             if(board[i] == y) return false;
