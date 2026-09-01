@@ -14,13 +14,13 @@ bool isOk(int x, int y, vector<int> board){
     return true;
 }
 
-void dfs(int &cnt, int c, int n, vector<int> &board){
-    if (n == 0) { cnt++; return; }
-    for(int i=0; i<board.size(); i++){
-        if(board[i] == -1 && isOk(i,c,board)){
-           board[i] = c;
-           dfs(cnt, c+1, n-1, board);
-           board[i] = -1;
+void dfs(int &cnt, int row, int n, vector<int> &board){
+    if (row == n) { cnt++; return; }
+    for(int col = 0; col < n; col++){
+        if(isOk(row, col, board)){
+            board[row] = col;         
+            dfs(cnt, row + 1, n, board); 
+            board[row] = -1;           
         }
     }    
 }
