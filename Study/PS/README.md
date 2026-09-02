@@ -43,12 +43,12 @@ https://school.programmers.co.kr/learn/challenges?tab=algorithm_practice_kit
 
 - [x]  재귀 기본 (하노이탑 복습)
 - [ ]  **순열/조합** — `next_permutation`, 직접 구현
-- [ ]  **백트래킹**
+- [x]  **백트래킹**
 
 ### 4. 그래프 (여기가 핵심 신규 구간)
 
 - [ ]  그래프 표현법 — 인접리스트 vs 인접행렬
-- [ ]  **DFS** — 재귀 버전, 스택 버전
+- [x]  **DFS** — 재귀 버전, 스택 버전
 - [ ]  **BFS** — 큐 버전 (이미 토마토 문제로 해봄, 복습)
 - [ ]  **다차원 BFS/DFS** — 격자(grid) 탐색, 방문 배열
 - [ ]  **유니온 파인드(Union-Find)**
