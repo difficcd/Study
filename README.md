@@ -10,7 +10,6 @@
  
 ---
 
-
 ### CBNU 2-2
 
 CBNU2-2/Algorithm (python)
@@ -42,7 +41,9 @@ CBNU3-1/OpenSWStudy
 - html, css, js, react (WEB Basic Study)
 
 
-
-
+---
+### CBNU3-2
+CBNU3-2/ServerProg
+- Multithreading(sync), IPC
 
 
