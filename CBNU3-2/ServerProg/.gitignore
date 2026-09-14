@@ -1,0 +1,15 @@
+
+
+CMakeFiles/
+Makefile
+cmake_install.cmake
+CMakeLists.txt.user
+a.out
+*.o
+*.swp
+*.a
+bin/
+build/
+
+*.tar
+*.zip
