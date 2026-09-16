@@ -18,6 +18,10 @@ thread_func(void *arg)
     *r = strlen(s);
 	// 정수 수치 자체를 포인터로 강제 캐스팅하면 위험함(sys type 불일치)
 	// 결과값을 저장할 정식 메모리 주소를 할당해서 return하도록 함.
+	
+	// 정수인 strlen값을 void로 강제 형변환..
+	// int void* 크기가 다를 때 data손실/타입불일치 생김. (역참조라도 했다간 crash)
+	// 숫자 12라는 '값'을 "이거 메모리 주소 12번지야" 하고 속여서 보내는 것
 
     free(arg); // strdup agr를 안전하게 해제하기
 

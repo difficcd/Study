@@ -8,6 +8,7 @@ a.out
 *.o
 *.swp
 *.a
+*.sh
 bin/
 build/
 
