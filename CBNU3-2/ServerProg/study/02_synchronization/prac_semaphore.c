@@ -4,39 +4,56 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <semaphore.h>
 #include <unistd.h>
+
+#define TREADMAX 100
 
 typedef struct {
 	pthread_t thread;
-	int flag; // flag == 1 >> paused
-	int tid;  // int tid.
-	char input[100]; // fixed len input string (thread가 뱉을 str)
+	int flag; 
+	int tid;  
+	char input[100];
+
+	sem_t sem; 
+	// cond == mutex만 허용
 }WorkInfo;
 
-WorkInfo workers[100]; 
-// fixed len thread
+WorkInfo workers[TREADMAX]; 
 
+pthread_mutex_t winlock = PTHREAD_MUTEX_INITIALIZER; 
 WINDOW * outer_win ;
 WINDOW * inner_win ;
-WINDOW * input_win ;
+WINDOW * input_win ;  
+
 
 void * worker_thread (void * arg)
 {
 	WorkInfo* args = (WorkInfo*) arg;
+	
 	while(1){
-		while(args->flag) {
-			usleep(100000); // busy waiting (0.1sec check, race condition)
-		}
-		wprintw(inner_win, "(%d) %s\n",args->tid+1, args->input ) ;
-		wrefresh(inner_win) ;
+		int paused = 0;
+		sem_wait(&args->sem);
+		paused = args->flag;
+		sem_post(&args->sem);
+
+		if (paused) { 
+			usleep(100000); 
+			continue; // while(1) 로 전이
+		} 
+
+		pthread_mutex_lock(&winlock);
+		wprintw(inner_win, "(%d) %s\n",args->tid+1, args->input) ;
+		wrefresh(inner_win);
+		pthread_mutex_unlock(&winlock);
+
 		sleep(1) ;
 	}
 }
 
 int main(void)
 {
-
-	// window settings 
+	// window settings begin
 		initscr();
 		cbreak();
 		curs_set(1);
@@ -50,7 +67,7 @@ int main(void)
 		outer_win = newwin(output_height, cols, 0, 0);
 		inner_win = derwin(outer_win, output_height - 2, cols - 2, 1, 1) ;
 
-		WINDOW *input_win = newwin(input_height, cols, output_height, 0);
+		input_win = newwin(input_height, cols, output_height, 0);
 
 		scrollok(inner_win, TRUE);
 
@@ -62,11 +79,18 @@ int main(void)
 
 		wrefresh(outer_win);
 		wrefresh(input_win);
+	// window settings end
 
 	int num = 0; //create standard 
 
+	// flag semaphore initialization 
+	for (int i=0; i<TREADMAX; i++)
+		sem_init(&workers[i].sem, 0, 1); 
+	// binary semaphore (value=1)
+
 	while (1) {
 		char s[128] ;
+
 		mvwgetnstr(input_win, 1, 2, s, 127) ; // input str
 		wmove(input_win, 1,2) ;
 		wclrtoeol(input_win) ;
@@ -77,13 +101,10 @@ int main(void)
 		if(cmd == NULL) continue;
 
 		if (strcmp(cmd, "quit") == 0) {
-
 			for(int i=0; i<num; i++)
 				pthread_cancel(workers[i].thread);
-
 			for(int i=0; i<num; i++)
 				pthread_join(workers[i].thread, NULL);
-			
 
 			delwin(outer_win) ;
 			delwin(input_win) ;
@@ -115,19 +136,25 @@ int main(void)
 			int this_tid = atoi(in)-1;
 			if( this_tid<0 || this_tid >=num) continue; 
 
-			workers[this_tid].flag = 1; // race condition! : cond var?
+			sem_wait(&workers[this_tid].sem);
+			workers[this_tid].flag = 1; 
+			sem_post(&workers[this_tid].sem);
 		}
-
 
 		if (strcmp(cmd, "continue") == 0) {
 			if(in == NULL) continue;
 			int this_tid = atoi(in)-1;
 			if( this_tid<0 || this_tid >=num) continue; 
 
+			sem_wait(&workers[this_tid].sem);
 			workers[this_tid].flag = 0;
+			sem_post(&workers[this_tid].sem);
 		}
 	}
 
-	return 0 ;
+	// semaphore cleanup
+	for (int i=0; i<TREADMAX; i++)
+		sem_destroy(&workers[i].sem);
 
+	return 0 ;
 }

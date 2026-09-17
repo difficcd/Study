@@ -17,6 +17,7 @@ typedef struct {
 	pthread_mutex_t locks;
 	pthread_cond_t conds;
 	// 스레드 개수 (workers[i].flag)
+
 }WorkInfo;
 WorkInfo workers[TREADMAX]; 
 
@@ -30,8 +31,6 @@ void * worker_thread (void * arg)
 	WorkInfo* args = (WorkInfo*) arg;
 	
 	while(1){
-		int paused = 0;
-
 		pthread_mutex_lock(&args->locks);
 		while(args->flag){
 			pthread_cond_wait(&args->conds, &args->locks);
@@ -80,6 +79,7 @@ int main(void)
 
 
 	// flag mutex, cond var initialization 
+	// create 시점에서 해둬도 되고, 안전하게 모든 후보군에서 해줘도 됨.
 	for (int i=0; i<TREADMAX; i++)
 		pthread_mutex_init(&workers[i].locks, NULL);
 
@@ -148,7 +148,7 @@ int main(void)
 
 			pthread_mutex_lock(&workers[this_tid].locks);
 			workers[this_tid].flag = 0;
-			pthread_cond_signal(&workers[this_tid].conds); // wait loop exit signal
+			pthread_cond_signal(&workers[this_tid].conds); // wait exit signal
 			pthread_mutex_unlock(&workers[this_tid].locks);
 		}
 	}
