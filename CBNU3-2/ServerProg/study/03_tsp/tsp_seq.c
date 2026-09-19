@@ -84,9 +84,7 @@ int _travel (int * route, int * visited, int next)
 	if (next == n_nodes) { 
 		// next == n_nodes : 재귀 마지막 노드 도달 시. (node < n_nodes ;)
 		show_running() ;
-
-		int weight_sum = 0 ;
-		
+		int weight_sum = 0 ; // 최종 route 의 가중치 합
 		for (int i = 0 ; i < n_nodes - 1 ; i++) {
 			weight_sum += weight[route[i]][route[i + 1]] ;
 		}
@@ -96,20 +94,22 @@ int _travel (int * route, int * visited, int next)
 			struct timespec curr ;
 			clock_gettime(CLOCK_REALTIME, &curr) ;
 
-			// 시간 처리 (현재시간-시작시간)
-			long int t = (curr.tv_sec - begin.tv_sec) * 1000000000 + (curr.tv_nsec - begin.tv_nsec) ;
+			// 시간 처리 (현재시간-시작시간) : nsec 단위임.
+			long int t = (curr.tv_sec - begin.tv_sec) * 1000000000 + (curr.tv_nsec - begin.tv_nsec) ; 
 
 			min_weight_sum = weight_sum ;
-			printf("\b") ;
-			printf("%04ld.%09ld: %d ", t / 1000000000, t % 1000000000, weight_sum) ; // 모소 시간, 
+			printf("\b") ; 
+			printf("%04ld.%09ld: %d ", t / 1000000000, t % 1000000000, weight_sum) ; 
+			// 소모 시간, 이번 route 의 최종가중치합
+
 			printf("[") ;
 			for (int i = 0 ; i < n_nodes ; i++) {
-				printf("%d%c", route[i], i < n_nodes -1 ? ',' : ']' ) ;
-			}
+				printf("%d%c", route[i], i <n_nodes -1 ? ',' : ']' ) ;
+			} 
 			printf("\n") ;
 			fflush(stdin) ;
 			sign = 0 ;
-		}
+		} // min weight 갱신 
 		return min_weight_sum ;
 	}
 
