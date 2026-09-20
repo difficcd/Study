@@ -14,14 +14,11 @@
 
 int weight[MAX][MAX] ; // 전역 정보저장 변수
 int n_nodes = 0 ;
-
 int min_weight_sum = 0 ; // 0 : undefined
 
 struct timespec begin ; 
 
 int sign = 0 ;
-
-
 void show_running () 
 {
 	if (sign == 0) {
@@ -76,7 +73,6 @@ int load_input (char * filepath)
 }
 
 
-
 int _travel (int * route, int * visited, int next) 
 {
 	// 재귀 깊어질 때 : route 배열에는 방문"할"도시 번호 순서대로 적어둠
@@ -84,6 +80,7 @@ int _travel (int * route, int * visited, int next)
 	if (next == n_nodes) { 
 		// next == n_nodes : 재귀 마지막 노드 도달 시. (node < n_nodes ;)
 		show_running() ;
+
 		int weight_sum = 0 ; // 최종 route 의 가중치 합
 		for (int i = 0 ; i < n_nodes - 1 ; i++) {
 			weight_sum += weight[route[i]][route[i + 1]] ;
@@ -100,7 +97,7 @@ int _travel (int * route, int * visited, int next)
 			min_weight_sum = weight_sum ;
 			printf("\b") ; 
 			printf("%04ld.%09ld: %d ", t / 1000000000, t % 1000000000, weight_sum) ; 
-			// 소모 시간, 이번 route 의 최종가중치합
+			// 소모 시간, 이번 route 의 최종 가중치합
 
 			printf("[") ;
 			for (int i = 0 ; i < n_nodes ; i++) {
@@ -110,17 +107,19 @@ int _travel (int * route, int * visited, int next)
 			fflush(stdin) ;
 			sign = 0 ;
 		} // min weight 갱신 
+		
 		return min_weight_sum ;
 	}
 
 	for (int i = 0 ; i < next ; i++) {
 		visited[route[i]] = 1 ;
-	}
+	} // visited arr 갱신
+	
 	for (int node = 0 ; node < n_nodes ; node++) {
 		if (visited[node]) 
 			continue ;
 
-		// 아직 방문하지 않은 노드만 dfs 재귀
+		// 아직 방문하지 않은 노드들을 각각 dfs 재귀
 		visited[node] = 1 ;
 		route[next] = node ;
 		_travel(route, visited, next + 1) ;
