@@ -1,16 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
-typedef struct {
-	char ** elem ;
-	int capacity ;
-	int num ; 
-	int front ;
-	int rear ;
-} circular_queue ;
+#include "circular_queue.h" 
 
-//circular_queue * buf = 0x0 ;
+#ifdef CIRQ 
+circular_queue * buf = 0x0 ;
+#endif 
 
 void 
 circular_queue_init(circular_queue * buf, int capacity) {
@@ -19,34 +16,56 @@ circular_queue_init(circular_queue * buf, int capacity) {
 	buf->num = 0 ;
 	buf->front = 0 ;
 	buf->rear = 0 ;
+
+	pthread_mutex_init(&buf->lock, NULL) ;
+	pthread_cond_init(&buf->wait_for_non_full, NULL) ;
+	pthread_cond_init(&buf->wait_for_non_empty, NULL) ;
 }
 
 void 
 circular_queue_enqueue(circular_queue * buf, char * msg) 
 {
-	if (buf->num < buf->capacity) {
-		buf->elem[buf->rear] = msg ;
-		buf->rear = (buf->rear + 1) % buf->capacity ;
-		buf->num += 1 ;
+	pthread_mutex_lock(&buf->lock) ;
+
+	//wait_for(buf->num < buf->capacity) ;
+
+	while (!(buf->num < buf->capacity)) {
+		pthread_cond_wait(&buf->wait_for_non_full, &buf->lock) ;
 	}
+		//pthread_mutex_unlock(&buf->lock) ;
+		//pthread_mutex_lock(&buf->lock) ;
+
+	// assert (buf->num < buf->capacity) ;
+	buf->elem[buf->rear] = msg ;
+	buf->rear = (buf->rear + 1) % buf->capacity ;
+	buf->num += 1 ;
+
+	pthread_cond_signal(&buf->wait_for_non_empty) ;
+	pthread_mutex_unlock(&buf->lock) ;
 }
 
 char * 
 circular_queue_dequeue(circular_queue * buf) 
 {
-	char * r = 0x0 ;
-	if (buf->num > 0) {
-		r = buf->elem[buf->front] ;
-		buf->front = (buf->front + 1) % buf->capacity ;
-		buf->num -= 1 ;
+	pthread_mutex_lock(&buf->lock) ;
+
+	while (!(buf->num > 0)) {
+		pthread_cond_wait(&buf->wait_for_non_empty, &buf->lock) ;
 	}
+	// assert buf->num > 0 
+
+	char * r = 0x0 ;
+	r = buf->elem[buf->front] ;
+	buf->front = (buf->front + 1) % buf->capacity ;
+	buf->num -= 1 ;
+
+	pthread_cond_signal(&buf->wait_for_non_full) ;
+	pthread_mutex_unlock(&buf->lock) ;
+	
 	return r ;
 }
 
-
-
-
-/*
+#ifdef CIRQ
 int 
 main() 
 {
@@ -69,4 +88,4 @@ main()
 
 	exit(0) ;
 }
-*/
+#endif

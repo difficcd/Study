@@ -13,5 +13,6 @@ bin/
 build/
 tsp_data/
 
+*.tsp
 *.tar
 *.zip

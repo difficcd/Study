@@ -101,7 +101,9 @@ int _travel (int * route, int * visited, int next) {
 		memcpy(task->visited, visited, next * sizeof(int)) ;
 		task->next = next ;
 
-		travel_task(task) ; /*FIXME: This version still processes tasks sequentially. This must be fixed.*/
+		travel_task(task) ; 
+		
+		/*FIXME: This version still processes tasks sequentially. This must be fixed.*/
 	}
 
 	next++ ;

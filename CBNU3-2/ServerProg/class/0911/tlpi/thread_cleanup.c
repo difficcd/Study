@@ -10,6 +10,7 @@
 
 static void
 cleanup_handler (void * arg) 
+
 {
 	printf("clean-up\n") ;
 }
@@ -20,14 +21,15 @@ void * thread_func (void *arg)
 	int ret;
 
 	pthread_cleanup_push(cleanup_handler, NULL) ;
+	// handler 함수, args는 NULL
 
 	printf("New thread started\n");     /* May be a cancellation point */
 	for (j = 1; ; j++) {
 		printf("Loop %d\n", j);         /* May be a cancellation point */
 		sleep(1);                       /* A cancellation point */
 	}
-
 	pthread_cleanup_pop(&ret) ;
+	// pop(1) : NULL, 0 아니면 pop하면서 핸들러 실행하겠다.
 
 	return NULL;
 }

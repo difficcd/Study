@@ -101,7 +101,6 @@ void * travel_task (void * arg)
 
 	_travel_task(task) ;
     
-
 	free(task->route) ;
 	free(task->visited) ;
 	free(task) ;
