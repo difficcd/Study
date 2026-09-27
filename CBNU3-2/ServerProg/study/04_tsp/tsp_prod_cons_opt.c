@@ -48,10 +48,8 @@ int thread_cnt; // argv[2]
 int weight[MAX][MAX] ;
 int n_nodes = 0 ;
 
-// 0 : undefined => int 최대값 근사(~(1U << 31))
 // min_weight_sum : global min (threads=> renew global)
-
-int min_weight_sum = 0;
+int min_weight_sum = 0; // 0 : undefined 
 int best_route[MAX];  // global best_route
 
 struct timespec begin ; 
