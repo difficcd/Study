@@ -67,7 +67,7 @@ int * thread_local_min_weight;  // [N_THREADs]
 
 // ==== signal_handler ==== //
  
-void signal_handler(int signal) {
+void signal_handler(int signal) { // buf->end ?
 	pthread_mutex_lock(&buf->lock);
 
 	printf("\n\n ====== Cirl+C detected ======\nfinal route is: [");
