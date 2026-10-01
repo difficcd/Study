@@ -14,7 +14,6 @@ typedef struct {
 	pthread_cond_t wait_w;
 } rwlock_t ;
 
-
 int i;
 
 // helper function (for debugging)
@@ -24,7 +23,6 @@ void report (rwlock_t * m){
     printf("[%d] wlock_acquire : %d, wlock_hold : %d \n\n", i, m->wlock_acquire, m->wlock_hold);
     i++;
 } 
-
 
 
 void read_lock(rwlock_t * m){
@@ -99,7 +97,6 @@ int main(){
     init_rwlock(&rwlock);
 
     i=0;
-
     report(&rwlock); read_lock(&rwlock);
     report(&rwlock); read_lock(&rwlock);
     report(&rwlock); read_unlock(&rwlock);
@@ -112,8 +109,3 @@ int main(){
     return 0;
 }
 
-// ==== challenge 후속 과제 ==== //
-
-// 현재 내부적으로 구현해 둔 rwlock 인 rwlock_t 의 함수들을 사용하여
-// 외부 프로그램에서 rwlock 사용하여 rw기반 멀티스레딩을 적용하는 것이 목표
-// 여러 threads가 read, write를 하는 예시를 만들어 제출
