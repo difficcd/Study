@@ -16,3 +16,7 @@ tsp_data/
 *.tsp
 *.tar
 *.zip
+
+cache
+workload
+.vscode/
