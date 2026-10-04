@@ -2,8 +2,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "rwlock.h"
-
 typedef struct entry_t {
 		char * url ;
 		char * ip ;
@@ -11,12 +9,8 @@ typedef struct entry_t {
 	}
 	entry ;
 
-rwlock_t rwlock;
-// add read write lock 
-
 entry * add_entry (entry * last, char * url, char * ip) 
 {
-	rwlock_init(&rwlock);
 
 	last->next = (entry *) malloc(sizeof(entry)) ;
 	if (last->next == NULL) {
@@ -27,48 +21,39 @@ entry * add_entry (entry * last, char * url, char * ip)
 	last->url = strdup(url) ;
 	last->ip = strdup(ip) ;
 
-	return last;
 }
 
 entry * lookup_entry (entry * list, char * url) 
 {
-	read_lock(&rwlock);
 	for (entry * i = list->next ; i != NULL ; i = i->next) {
 		int c = strcmp(i->url, url) ;
 		if (c == 0) {
-			read_unlock(&rwlock);
 			return i ;
 		}
 	}
-	read_unlock(&rwlock);
 	return NULL ;
 }
 
 entry * update_entry (entry * list, char * url, char * ip)
 {
-	write_lock(&rwlock);
 	entry * prev = list ;
 	for (entry * curr = prev->next ; curr != NULL ; prev = curr, curr = curr->next) {
 		int c = strcmp(curr->url, url) ;
 		if (c == 0) {
 			free(curr->ip) ;
 			curr->ip = strdup(ip) ;
-			write_unlock(&rwlock);
 			return curr ;
 		}
 	}
 
 	entry * e ; 	
-	if ((e = (entry *) malloc(sizeof(entry))) == NULL) {
-		write_unlock(&rwlock);
+	if ((e = (entry *) malloc(sizeof(entry))) == NULL) 
 		return NULL ;
-	}
 
 	e->url = strdup(url) ;
 	e->ip = strdup(ip) ;
 	e->next = prev->next ;
 	prev->next = e ;
-	write_unlock(&rwlock);
 
 	return e ;
 }

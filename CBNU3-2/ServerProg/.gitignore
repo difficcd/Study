@@ -20,3 +20,5 @@ tsp_data/
 cache
 workload
 .vscode/
+pdns
+dns

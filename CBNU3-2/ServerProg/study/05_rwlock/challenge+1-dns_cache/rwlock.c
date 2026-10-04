@@ -65,7 +65,7 @@ void write_unlock(rwlock_t * m){
 }
 
 
-void init_rwlock(rwlock_t * m){
+void rwlock_init(rwlock_t * m){
     m->rlock_acquire = 0;
     m->wlock_acquire = 0;
     m->rlock_hold = 0;      // cocurrent
