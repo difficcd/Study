@@ -26,3 +26,11 @@ prac/
 
 client
 server
+
+imgcmp
+CMakeFiles
+corpus-rev
+Makefile
+IMG001.jpg
+IMG002.jpg
+CMakeCache.txt
