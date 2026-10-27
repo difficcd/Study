@@ -28,7 +28,6 @@ void read_lock(rwlock_t * m){
     pthread_mutex_unlock(&m->lock);
 }
 
-
 void read_unlock(rwlock_t *m){
     pthread_mutex_lock(&m->lock);
 
