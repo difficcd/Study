@@ -34,38 +34,79 @@ int main (int argc, char ** argv)
 	}
 
 	struct sockaddr_in peer ;
-	socklen_t peer_len ;
+	socklen_t peer_len = sizeof(peer);
 	
 	int fda ;
 	fda = accept(fd, (struct sockaddr *) &peer, &peer_len) ;
 
-
 	// receive typed string (1) 
-	char buf[512] ;
-	int bytes_recv ;
-	bytes_recv = recv(fda, buf, 512, 0) ;
-	printf("\"%s\" (%d)\n", buf, bytes_recv) ;
+		/*
+		char buf[512] ;
+		int bytes_recv = recv(fda, buf, 512, 0) ;
+		printf("\"%s\" (%d)\n", buf, bytes_recv) ;
+		*/
+	//
 
-	// reverse logic
-	buf[bytes_recv] = '\0';
-	int len = strlen(buf);
-	char reverse[512];
-	int i=0;
-	printf("input len: %d\n", len);
+	// receive typed string (1) : variable length
+	int buf_len = 1024;
+	int part_len = 512;
 
-	while (i < len && i < 511) { 
-		reverse[i] = buf[len - (1+i)];
-		i++;
+	char * buf = malloc(buf_len);
+	char temp[part_len];
+	int total_len = 0;
+
+	int recv_bytes;
+
+	do {
+		recv_bytes = recv(fda, temp, part_len, 0);
+		if(recv_bytes == -1){
+            perror("string send: failed");
+			return 1;
+		}
+
+		if( recv_bytes + total_len > buf_len) {
+			buf_len = (recv_bytes + total_len) * 2;
+			buf = realloc(buf, buf_len);
+		}
+
+		memcpy(buf + total_len, temp, recv_bytes);   
+		
+		total_len += recv_bytes;
+
+	} while(recv_bytes != 0);
+
+
+	// reverse logic (new buf => swap)
+	char temp_char;
+	for (int j=0; j < total_len / 2; j++) { 
+		temp_char = buf[j];
+		buf[j] = buf[total_len - (1+j)];
+		buf[total_len - (1+j)] = temp_char;
 	}
-	reverse[i] = '\0';
+
 
 	// reverse string : send to client (2)
-	int sent_bytes ;
-	sent_bytes = send(fda, reverse, 512, 0);
-	printf("send reverse string (%d)\n", sent_bytes) ;
+		/*
+		int sent_bytes ;
+		sent_bytes = send(fda, reverse, 512, 0);
+		printf("send reverse string (%d)\n", sent_bytes) ;
+		*/
+	//
+
+	// reverse string : send to client (2) : variable length
+
+	int current_len = 0, sent_bytes = 0;
+	while(current_len < total_len){
+		sent_bytes = send(fda, buf+current_len, total_len-current_len, 0);
+		if(sent_bytes == -1){
+			perror("string send: failed");
+			return 1;
+		}
+		current_len += sent_bytes;
+	}
 
 
-
+	free(buf);
 	close(fda) ;
 	close(fd) ;
 
