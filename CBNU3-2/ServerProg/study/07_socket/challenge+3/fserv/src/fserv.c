@@ -29,9 +29,7 @@ typedef struct {
 
 pthread_mutex_t thread_lock;
 
-/*TODO*/
-
-// int conn_fd 추가
+// int conn_fd 추가 (handler 함수 3종 모두)
 int handle_list_request (int conn_fd, request_t * request) {
     // send response
     
@@ -77,6 +75,35 @@ int handle_list_request (int conn_fd, request_t * request) {
 int handle_get_request (int conn_fd, request_t * request) {
     // send response
 
+    // (1) data_len (file contents length) extract
+    struct stat s;
+    if (stat(request->filepath, &s) < 0) {
+        perror("stat error");
+        send_response_header(conn_fd, FAILURE, 0, NULL);
+        return -1;
+    }
+    uint16_t data_len = (uint16_t)s.st_size;
+    printf("file data length = %d\n", data_len);
+    
+    // (2) data (file contents) extract
+    char * data = malloc(data_len + 1);
+    if(data == NULL) {
+        perror("malloc error");
+        send_response_header(conn_fd, FAILURE, 0, NULL);
+        return -1;
+    }
+    FILE * fp = fopen(request->filepath, "rb");
+    if(fp == NULL) {
+        perror("malloc error");
+        send_response_header(conn_fd, FAILURE, 0, NULL);
+        return -1;
+    }
+    fread(data, 1, data_len, fp);
+    data[data_len] = '\0'; 
+    fclose(fp);
+
+    send_response_header(conn_fd, SUCCESS, data_len, data);
+
 	return 0 ; //success
 }
 
@@ -84,45 +111,28 @@ int handle_put_request (int conn_fd, request_t * request) {
     // recv payload and write to the file
     // send response
     
-    /*
-    // ==== file receive loop ==== //
-	uint32_t n1, n2;
-	recv_all(fda, (char *)&n1, 4); 
-	recv_all(fda, (char *)&n2, 4);
+    // receive client's request - only data (file contents)
+    // (header handler : recv_request_header)
+	uint16_t data_len = 0; 
+    recv_bytes(conn_fd, (char *)&data_len, 2);
+    uint16_t recv_data_len = ntohs(data_len);
 
-	char buf[4096];
-	char name[256];
-	uint32_t name_len = ntohl(n1);
-	uint32_t file_size = ntohl(n2);
+    char * data = malloc(recv_data_len + 1);
+    data[recv_data_len] = '\0';
+    recv_bytes(conn_fd, data, recv_data_len);
 
-	recv_all(fda, name, name_len);
-	name[name_len] = '\0';
-
-	// ==== file recv & write loop ==== //
-	FILE *fp = fopen(name, "wb");
-	int got = 0; int want;
-	while (got < file_size) {
-
-		if(file_size - got < 4096)
-			want = file_size - got;
-		else 
-			want = 4096;
-
-		int recv_byte = recv(fda, buf, want, 0);
-		if (recv_byte <= 0) break;
-		fwrite(buf, 1, recv_byte, fp);
-		got += recv_byte;
-	}
+	// write received file to server dir(req->filepath)
+	FILE *fp = fopen(request->filepath, "wb");
+    fwrite(data, 1, recv_data_len, fp);
 	fclose(fp);
 
-    char msg[64];
-	snprintf(msg, sizeof(msg), "received %d bytes", got);
-	send_all(fda, msg, strlen(msg));    
-*/
+    send_response_header(conn_fd, SUCCESS, recv_data_len, NULL);
+    // 나중에 예외처리 추가 ... (malloc, recv...)
+
     return 0 ; //success
 }
 
-
+// receive req: type, filepath_len, filepath 
 int recv_request_header (int conn_fd, request_t * request) {
 
     if (recv_bytes(conn_fd, (char *) &(request->type), 2) < 2) {
@@ -149,7 +159,7 @@ int recv_request_header (int conn_fd, request_t * request) {
 }
 
 // thread runner function (void* void*)
-// socket 으로 분기해 나온 fda 가 arg에 들어감.
+// accept에서 분기해 나온 fda 가 arg에 들어감
 // => recv_request_header 분기 (type에 따라 req 변경)
 void * handle_connection (void * arg) {
     // int conn_fd = *((int *)arg) ;
@@ -280,13 +290,11 @@ int main (int argc, char ** argv)
 		exit(EXIT_FAILURE) ;
 	}
 
-
     // ==== multithreading ==== //
     pthread_mutex_init(&thread_lock, NULL);
     
     for(int i=0; i<MAX_THREADS; i++)
         threads_isEmpty[i] = 1;
-    
 
     int i=0;
     while(1){

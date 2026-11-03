@@ -12,6 +12,10 @@
 
 #include "fserv.h"
 
+// fserv 처럼 recv_response_header 구현 해두면 좋음
+// 가변적이어서 type 별로 나눠줘야함
+
+
 int handle_list_command (int conn_fd, char * dir) 
 {
     // ==== request header ==== //
@@ -58,13 +62,56 @@ int handle_list_command (int conn_fd, char * dir)
 
 int handle_get_command (int conn_fd, char * src, char * dst) 
 {
+    // get src dst -> src 가 다운로드 대상 파일, dst 가 가져올 그릇 파일
+    // 다운받을 파일 src 를 request 로 포장해서 보내줘야 함. (specified path)
+    
+    // ==== request header ==== //
+    request_t request;
+    request.type = GET;
+    request.filepath_len = (uint16_t) (strlen(src));
+    request.filepath = src; // argv[3]
+
+    printf("type: %d, filepath_len: %d, filepath: %s \n", 
+            request.type, request.filepath_len, dst);
+    send_request_header(conn_fd, request.type, 
+                        request.filepath_len, request.filepath, 0, NULL); 
+                        
+
+    // response display
+    response_t response;
+    response.response_status = FAILURE;
+    // response.filepath_len = 0;
+    // response.filepath = NULL;
+
+    recv_bytes(conn_fd, (char *) &response.response_status, 2);
+    if(ntohs(response.response_status) == FAILURE){
+        printf("server response error\n");
+        return 1;
+    }
+
+    uint16_t data_len = 0; 
+    recv_bytes(conn_fd, (char *)&data_len, 2);
+    uint16_t recv_data_len = ntohs(data_len);
+
+    char * data = malloc(recv_data_len + 1);
+    data[recv_data_len] = '\0';
+    recv_bytes(conn_fd, data, recv_data_len);
+
+	// write received file to client dir(dst)
+	FILE *fp = fopen(dst, "wb");
+    if(fp == NULL) {
+        perror("fopen error");
+        return -1;
+    }
+    
+    fwrite(data, 1, recv_data_len, fp);
+	fclose(fp);
+
     return 0 ;
 }
 
 int handle_put_command (int conn_fd, char * src, char * dst) 
 {
-    // 우선 src, dst 는 경로정보 없는 파일 이름인 것으로 가정하고 구현
-
     // put src dst -> src 의 파일 내용 추출해서 서버의 dst 파일로 보내기
     // 보내는 경로인 dst 를 request 로 포장해서 보내줘야 함. (specified path)
     // file data(src로부터 추출), file path(dst, server에서 만들 파일경로/이름) 
@@ -72,55 +119,48 @@ int handle_put_command (int conn_fd, char * src, char * dst)
     // ==== request header ==== //
     request_t request;
     request.type = PUT;
-    request.filepath_len = strlen(dst);
+    request.filepath_len = (uint16_t) strlen(dst);
     request.filepath = dst; // argv[4]
 
-    // 여기서 data 추출해서 req_header의 0, NULL을 채워줘야 함.
-    // lib 으로 파일 길이 구해서 0 자리에 넣기(1)
-    // 파일 길이에 따라 버퍼에 저장해서 NULL 자리에 데이터 char*로 넣기 (2)
-
+    // (1) data_len (file contents length) extract
     struct stat s;
     if (stat(src, &s) < 0) {
         perror("stat error");
         return -1;
     }
-    uint16_t data_len = (uint16_t)s.st_size;
+    uint16_t data_len = (uint16_t) s.st_size;
     printf("file data length = %d\n", data_len);
     
+    // (2) data (file contents) extract
+    char * data = malloc(data_len + 1);
+    FILE * fp = fopen(src, "rb");
+    fread(data, 1, data_len, fp);
+    data[data_len] = '\0'; 
+    fclose(fp);
 
-    printf("type: %d, len: %ld, filepath: %s\n", request.type, strlen(dir), dir);
+    printf("type: %d, filepath_len: %d, filepath: %s \n", 
+            request.type, request.filepath_len, dst);
     send_request_header(conn_fd, request.type, 
-                        request.filepath_len, request.filepath, 0, NULL);
+                        request.filepath_len, request.filepath,
+                        data_len, data); // 0, NULL => (1), (2)
     
-/*
-    // ==== response display: payload(data) -> file contents ==== //
+
+    // response display
     response_t response;
     response.response_status = FAILURE;
     // response.filepath_len = 0;
     // response.filepath = NULL;
 
-    uint16_t data_len=0;
-    char * data = NULL;
+    uint16_t recv_data_len = 0;
     recv_bytes(conn_fd, (char *) &response.response_status, 2);
     if(ntohs(response.response_status) == FAILURE){
         printf("server response error\n");
         return 1;
     }
-    recv_bytes(conn_fd, (char *) &data_len, 2);
-
-    data_len = ntohs(data_len);
-    data = malloc((size_t)data_len + 1);
-    recv_bytes(conn_fd, data, (size_t) data_len);
-
-
-    printf("\n ==== file list ==== \n");
-    data[data_len] = '\0'; 
-    for (size_t i = 0; i < data_len; i++) {
-        if (data[i] == '\0') 
-            data[i] = '\n'; 
-    }
-    printf("%s\n", data); 
-    */
+    
+    recv_bytes(conn_fd, (char *) &recv_data_len, 2);
+    recv_data_len = ntohs(recv_data_len);
+    printf("server response : received %d bytes (upload file)\n", recv_data_len);
     
     return 0 ;
 }

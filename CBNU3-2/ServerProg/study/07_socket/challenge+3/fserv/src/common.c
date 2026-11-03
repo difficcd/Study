@@ -28,11 +28,12 @@ void send_request_header (int conn_fd, uint16_t type,
 
 	if(type == PUT && data_len != 0) {
 		// PUT (payload : filepath + data)
-		data_len = htons(data_len);
-		send_bytes(conn_fd, (char *)& data_len, 2);
+		uint16_t send_data_len = htons(data_len);
+		send_bytes(conn_fd, (char *) &send_data_len, 2);
 		send_bytes(conn_fd, data, data_len);
 	}
 }
+
 
 int send_response_header (int conn_fd, uint16_t status,
 						  uint16_t data_len, char * data)
@@ -45,7 +46,10 @@ int send_response_header (int conn_fd, uint16_t status,
 
 	send_bytes(conn_fd, (char *)& status, 2);
 	send_bytes(conn_fd, (char *)& send_data_len, 2);
-	send_bytes(conn_fd, data, data_len);
+
+	if(data != NULL) {
+		send_bytes(conn_fd, data, data_len);
+	}
 
 	if(status == FAILURE) {
 		printf("Server response error\n");
