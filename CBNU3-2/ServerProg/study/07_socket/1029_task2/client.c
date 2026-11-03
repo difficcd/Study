@@ -44,8 +44,18 @@ int main (int argc, char ** argv)
 	} while (opt != -1);
 	char *filename = argv[optind];  // optind == opt idx
 
+
 	// ==== file scan ==== //
 	FILE *fp = fopen(filename, "rb");
+	// 1
+	struct stat st;
+    if (fstat(fd, &st) < 0) {
+        perror("fstat error");
+        return -1;
+    }
+    return (long)st.st_size;
+	
+	// 2
 	if(fp == NULL){
 		perror("file open error: ");
 		return 1;
@@ -72,7 +82,7 @@ int main (int argc, char ** argv)
 	}
 
 
-	// ==== client -> server file transmit ==== // 
+	// ==== client -> server file partial transmit ==== // 
 	uint32_t name_len = strlen(filename);
 	uint32_t n1 = htonl(name_len), n2 = htonl(file_size);
 
@@ -90,7 +100,7 @@ int main (int argc, char ** argv)
 	fclose(fp);
 
 
-	// server resopnse print 
+	// ==== print server resopnse ==== //
 	char res[256]; 
 	int got = 0, r;
 	do {
