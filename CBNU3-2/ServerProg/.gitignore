@@ -34,3 +34,10 @@ Makefile
 IMG001.jpg
 IMG002.jpg
 CMakeCache.txt
+
+main
+testfile
+*.tsp
+tsp_seq
+tsp_task
+tsp_task_pre
