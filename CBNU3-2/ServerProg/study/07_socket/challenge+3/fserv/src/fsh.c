@@ -35,27 +35,29 @@ int handle_list_command (int conn_fd, char * dir)
     // response.filepath_len = 0;
     // response.filepath = NULL;
 
-    uint16_t data_len=0;
+    uint64_t data_len=0;
     char * data = NULL;
     recv_bytes(conn_fd, (char *) &response.response_status, 2);
     if(ntohs(response.response_status) == FAILURE){
         printf("server response error\n");
         return 1;
     }
-    recv_bytes(conn_fd, (char *) &data_len, 2);
+    recv_bytes(conn_fd, (char *) &data_len, 8);
 
-    data_len = ntohs(data_len);
+    data_len = be64toh(data_len);
     data = malloc((size_t)data_len + 1);
     recv_bytes(conn_fd, data, (size_t) data_len);
 
 
     printf("\n ==== file list ==== \n");
     data[data_len] = '\0'; 
-    for (size_t i = 0; i < data_len; i++) {
-        if (data[i] == '\0') 
-            data[i] = '\n'; 
-    }
-    printf("%s\n", data); 
+    char * p = data;
+    while (p < data + data_len && *p != '\0') {
+        if (*p != '.')        
+            printf("%s\n", p);
+    
+        p += strlen(p) + 1;        
+    } printf("\n");
 
     return 0 ;
 }
@@ -89,9 +91,9 @@ int handle_get_command (int conn_fd, char * src, char * dst)
         return 1;
     }
 
-    uint16_t data_len = 0; 
-    recv_bytes(conn_fd, (char *)&data_len, 2);
-    uint16_t recv_data_len = ntohs(data_len);
+    uint64_t data_len = 0; 
+    recv_bytes(conn_fd, (char *)&data_len, 8);
+    uint64_t recv_data_len = be64toh(data_len);
 
     char * data = malloc(recv_data_len + 1);
     data[recv_data_len] = '\0';
@@ -128,8 +130,8 @@ int handle_put_command (int conn_fd, char * src, char * dst)
         perror("stat error");
         return -1;
     }
-    uint16_t data_len = (uint16_t) s.st_size;
-    printf("file data length = %d\n", data_len);
+    uint64_t data_len = (uint64_t) s.st_size;
+    printf("file data length = %ld\n", data_len);
     
     // (2) data (file contents) extract
     char * data = malloc(data_len + 1);
@@ -151,16 +153,16 @@ int handle_put_command (int conn_fd, char * src, char * dst)
     // response.filepath_len = 0;
     // response.filepath = NULL;
 
-    uint16_t recv_data_len = 0;
+    uint64_t recv_data_len = 0;
     recv_bytes(conn_fd, (char *) &response.response_status, 2);
     if(ntohs(response.response_status) == FAILURE){
         printf("server response error\n");
         return 1;
     }
     
-    recv_bytes(conn_fd, (char *) &recv_data_len, 2);
-    recv_data_len = ntohs(recv_data_len);
-    printf("server response : received %d bytes (upload file)\n", recv_data_len);
+    recv_bytes(conn_fd, (char *) &recv_data_len, 8);
+    recv_data_len = be64toh(recv_data_len);
+    printf("server response : received %ld bytes (upload file)\n", recv_data_len);
     
     return 0 ;
 }

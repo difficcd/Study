@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
+#include <endian.h>
 
 enum REQUEST_TYPES {
     LIST = 100,
@@ -38,8 +39,8 @@ ssize_t send_bytes (int conn, char *buf, size_t len) ;
 
 void send_request_header (int conn_fd, uint16_t type,
 						  uint16_t filepath_len, char * filepath, 
-						  uint16_t data_len,     char * data) ; 
+						  uint64_t data_len,     char * data) ; 
 
 int send_response_header (int conn_fd, uint16_t status,
-							uint16_t data_len, char * data) ;
+							uint64_t data_len, char * data) ;
     

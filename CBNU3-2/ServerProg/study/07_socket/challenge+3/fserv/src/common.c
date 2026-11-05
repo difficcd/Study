@@ -14,7 +14,7 @@ static char * REQUEST_COMMANDS[] = { "LIST", "GET", "PUT", NULL} ;
 
 void send_request_header (int conn_fd, uint16_t type,
 	               		  uint16_t filepath_len, char * filepath, 
-				   		  uint16_t data_len,     char * data)
+				   		  uint64_t data_len,     char * data)
 {
 	// payload : req(100-dir, 200-dir, 300-dir,'data')
 	// [type(2B)] [filepath_len(2B)] [filepath] (+ data:PUT)
@@ -26,26 +26,26 @@ void send_request_header (int conn_fd, uint16_t type,
 	send_bytes(conn_fd, (char *)& send_filepath_len, 2);
 	send_bytes(conn_fd, filepath, filepath_len);
 
-	if(type == PUT && data_len != 0) {
+	if(type == PUT) {
 		// PUT (payload : filepath + data)
-		uint16_t send_data_len = htons(data_len);
-		send_bytes(conn_fd, (char *) &send_data_len, 2);
+		uint64_t send_data_len = htobe64(data_len);
+		send_bytes(conn_fd, (char *) &send_data_len, 8);
 		send_bytes(conn_fd, data, data_len);
 	}
 }
 
 
 int send_response_header (int conn_fd, uint16_t status,
-						  uint16_t data_len, char * data)
+						  uint64_t data_len, char * data)
 {
 	// uint16_t filepath_len, char * filepath, // 필요시 추가
 	// [status(2B)] [data_len(2B)] [data]
 
 	status = htons(status);
-	uint16_t send_data_len = htons(data_len);
+	uint64_t send_data_len = htobe64(data_len);
 
 	send_bytes(conn_fd, (char *)& status, 2);
-	send_bytes(conn_fd, (char *)& send_data_len, 2);
+	send_bytes(conn_fd, (char *)& send_data_len, 8);
 
 	if(data != NULL) {
 		send_bytes(conn_fd, data, data_len);

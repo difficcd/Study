@@ -41,7 +41,7 @@ int handle_list_request (int conn_fd, request_t * request) {
         return 1;
     }
     struct dirent *entry;
-    uint16_t data_len = 0;
+    uint64_t data_len = 0;
     while((entry = readdir(dir)) != NULL) {
         data_len += (strlen(entry->d_name) + 1);
         // \0 를 위해 +1B 추가한 길이로 계산
@@ -55,6 +55,7 @@ int handle_list_request (int conn_fd, request_t * request) {
     if (dir == NULL) {
         perror("opendir error");
         send_response_header(conn_fd, 100, 0, NULL);
+        free(data);
         return 1;
     }
     int index = 0;
@@ -66,9 +67,10 @@ int handle_list_request (int conn_fd, request_t * request) {
         index ++;
     } 
     closedir(dir);
-    printf("data_len: %d\n", data_len);
+    printf("data_len: %ld\n", data_len);
 
     send_response_header(conn_fd, 0, data_len, data);
+    free(data); 
     return 0 ; //success
 }
 
@@ -82,20 +84,22 @@ int handle_get_request (int conn_fd, request_t * request) {
         send_response_header(conn_fd, FAILURE, 0, NULL);
         return -1;
     }
-    uint16_t data_len = (uint16_t)s.st_size;
-    printf("file data length = %d\n", data_len);
+    uint64_t data_len = (uint64_t)s.st_size;
+    printf("file data length = %ld\n", data_len);
     
     // (2) data (file contents) extract
     char * data = malloc(data_len + 1);
     if(data == NULL) {
         perror("malloc error");
         send_response_header(conn_fd, FAILURE, 0, NULL);
+        free(data);
         return -1;
     }
     FILE * fp = fopen(request->filepath, "rb");
     if(fp == NULL) {
         perror("malloc error");
         send_response_header(conn_fd, FAILURE, 0, NULL);
+        free(data);
         return -1;
     }
     fread(data, 1, data_len, fp);
@@ -103,7 +107,7 @@ int handle_get_request (int conn_fd, request_t * request) {
     fclose(fp);
 
     send_response_header(conn_fd, SUCCESS, data_len, data);
-
+    free(data);
 	return 0 ; //success
 }
 
@@ -113,9 +117,9 @@ int handle_put_request (int conn_fd, request_t * request) {
     
     // receive client's request - only data (file contents)
     // (header handler : recv_request_header)
-	uint16_t data_len = 0; 
-    recv_bytes(conn_fd, (char *)&data_len, 2);
-    uint16_t recv_data_len = ntohs(data_len);
+	uint64_t data_len = 0; 
+    recv_bytes(conn_fd, (char *)&data_len, 8);
+    uint64_t recv_data_len = be64toh(data_len);
 
     char * data = malloc(recv_data_len + 1);
     data[recv_data_len] = '\0';
@@ -123,12 +127,19 @@ int handle_put_request (int conn_fd, request_t * request) {
 
 	// write received file to server dir(req->filepath)
 	FILE *fp = fopen(request->filepath, "wb");
+    if (fp == NULL) {
+        perror("fopen error");
+        send_response_header(conn_fd, FAILURE, 0, NULL);
+        free(data);
+        return -1;
+    }
+
     fwrite(data, 1, recv_data_len, fp);
 	fclose(fp);
 
     send_response_header(conn_fd, SUCCESS, recv_data_len, NULL);
-    // 나중에 예외처리 추가 ... (malloc, recv...)
 
+    free(data);
     return 0 ; //success
 }
 
@@ -170,7 +181,7 @@ void * handle_connection (void * arg) {
     free(arg) ;
 
     request_t * request = NULL ;
-    request = malloc(sizeof(request_t)) ;
+    request = calloc(1, sizeof(request_t)) ;
 
     do {
         if (recv_request_header(conn_fd, request)) {
@@ -312,8 +323,6 @@ int main (int argc, char ** argv)
             }
         }
         pthread_mutex_unlock(&thread_lock);
-        
-        printf("debug: %d\n", thread_info->fda);
         i++;
         n_threads++;
     }
