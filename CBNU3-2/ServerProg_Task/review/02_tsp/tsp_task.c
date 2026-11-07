@@ -22,7 +22,7 @@
 
 int weight[MAX][MAX] ;
 int n_nodes = 0 ;
-int min_weight_sum = 0 ; // 0 : undefined
+int min_weight_sum = 0; // 0 : undefined
 struct timespec begin ; 
 
 int sign = 0 ;
@@ -61,9 +61,10 @@ int _travel_task (task_t * task, int thread_idx) {
 		if (local_min[thread_idx] == 0 || weight_sum < local_min[thread_idx]) {
 			local_min[thread_idx] = weight_sum ;
 		}
+		else return 0; //shortcut
 
 		pthread_mutex_lock(&lock);
-		if (local_min[thread_idx] < min_weight_sum){
+		if (local_min[thread_idx] < min_weight_sum || min_weight_sum == 0){
 			struct timespec curr ;
 			clock_gettime(CLOCK_REALTIME, &curr) ;
 			long int t = (curr.tv_sec - begin.tv_sec) * 1000000000 + (curr.tv_nsec - begin.tv_nsec) ;
@@ -102,6 +103,7 @@ int _travel_task (task_t * task, int thread_idx) {
 }
 
 int travel_task (task_t * task, int thread_idx) {
+	/*
 	pthread_mutex_lock(&lock);
 	printf("Task begins: ") ;
 	printf("[") ;
@@ -110,6 +112,7 @@ int travel_task (task_t * task, int thread_idx) {
 	}
 	printf("\n") ;
 	pthread_mutex_unlock(&lock);
+	*/
 
 	_travel_task(task, thread_idx) ;
 
@@ -117,7 +120,7 @@ int travel_task (task_t * task, int thread_idx) {
 	free(task->visited) ;
 	free(task) ;
 
-	printf("Task ends.\n") ;
+	// printf("Task ends.\n") ;
 }
 
 int _travel (int * route, int * visited, int next) {
@@ -126,11 +129,12 @@ int _travel (int * route, int * visited, int next) {
 		task->route = calloc(n_nodes, sizeof(int)) ;
 		memcpy(task->route, route, next * sizeof(int)) ;
 		task->visited = calloc(n_nodes, sizeof(int)) ;
-		memcpy(task->visited, visited, next * sizeof(int)) ;
+		memcpy(task->visited, visited, n_nodes * sizeof(int)) ;
 		task->next = next ;
 
 		// travel_task(task) ; 
 		circular_queue_enqueue(buf, task);
+		return 0;
 	}
 
 	next++ ;
@@ -159,63 +163,45 @@ void travel () {
 		_travel(route, visited, 1) ;
 		visited[node] = 0 ;
 	}
+
+	pthread_mutex_lock(&buf->lock);
+	buf->end = 1; 
+	pthread_cond_broadcast(&buf->wait_deq);
+	pthread_mutex_unlock(&buf->lock);
 }
 
 // thread function
 void * worker (void * args) {
 	while(1){
-		task_t * task = circular_queue_dequeue(buf);
+		task_t * task = circular_queue_dequeue(buf); // block
+
 		int index = (int)(long)args;
 
-		/*
-		pthread_mutex_lock(&lock); // print lock
-		printf("Thread %lu - Task begins\n", (unsigned long)pthread_self());
-		pthread_mutex_unlock(&lock);*/
-	
-		if(task != NULL && index < thread_cnt) {
-			travel_task(task, index);
-		}
-		
-		/*
-		pthread_mutex_lock(&lock); // print lock
-		printf("Thread %lu - Task ends\n", (unsigned long)pthread_self());
-		pthread_mutex_unlock(&lock);*/
-		
-		// else return NULL;  
-		
-		// worker 가 return NULL 해야 하나?
-		// 대기타는 애들이 어느순간 task가 없어서 NULL 받으면 그게 종료 조건인가?
-		// 모든 테스크 끝난 다음 알 방법은? flag? NULL return?
+		if(task == NULL) break;
 
+		travel_task(task, index);
 	}
-
+	return NULL;
 }
 
 // signal handler
 void signal_handler (int signum) {
-	if(signum == SIGINT) {
-		printf("\n ====== Ctrl C detected ====== \n");
-		
-		// thread 들 cancel 후 join 할 필요?
-		// local min weight 와의 관계?
 
-		for(int i = 0; i < thread_cnt; i ++) { 
-			pthread_join(workers[i], NULL);
-		}
+	printf("\n ====== Ctrl C detected ====== \n");
 
-		struct timespec curr ;
-		clock_gettime(CLOCK_REALTIME, &curr) ;
-		long int t = (curr.tv_sec - begin.tv_sec) * 1000000000 + (curr.tv_nsec - begin.tv_nsec) ;
-		printf("\b") ;
-		printf("%04ld.%09ld: %d ", t / 1000000000, t % 1000000000, min_weight_sum) ;
-		printf("[") ;
-		for (int i = 0 ; i < n_nodes ; i++) {
-			printf("%d%c", best_route[i], i < n_nodes -1 ? ',' : ']' ) ;
-		}
-		printf("\n") ;
-
-		exit(0);
+	struct timespec curr ;
+	clock_gettime(CLOCK_REALTIME, &curr) ;
+	long int t = (curr.tv_sec - begin.tv_sec) * 1000000000 + (curr.tv_nsec - begin.tv_nsec) ;
+	printf("\b") ;
+	printf("%04ld.%09ld: %d ", t / 1000000000, t % 1000000000, min_weight_sum) ;
+	printf("[") ;
+	for (int i = 0 ; i < n_nodes ; i++) {
+		printf("%d%c", best_route[i], i < n_nodes -1 ? ',' : ']' ) ;
 	}
+	printf("\n") ;
+
+	exit(0);
+
 }
 
 
@@ -229,6 +215,7 @@ int main (int argc, char ** argv) {
 		return EXIT_FAILURE ;
 	
 	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	thread_cnt = atoi(argv[2]);
 	thread_idx = 0;
@@ -239,26 +226,43 @@ int main (int argc, char ** argv) {
 	buf = malloc(sizeof(circular_queue));
 	pthread_mutex_init(&lock, NULL);
 	circular_queue_init(buf, CAPACITY);
-	
-	// initial value
-	for (int i = 0; i < n_nodes; i++){
-		min_weight_sum += weight[0][i];
-	}
 
 	for(int i = 0; i < thread_cnt; i ++) { 
 		pthread_create(&workers[i], NULL, worker, (void *)(long)i);
 	}
 
-	/* NULL pattern 추가 해보기
+	travel() ;
+
 	for(int i = 0; i < thread_cnt; i ++) { 
 		pthread_join(workers[i], NULL);
 	}
-	*/
 
-	travel() ;
+	// print final result 
+	struct timespec curr ;
+	clock_gettime(CLOCK_REALTIME, &curr) ;
+	long int t = (curr.tv_sec - begin.tv_sec) * 1000000000 + (curr.tv_nsec - begin.tv_nsec) ;
+	printf("\b") ;
+	printf("%04ld.%09ld: %d ", t / 1000000000, t % 1000000000, min_weight_sum) ;
+	
+	printf("\n\n ==== all thread's task done ... ==== \n final route is: [");
+	for (int i = 0 ; i < n_nodes ; i++) {
+		printf("%d%c", best_route[i], i < n_nodes -1 ? ',' : ']' ) ;
+	}
+	printf("\n") ;
+
+	// free heap resource 
+	free(workers);
+	free(best_route);
+	free(local_min);
+
+	free(buf->elem);
+	free(buf);
 
 	return EXIT_SUCCESS ;
 }
+
+
+
 
 void show_running () {
 	if (sign == 0) {

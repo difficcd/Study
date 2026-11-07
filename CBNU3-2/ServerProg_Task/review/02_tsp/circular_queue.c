@@ -13,6 +13,8 @@ circular_queue_init(circular_queue * buf, int capacity) {
 	buf->num = 0 ;
 	buf->front = 0 ;
 	buf->rear = 0 ;
+
+	buf->end = 0;  
 	
 	pthread_mutex_init(&buf->lock, NULL);
 	pthread_cond_init(&buf->wait_enq, NULL);
@@ -51,7 +53,6 @@ task_t *
 circular_queue_dequeue(circular_queue * buf) 
 {
 	task_t * r ;
-
 	/* while(1){
 		pthread_mutex_lock(&lock);
 		if (buf->num > 0) {
@@ -65,8 +66,13 @@ circular_queue_dequeue(circular_queue * buf)
 		pthread_mutex_unlock(&lock);
 	} */
 	pthread_mutex_lock(&buf->lock);
-	while(!(buf->num > 0)){
+	while(!(buf->num > 0) && buf->end == 0){
 		pthread_cond_wait(&buf->wait_deq, &buf->lock);
+	}
+
+	if( buf->end == 1 && buf->num == 0 ){
+		pthread_mutex_unlock(&buf->lock);
+		return NULL;
 	}
 
 	r = buf->elem[buf->front] ;

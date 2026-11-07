@@ -12,6 +12,8 @@ typedef struct {
 	int front ;
 	int rear ;
 
+	int end ;   // task done 
+
 	pthread_mutex_t lock;
 	pthread_cond_t wait_enq;
 	pthread_cond_t wait_deq;
