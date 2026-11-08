@@ -18,6 +18,7 @@ tsp_data/
 
 cache
 workload
+workload.fixed
 .vscode/
 pdns
 dns
