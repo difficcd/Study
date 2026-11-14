@@ -61,7 +61,7 @@ ssize_t recv_bytes (int conn, char *buf, size_t len)
 }    
 
 
-int broadcast (char * str, size_t len) // broadcast(buf, strlen(buf)) ;
+int broadcast (char * str, size_t len, char * user_name, char * recv_name) // broadcast(buf, strlen(buf)) ;
 {
     // broadcast upstream/signin message
     // signin message : "[Server] %s signs in.\n" (buf[512])
@@ -76,14 +76,32 @@ int broadcast (char * str, size_t len) // broadcast(buf, strlen(buf)) ;
 
     // message.username : 설계상 들어갈 수 없어 str에 세팅하여 전송
 
+    if(recv_name[0] == '\0') message.flag = 0;
+    else message.flag = 1;
+
     pthread_mutex_lock(&user_list_lock);
+    int flag = 0;
     for (i = user_list ; i != NULL ; i = i->next) {
         /*TO-DO(2): iterate over the user_list, and send "str" to every client*/
-        send_bytes(i->conn_fd, (char *) &message.timestamp, 8);
-        send_bytes(i->conn_fd, (char *) &message.length,    8);
-
-        send_bytes(i->conn_fd, str, strlen(str)); // payload (data)
-
+        if(message.flag == 1 && strcmp(recv_name, i->username) == 0) {
+            // private send
+            send_bytes(i->conn_fd, (char *) &message.flag, 1);
+            send_bytes(i->conn_fd, (char *) &message.timestamp, 8);
+            send_bytes(i->conn_fd, (char *) &message.length,    8);
+            send_bytes(i->conn_fd, str, strlen(str)); // payload (data)
+            flag = 1;
+            break;
+        } 
+        else if (i->next == NULL && message.flag == 1 && flag == 0 ||
+                 message.flag == 0) {
+            // public send 
+            // If a recipient is not specified, the message is regarded as public
+            // (not specified: i->next == NULL && message.flag == 1 && flag == 0)
+            send_bytes(i->conn_fd, (char *) &message.flag, 1);
+            send_bytes(i->conn_fd, (char *) &message.timestamp, 8);
+            send_bytes(i->conn_fd, (char *) &message.length,    8);
+            send_bytes(i->conn_fd, str, strlen(str)); // payload (data)
+        }
     }
     pthread_mutex_unlock(&user_list_lock);
 
@@ -176,7 +194,7 @@ void * client_service_runner (void * arg)
     sprintf(buf, "[Server] %s signs in.\n", user->username) ;
 
     if(conn_fd > 0)
-        broadcast(buf, strlen(buf)) ;
+        broadcast(buf, strlen(buf), "") ;
     else user->conn_fd = -1;
 
     do {
@@ -186,23 +204,42 @@ void * client_service_runner (void * arg)
         char content[256] ;     // 256? 1024?
         memset(content, 0, sizeof(content)); 
 
+        if(!recv_bytes(conn_fd, message.recipient, 16))
+            break;
+
         uint64_t recv_msg_len ;
         if(!recv_bytes(conn_fd, (char *)& recv_msg_len, 8))
             break;      
+
         message.len = be64toh(recv_msg_len);
         if(message.len >= sizeof(content) || 
            !recv_bytes(conn_fd, content, message.len))
             break;      
 
-        // broadcast에 책임 넘기기 (downstream_msg 구조에 맞춤)
+        /* debug private/pub msg (recipient, content)
+            if(message.recipient[0] != 0x0) 
+                printf("\nthis is private msg!!");
+            printf("\nadd debug: %s\n", content);
+            printf("add debug: %s\n", message.recipient);
+        */
+
+        // timestamp: broadcast에 책임 넘기기 (downstream_msg 구조에 맞춤)
         
         // time_t tt = time(NULL) ;
         // struct tm * ts = localtime(&tt) ;
         // sprintf(buf, "%02d:%02d:%02d [%s] %s", 
         //              ts->tm_hour, ts->tm_min, ts->tm_sec, user->username, content) ;
 
-        sprintf(buf, "[%s] %s", user->username, content) ;
-        broadcast(buf, strlen(buf)) ;
+        if(message.recipient[0] != 0x0) {
+            // 가독성을 위해 송신자 => 수신자  내용으로 포맷 변환
+            sprintf(buf, "%s=>%s %s", user->username, message.recipient, content) ;
+            if(strcmp(user->username, message.recipient))
+                broadcast(buf, strlen(buf), user->username, user->username) ;
+        }
+        else 
+            sprintf(buf, "[%s] %s", user->username, content) ;
+ 
+        broadcast(buf, strlen(buf), user->username, message.recipient) ;
 
     } while (1) ;
 
@@ -217,12 +254,19 @@ void * client_service_runner (void * arg)
     close(conn_fd);
 
     sprintf(buf, "[Server] %s signs off.\n", user->username) ;
-    broadcast(buf, strlen(buf)) ;
+    broadcast(buf, strlen(buf), "") ;
     return NULL ;
 }
 
 void sig_handler (int signum) 
 {
+    // signum 확인 필요 ?? 
+    // sigmask 허용 여부? nested signal ..
+    // printf , lock 여지 안주는게좋음
+    // 가능한 짧게, 메모리접근 위주로만 하는것이 정석
+
+    // send helper 추가하듯 sendmsg 참조해서 써보기 (manpage)
+    
     /*TO-DO(7): Close all connections and terminate the program when SIGINT is called.*/
 
     user_node * i ;

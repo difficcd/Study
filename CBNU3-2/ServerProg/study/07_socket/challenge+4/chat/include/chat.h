@@ -17,6 +17,7 @@ typedef
 typedef 
 	struct {
 		uint64_t len ;
+		uint8_t recipient[16] ;
 	}
 	upstream_msg ;
 
@@ -26,6 +27,7 @@ typedef
 		uint64_t timestamp ;
 		uint8_t  username[16] ;
 		uint64_t length ;
+		uint8_t flag;
 	}
 	downstream_msg ;
 

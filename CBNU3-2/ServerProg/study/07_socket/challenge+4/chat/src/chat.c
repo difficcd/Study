@@ -88,7 +88,12 @@ void * recipent_thread_runner (void * arg)
 
 		downstream_msg message ;
 		char content[256] = "" ; // message : 256B ? (len: 0~2^64-1 B)
-
+		if(!recv_bytes(conn, (char *) &message.flag, 1)) {
+			window_teardown() ;
+			close(conn);
+			printf("server closed\n");
+			exit(0);
+		}
 		if(!recv_bytes(conn, (char *) &message.timestamp, 8)){
 			window_teardown() ;
 			close(conn);
@@ -119,7 +124,7 @@ void * recipent_thread_runner (void * arg)
 							timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec) ;
 		// wprintw(inner_win, "[%s] ", message.username) ;
 		// message.username : 설계상 들어갈 수 없어 str에 세팅된 상태로 수신
-
+		
 		wprintw(inner_win, "%s\n", content) ;
 		wrefresh(inner_win) ;
 	}
@@ -136,16 +141,49 @@ void * user_thread_runner (void * arg)
 		mvwgetnstr(input_win, 1, 2, content, 100) ; // 100~128 수준으로 
 		wmove(input_win, 1,2) ;
 		wclrtoeol(input_win) ;
-
+		
 		/*TO-DO(10): send a upstream message to the server */
+		
+		char recipient[16];
+		memset(recipient, 0, sizeof(recipient));
 
-		upstream_msg msg;
-		msg.len = strlen(content);
-		uint64_t send_msg_len = htobe64(msg.len);
+		int i=0, j=1; 
+		char private_content[256] ;
+		if(content[0] == '@') {
+			while(content[j] != ' ' && j < 15 && i < 15){
+				recipient[i] = content[j];
+				i++; j++;
+			}
+			if(i == 0) continue; // @ + name없음 : skip
+			recipient[j] = '\0'; 
 
-		send_bytes(conn, (char *)& send_msg_len, 8);  // send message len
-		send_bytes(conn, content, msg.len); 		  // send message 
+			// @recipient content 자체가 content 
+			// recipient 추출 후 content 정제 필요 (@reci con => con)
+			i=0; j++; // skip ' '
+			memset(private_content, 0, sizeof(private_content)); 
+			while(content[j] != '\0' || content[j] != '\n' && j < 255){
+				private_content[i] = content[j]; 
+				i++; j++;
+			}
+		}
+		else recipient[0] = '\0'; // 빈 문자열 전송 (public)
 
+		// upstream_msg msg;
+		uint64_t msg_len;
+		send_bytes(conn, recipient,    16); 	      // send recipient
+		
+		if (recipient[0] == '\0') {
+			msg_len = strlen(content);
+			uint64_t send_msg_len = htobe64(msg_len);
+			send_bytes(conn, (char *)& send_msg_len, 8);  // send message len
+			send_bytes(conn, content, msg_len);			  // send pub message
+		}
+		else {
+			msg_len = strlen(private_content);
+			uint64_t send_msg_len = htobe64(msg_len);
+			send_bytes(conn, (char *)& send_msg_len, 8);  // send message len
+			send_bytes(conn, private_content, msg_len);	  // send priv message
+		}
 
 		if (strcmp(content, "/quit") == 0) {
 			conn_fail_or_quit = 1 ;
@@ -237,15 +275,17 @@ int main (int argc, char ** argv)
 
 
 	// ==== send sign up message, recv server response ==== //
-	signin_msg signin;
-	strncpy(signin.username, username, 16);
-	strncpy(signin.password, password, 16);
+	
+	/* byte string 에 str함수 사용 -> format 없이 send
+		signin_msg signin;
+		strncpy(signin.username, username, 16);
+		strncpy(signin.password, password, 16); 
+	*/
+	username[15] = '\0';
+	password[15] = '\0';
 
-	signin.username[15] = '\0';
-	signin.password[15] = '\0';
-
-	send_bytes(conn, signin.username, 16);   // send username (16 * 1B)
-	send_bytes(conn, signin.password, 16);   // send password (16 * 1B)
+	send_bytes(conn, username, 16);   // send username (16 * 1B)
+	send_bytes(conn, password, 16);   // send password (16 * 1B)
 
 
 	server_response response ;
