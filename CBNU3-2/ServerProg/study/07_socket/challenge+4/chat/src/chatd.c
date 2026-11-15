@@ -6,7 +6,7 @@
 #include <endian.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
-
+#include <time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -21,6 +21,7 @@
 
 /*TO-DO(1): Add a mutex for synchronzing accesses to user_list*/
 pthread_mutex_t user_list_lock = PTHREAD_MUTEX_INITIALIZER;
+volatile sig_atomic_t handler_on = 0;
 
 user_node * user_list = NULL;
 int listen_fd;
@@ -61,7 +62,7 @@ ssize_t recv_bytes (int conn, char *buf, size_t len)
 }    
 
 
-int broadcast (char * str, size_t len, char * user_name, char * recv_name) // broadcast(buf, strlen(buf)) ;
+int broadcast (char * str, size_t len, char * recv_name) // broadcast(buf, strlen(buf)) ;
 {
     // broadcast upstream/signin message
     // signin message : "[Server] %s signs in.\n" (buf[512])
@@ -72,7 +73,7 @@ int broadcast (char * str, size_t len, char * user_name, char * recv_name) // br
     // 받은 시점이 아니라 보내주는 시점이라 오차 존재
     time_t current_time = time(NULL); 
     message.timestamp = htobe64((uint64_t)current_time);
-    message.length = htobe64(strlen(str)); 
+    message.length = htobe64(len); 
 
     // message.username : 설계상 들어갈 수 없어 str에 세팅하여 전송
 
@@ -83,24 +84,30 @@ int broadcast (char * str, size_t len, char * user_name, char * recv_name) // br
     int flag = 0;
     for (i = user_list ; i != NULL ; i = i->next) {
         /*TO-DO(2): iterate over the user_list, and send "str" to every client*/
+        // if (i->conn_fd < 0) continue;
+        
         if(message.flag == 1 && strcmp(recv_name, i->username) == 0) {
             // private send
-            send_bytes(i->conn_fd, (char *) &message.flag, 1);
+            send_bytes(i->conn_fd, (char *) &message.flag,      1);
             send_bytes(i->conn_fd, (char *) &message.timestamp, 8);
             send_bytes(i->conn_fd, (char *) &message.length,    8);
-            send_bytes(i->conn_fd, str, strlen(str)); // payload (data)
+            send_bytes(i->conn_fd, str, len); // payload (data)
             flag = 1;
             break;
         } 
-        else if (i->next == NULL && message.flag == 1 && flag == 0 ||
-                 message.flag == 0) {
+        if (message.flag == 0) {
             // public send 
-            // If a recipient is not specified, the message is regarded as public
-            // (not specified: i->next == NULL && message.flag == 1 && flag == 0)
-            send_bytes(i->conn_fd, (char *) &message.flag, 1);
+            send_bytes(i->conn_fd, (char *) &message.flag,      1);
             send_bytes(i->conn_fd, (char *) &message.timestamp, 8);
             send_bytes(i->conn_fd, (char *) &message.length,    8);
-            send_bytes(i->conn_fd, str, strlen(str)); // payload (data)
+            send_bytes(i->conn_fd, str, len); // payload (data)
+        }
+        if (i->next == NULL && message.flag == 1 && flag == 0) {
+            // If a recipient is not specified, the message is regarded as public (format:pri)
+            // (not specified: i->next == NULL && message.flag == 1 && flag == 0)
+            pthread_mutex_unlock(&user_list_lock);
+            broadcast(str, len, "");
+            return 0;
         }
     }
     pthread_mutex_unlock(&user_list_lock);
@@ -203,6 +210,7 @@ void * client_service_runner (void * arg)
         upstream_msg message ;
         char content[256] ;     // 256? 1024?
         memset(content, 0, sizeof(content)); 
+        memset(message.recipient, 0, 16);
 
         if(!recv_bytes(conn_fd, message.recipient, 16))
             break;
@@ -224,22 +232,22 @@ void * client_service_runner (void * arg)
         */
 
         // timestamp: broadcast에 책임 넘기기 (downstream_msg 구조에 맞춤)
-        
+
         // time_t tt = time(NULL) ;
         // struct tm * ts = localtime(&tt) ;
         // sprintf(buf, "%02d:%02d:%02d [%s] %s", 
         //              ts->tm_hour, ts->tm_min, ts->tm_sec, user->username, content) ;
 
-        if(message.recipient[0] != 0x0) {
-            // 가독성을 위해 송신자 => 수신자  내용으로 포맷 변환
-            sprintf(buf, "%s=>%s %s", user->username, message.recipient, content) ;
-            if(strcmp(user->username, message.recipient))
-                broadcast(buf, strlen(buf), user->username, user->username) ;
-        }
-        else 
+        // @notspec content 는?
+        if(message.recipient[0] != 0x0) { // private message
+            sprintf(buf, "%s=>%s", user->username, content) ;
+            //if(strcmp(user->username, message.recipient)) : broadcast 로직 변경 
+                // broadcast(buf, strlen(buf), user->username, user->username) ;
+        } 
+        else // public message
             sprintf(buf, "[%s] %s", user->username, content) ;
  
-        broadcast(buf, strlen(buf), user->username, message.recipient) ;
+        broadcast(buf, strlen(buf), message.recipient) ;
 
     } while (1) ;
 
@@ -258,6 +266,7 @@ void * client_service_runner (void * arg)
     return NULL ;
 }
 
+
 void sig_handler (int signum) 
 {
     // signum 확인 필요 ?? 
@@ -269,13 +278,18 @@ void sig_handler (int signum)
     
     /*TO-DO(7): Close all connections and terminate the program when SIGINT is called.*/
 
-    user_node * i ;
-    for (i = user_list ; i != NULL ; i = i->next) {
-        close(i->conn_fd);
-    }
-    close(listen_fd);
+    if (handler_on) return;   // nested signal 간단하게 방지
+    handler_on = 1;
 
-    exit(0);
+    if (signum == SIGINT || signum == SIGTERM) {
+        user_node * i ;
+        for (i = user_list ; i != NULL ; i = i->next) {
+            close(i->conn_fd);
+        }
+        close(listen_fd);
+
+        exit(0);
+    }
 
 }
 

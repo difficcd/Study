@@ -117,8 +117,8 @@ void * recipent_thread_runner (void * arg)
 			exit(0);
 		} // recv payload (data)
 
-
-		struct tm * timeinfo = localtime(&message.timestamp) ;
+		time_t tt = (time_t)message.timestamp ; //형변환
+		struct tm * timeinfo = localtime(&tt) ;
 		
 		wprintw(inner_win, "%02d:%02d:%02d ", \
 							timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec) ;
@@ -149,6 +149,8 @@ void * user_thread_runner (void * arg)
 
 		int i=0, j=1; 
 		char private_content[256] ;
+		memset(private_content, 0, sizeof(private_content)); 
+
 		if(content[0] == '@') {
 			while(content[j] != ' ' && j < 15 && i < 15){
 				recipient[i] = content[j];
@@ -160,13 +162,14 @@ void * user_thread_runner (void * arg)
 			// @recipient content 자체가 content 
 			// recipient 추출 후 content 정제 필요 (@reci con => con)
 			i=0; j++; // skip ' '
-			memset(private_content, 0, sizeof(private_content)); 
 			while(content[j] != '\0' || content[j] != '\n' && j < 255){
 				private_content[i] = content[j]; 
 				i++; j++;
 			}
 		}
 		else recipient[0] = '\0'; // 빈 문자열 전송 (public)
+		
+		if(strlen(content) == 0) continue;
 
 		// upstream_msg msg;
 		uint64_t msg_len;
@@ -179,7 +182,18 @@ void * user_thread_runner (void * arg)
 			send_bytes(conn, content, msg_len);			  // send pub message
 		}
 		else {
+			// 송신 content 자체를 wprintw (가독성 개선)
+			time_t tt = time(NULL); 
+			struct tm * ts = localtime(&tt) ;
+
+			wprintw(inner_win, "%02d:%02d:%02d ", \
+							    ts->tm_hour, ts->tm_min, ts->tm_sec) ;
+			wprintw(inner_win, "%s\n", content) ;
+			wrefresh(inner_win) ;
+			
 			msg_len = strlen(private_content);
+			if(msg_len == 0) continue;    		  // @recv empty => skip
+
 			uint64_t send_msg_len = htobe64(msg_len);
 			send_bytes(conn, (char *)& send_msg_len, 8);  // send message len
 			send_bytes(conn, private_content, msg_len);	  // send priv message
