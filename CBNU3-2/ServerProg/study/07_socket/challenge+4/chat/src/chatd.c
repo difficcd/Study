@@ -33,7 +33,7 @@ ssize_t send_bytes (int conn, char *buf, size_t len)
 	while(current_len < len){
 		sent_bytes = send(conn, buf+current_len, len-current_len, 0);
 		// printf("debug sent bytes : %d\n", sent_bytes);
-		if(sent_bytes < 0){
+		if(sent_bytes <= 0){
 			// perror("string send: failed");
 			return -1;
 		}
@@ -84,7 +84,7 @@ int broadcast (char * str, size_t len, char * recv_name) // broadcast(buf, strle
     int flag = 0;
     for (i = user_list ; i != NULL ; i = i->next) {
         /*TO-DO(2): iterate over the user_list, and send "str" to every client*/
-        // if (i->conn_fd < 0) continue;
+        if (i->conn_fd < 0) continue;
         
         if(message.flag == 1 && strcmp(recv_name, i->username) == 0) {
             // private send
@@ -124,12 +124,12 @@ void * client_service_runner (void * arg)
     /*TO-DO(3): receive the signin message */
     signin_msg signin ;    
 
-    if(!recv_bytes(conn_fd, signin.username, 16)) {
+    if(recv_bytes(conn_fd, signin.username, 16) <= 0) {
         close(conn_fd);
         conn_fd = -1;
         return 0;
     }
-	if(!recv_bytes(conn_fd, signin.password, 16)) {
+	if(recv_bytes(conn_fd, signin.password, 16) <= 0) {
         close(conn_fd);
         conn_fd = -1;
         return 0;
@@ -141,10 +141,21 @@ void * client_service_runner (void * arg)
     int flag = 0 ; 
 
     pthread_mutex_lock(&user_list_lock);
-    if ((user = find_user(&user_list, signin.username)) == NULL) {
+
+    user = find_user(&user_list, signin.username)
+    if (user != NULL && user->status == 2)  return 0; // reject
+    if (user == NULL) { // signup
         user = add_user(&user_list, signin.username, signin.password, conn_fd) ;
+
+        // initial setting (timestamp init : signup time)
+        user->status = 0;
+        time_t login_time = time(NULL); 
+        user->timestamp = ((uint64_t)login_time);
+    } 
+    else if (strcmp(user->password, signin.password) != 0) {
+        user->status == 1;
+        flag = 1 ;
     }
-    else if (strcmp(user->password, signin.password) != 0) flag = 1 ;
     else if (user->conn_fd > 0) flag = 2 ;
     else user->conn_fd = conn_fd ;
     pthread_mutex_unlock(&user_list_lock);
@@ -212,16 +223,16 @@ void * client_service_runner (void * arg)
         memset(content, 0, sizeof(content)); 
         memset(message.recipient, 0, 16);
 
-        if(!recv_bytes(conn_fd, message.recipient, 16))
+        if(recv_bytes(conn_fd, message.recipient, 16) <= 0)
             break;
 
         uint64_t recv_msg_len ;
-        if(!recv_bytes(conn_fd, (char *)& recv_msg_len, 8))
+        if(recv_bytes(conn_fd, (char *)& recv_msg_len, 8) <= 0)
             break;      
 
         message.len = be64toh(recv_msg_len);
         if(message.len >= sizeof(content) || 
-           !recv_bytes(conn_fd, content, message.len))
+           recv_bytes(conn_fd, content, message.len) <= 0)
             break;      
 
         /* debug private/pub msg (recipient, content)
@@ -258,10 +269,13 @@ void * client_service_runner (void * arg)
     pthread_mutex_lock(&user_list_lock);
     if (user->conn_fd == conn_fd)   
         user->conn_fd = -1;
-    pthread_mutex_unlock(&user_list_lock);
-    close(conn_fd);
 
     sprintf(buf, "[Server] %s signs off.\n", user->username) ;
+    time_t last_signoff = time(NULL); 
+    user->timestamp = ((uint64_t)last_signoff);
+    pthread_mutex_unlock(&user_list_lock);
+
+    close(conn_fd);
     broadcast(buf, strlen(buf), "") ;
     return NULL ;
 }

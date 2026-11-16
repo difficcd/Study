@@ -33,7 +33,7 @@ ssize_t send_bytes (int conn, char *buf, size_t len)
 	while(current_len < len){
 		sent_bytes = send(conn, buf+current_len, len-current_len, 0);
 		// printf("debug sent bytes : %d\n", sent_bytes);
-		if(sent_bytes < 0){
+		if(sent_bytes <= 0){
 			perror("string send: failed");
 			return -1;
 		}
@@ -88,20 +88,20 @@ void * recipent_thread_runner (void * arg)
 
 		downstream_msg message ;
 		char content[256] = "" ; // message : 256B ? (len: 0~2^64-1 B)
-		if(!recv_bytes(conn, (char *) &message.flag, 1)) {
+		if(recv_bytes(conn, (char *) &message.flag, 1) <= 0) {
 			window_teardown() ;
 			close(conn);
 			printf("server closed\n");
 			exit(0);
 		}
-		if(!recv_bytes(conn, (char *) &message.timestamp, 8)){
+		if(recv_bytes(conn, (char *) &message.timestamp, 8) <= 0){
 			window_teardown() ;
 			close(conn);
 			printf("server closed\n");
 			exit(0);
 		}
         // recv_bytes(conn,        message.username, 16); 
-        if(!recv_bytes(conn, (char *) &message.length, 8)){
+        if(recv_bytes(conn, (char *) &message.length, 8) <= 0){
 			window_teardown() ;
 			close(conn);
 			printf("server closed\n");
@@ -110,7 +110,7 @@ void * recipent_thread_runner (void * arg)
 
 		message.timestamp = be64toh(message.timestamp);
 		message.length = be64toh(message.length);
-		if(!recv_bytes(conn, content, message.length)){
+		if(recv_bytes(conn, content, message.length) <= 0){
 			window_teardown() ;
 			close(conn);
 			printf("server closed\n");
@@ -157,23 +157,28 @@ void * user_thread_runner (void * arg)
 				i++; j++;
 			}
 			if(i == 0) continue; // @ + name없음 : skip
-			recipient[j] = '\0'; 
+			recipient[i] = '\0'; 
 
 			// @recipient content 자체가 content 
 			// recipient 추출 후 content 정제 필요 (@reci con => con)
 			i=0; j++; // skip ' '
-			while(content[j] != '\0' || content[j] != '\n' && j < 255){
+			while(content[j] != '\0' && content[j] != '\n' 
+				   && i < 255 && j < 255){
 				private_content[i] = content[j]; 
 				i++; j++;
 			}
+			private_content[255] = '\0';
+			content[255] = '\0';
 		}
 		else recipient[0] = '\0'; // 빈 문자열 전송 (public)
 		
 		if(strlen(content) == 0) continue;
+		if (recipient[0] != '\0' && strlen(private_content) == 0)
+    		continue; // @recv empty => skip
 
 		// upstream_msg msg;
 		uint64_t msg_len;
-		send_bytes(conn, recipient,    16); 	      // send recipient
+		send_bytes(conn, recipient, 16); 	      // send recipient
 		
 		if (recipient[0] == '\0') {
 			msg_len = strlen(content);
@@ -192,8 +197,6 @@ void * user_thread_runner (void * arg)
 			wrefresh(inner_win) ;
 			
 			msg_len = strlen(private_content);
-			if(msg_len == 0) continue;    		  // @recv empty => skip
-
 			uint64_t send_msg_len = htobe64(msg_len);
 			send_bytes(conn, (char *)& send_msg_len, 8);  // send message len
 			send_bytes(conn, private_content, msg_len);	  // send priv message
@@ -306,7 +309,7 @@ int main (int argc, char ** argv)
 	uint32_t send_type;
 	uint32_t recv_type;
 
-	if(!recv_bytes(conn, (char *)& send_type, sizeof(server_response))){
+	if(recv_bytes(conn, (char *)& send_type, sizeof(server_response)) <= 0){
 		window_teardown() ;
 		close(conn);
 		printf("server closed\n");

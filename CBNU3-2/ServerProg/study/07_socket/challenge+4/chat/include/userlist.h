@@ -2,7 +2,11 @@ struct user_node_t {
 	uint8_t username[16] ;
 	uint8_t password[16] ;
 	int conn_fd ;
-		
+	
+	// 0: activate, 1: inactive, 2: deactivated
+	uint8_t status ;
+	uint64_t timestamp ;
+
 	struct user_node_t * next ;
 	struct user_node_t * prev ;
 } ;
