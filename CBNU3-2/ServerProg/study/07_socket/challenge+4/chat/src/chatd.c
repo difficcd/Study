@@ -19,6 +19,10 @@
 #define MAXUSER 16
 #endif
 
+#ifndef MAXSEC
+#define MAXSEC 60
+#endif
+
 /*TO-DO(1): Add a mutex for synchronzing accesses to user_list*/
 pthread_mutex_t user_list_lock = PTHREAD_MUTEX_INITIALIZER;
 volatile sig_atomic_t handler_on = 0;
@@ -84,7 +88,11 @@ int broadcast (char * str, size_t len, char * recv_name) // broadcast(buf, strle
     int flag = 0;
     for (i = user_list ; i != NULL ; i = i->next) {
         /*TO-DO(2): iterate over the user_list, and send "str" to every client*/
-        if (i->conn_fd < 0) continue;
+        if (i->conn_fd < 0) {
+            if(i->status == 1 && ((current_time - i->timestamp) > MAXSEC))
+                i->status = 2;
+            continue; 
+        }
         
         if(message.flag == 1 && strcmp(recv_name, i->username) == 0) {
             // private send
@@ -102,19 +110,41 @@ int broadcast (char * str, size_t len, char * recv_name) // broadcast(buf, strle
             send_bytes(i->conn_fd, (char *) &message.length,    8);
             send_bytes(i->conn_fd, str, len); // payload (data)
         }
-        if (i->next == NULL && message.flag == 1 && flag == 0) {
+
+        /* if (i->next == NULL && message.flag == 1 && flag == 0) {
             // If a recipient is not specified, the message is regarded as public (format:pri)
             // (not specified: i->next == NULL && message.flag == 1 && flag == 0)
             pthread_mutex_unlock(&user_list_lock);
             broadcast(str, len, "");
             return 0;
-        }
+        } */
     }
     pthread_mutex_unlock(&user_list_lock);
 
+
+    if (message.flag == 1 && flag == 0)
+        broadcast(str, len, "");
+    // 마지막 노드가 continue 로 skip 될 수 있어, 밖으로 뺴줌.
+    
     return 0 ;
 }
 
+void send_fail_message(int conn_fd) {
+    server_response response ;
+    response.type = FAIL;
+    uint32_t send_type;
+
+    if (sizeof(server_response) == 4)  
+        send_type = htonl(response.type);
+    if (sizeof(server_response) == 2)  
+        send_type = htons((uint16_t)response.type);
+    // enum : 1B, 2B, 4B variable
+
+    if(conn_fd > 0) 
+        send_bytes(conn_fd, (char *)& send_type, sizeof(server_response));
+
+    close(conn_fd) ;
+}
 
 void * client_service_runner (void * arg) 
 {
@@ -137,53 +167,57 @@ void * client_service_runner (void * arg)
 
     user_node * user ;
 
-    
     int flag = 0 ; 
+    time_t current_time ;
 
     pthread_mutex_lock(&user_list_lock);
+    user = find_user(&user_list, signin.username);
+    current_time = time(NULL);
 
-    user = find_user(&user_list, signin.username)
-    if (user != NULL && user->status == 2)  return 0; // reject
+    if (user != NULL && user->status == 2) { // reject deactivated user
+        // printf("%s : deactivated user \n", user->username);
+        send_fail_message(conn_fd);
+        pthread_mutex_unlock(&user_list_lock);
+        return 0; 
+    }
+
     if (user == NULL) { // signup
         user = add_user(&user_list, signin.username, signin.password, conn_fd) ;
-
-        // initial setting (timestamp init : signup time)
-        user->status = 0;
-        time_t login_time = time(NULL); 
-        user->timestamp = ((uint64_t)login_time);
+        user->status = 0; 
+        user->timestamp = 0;
     } 
     else if (strcmp(user->password, signin.password) != 0) {
-        user->status == 1;
-        flag = 1 ;
+        flag = 1 ; // wrong password (+status = 1)
     }
     else if (user->conn_fd > 0) flag = 2 ;
-    else user->conn_fd = conn_fd ;
+    else { // re-entering 
+        if ((current_time - user->timestamp) <= MAXSEC) {
+             user->status = 0; 
+             user->conn_fd = conn_fd ;
+             printf("%s : inactived user => actived! \n", user->username);
+        }
+        else {
+            user->status = 2;  // set deactivated
+            printf("%s : deactivated! \n", user->username);
+            send_fail_message(conn_fd);
+            user->conn_fd = -1; 
+            pthread_mutex_unlock(&user_list_lock);
+            return 0;
+        }
+    }
     pthread_mutex_unlock(&user_list_lock);
 
-    if (flag != 0) {
+
+    if (flag != 0) { // wrong pw, multiple login processing 
         if (flag == 1)
             printf("[%s] tried a sign in with a wrong password\n", signin.username) ;
         if (flag == 2)
             printf("[%s] already signed in \n", signin.username) ;
         
         /*TO-DO(4): send the FAIL response to the client*/
-        server_response response ;
-        response.type = FAIL;
-        uint32_t send_type;
-
-        if (sizeof(server_response) == 4)  
-            send_type = htonl(response.type);
-        if (sizeof(server_response) == 2)  
-            send_type = htons((uint16_t)response.type);
-        // enum : 1B, 2B, 4B variable
-
-        if(conn_fd > 0) 
-            send_bytes(conn_fd, (char *)& send_type, sizeof(server_response));
-
-        close(conn_fd) ;
+        send_fail_message(conn_fd);
         return NULL ;
     }
-
 
     /*TO-DO(5): send the SUCCESS response to the client*/
     server_response response ;
@@ -235,13 +269,6 @@ void * client_service_runner (void * arg)
            recv_bytes(conn_fd, content, message.len) <= 0)
             break;      
 
-        /* debug private/pub msg (recipient, content)
-            if(message.recipient[0] != 0x0) 
-                printf("\nthis is private msg!!");
-            printf("\nadd debug: %s\n", content);
-            printf("add debug: %s\n", message.recipient);
-        */
-
         // timestamp: broadcast에 책임 넘기기 (downstream_msg 구조에 맞춤)
 
         // time_t tt = time(NULL) ;
@@ -249,7 +276,6 @@ void * client_service_runner (void * arg)
         // sprintf(buf, "%02d:%02d:%02d [%s] %s", 
         //              ts->tm_hour, ts->tm_min, ts->tm_sec, user->username, content) ;
 
-        // @notspec content 는?
         if(message.recipient[0] != 0x0) { // private message
             sprintf(buf, "%s=>%s", user->username, content) ;
             //if(strcmp(user->username, message.recipient)) : broadcast 로직 변경 
@@ -268,11 +294,12 @@ void * client_service_runner (void * arg)
     // conn_fd 처리
     pthread_mutex_lock(&user_list_lock);
     if (user->conn_fd == conn_fd)   
-        user->conn_fd = -1;
+        user->conn_fd = -1; 
 
     sprintf(buf, "[Server] %s signs off.\n", user->username) ;
     time_t last_signoff = time(NULL); 
-    user->timestamp = ((uint64_t)last_signoff);
+    user->timestamp = last_signoff;
+    user->status = 1; // signoff default : inactivated 
     pthread_mutex_unlock(&user_list_lock);
 
     close(conn_fd);

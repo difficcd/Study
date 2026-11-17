@@ -62,7 +62,6 @@ ssize_t recv_bytes (int conn, char *buf, size_t len)
 }    
 
 
-
 void window_teardown ()
 {
 	if (outer_win) delwin(outer_win) ;
@@ -78,6 +77,34 @@ void signal_handler (int signum) {
 	}
 }
 
+int is_closing = 0;
+pthread_mutex_t close_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void close_connect (int num){
+
+	if(is_closing == 1) return; // short cut 
+
+	pthread_mutex_lock(&close_mutex);
+
+	if(is_closing != 1) is_closing = 1; 
+	else { 
+		pthread_mutex_unlock(&close_mutex);
+		return;
+	}
+	window_teardown() ;
+
+	
+	if (num == 1)	  printf("/quit: success\n");
+	else 		      printf("network error: server closed or send fail\n");
+
+	close(conn);
+	pthread_mutex_unlock(&close_mutex);
+	
+	exit(0);
+}
+
+
+
 void * recipent_thread_runner (void * arg)
 {
 	if (conn == -1) return NULL ;
@@ -88,34 +115,16 @@ void * recipent_thread_runner (void * arg)
 
 		downstream_msg message ;
 		char content[256] = "" ; // message : 256B ? (len: 0~2^64-1 B)
-		if(recv_bytes(conn, (char *) &message.flag, 1) <= 0) {
-			window_teardown() ;
-			close(conn);
-			printf("server closed\n");
-			exit(0);
-		}
-		if(recv_bytes(conn, (char *) &message.timestamp, 8) <= 0){
-			window_teardown() ;
-			close(conn);
-			printf("server closed\n");
-			exit(0);
-		}
+		if(recv_bytes(conn, (char *) &message.flag, 1)      <= 0) close_connect(0);
+		if(recv_bytes(conn, (char *) &message.timestamp, 8) <= 0) close_connect(0);
+		
         // recv_bytes(conn,        message.username, 16); 
-        if(recv_bytes(conn, (char *) &message.length, 8) <= 0){
-			window_teardown() ;
-			close(conn);
-			printf("server closed\n");
-			exit(0);
-		}
+        if(recv_bytes(conn, (char *) &message.length, 8)    <= 0) close_connect(0);
 
 		message.timestamp = be64toh(message.timestamp);
 		message.length = be64toh(message.length);
-		if(recv_bytes(conn, content, message.length) <= 0){
-			window_teardown() ;
-			close(conn);
-			printf("server closed\n");
-			exit(0);
-		} // recv payload (data)
+		if(recv_bytes(conn, content, message.length)        <= 0) close_connect(0);
+		// recv payload (data)
 
 		time_t tt = (time_t)message.timestamp ; //형변환
 		struct tm * timeinfo = localtime(&tt) ;
@@ -130,6 +139,7 @@ void * recipent_thread_runner (void * arg)
 	}
 	return NULL ;
 }
+
 
 void * user_thread_runner (void * arg)
 {
@@ -172,19 +182,25 @@ void * user_thread_runner (void * arg)
 		}
 		else recipient[0] = '\0'; // 빈 문자열 전송 (public)
 		
-		if(strlen(content) == 0) continue;
+		if (strcmp(content, "/quit") == 0) {
+			conn_fail_or_quit = 1 ;
+			// break ;
+			close_connect(1);
+		}
+
+		if (strlen(content) == 0) continue;
 		if (recipient[0] != '\0' && strlen(private_content) == 0)
     		continue; // @recv empty => skip
 
 		// upstream_msg msg;
 		uint64_t msg_len;
-		send_bytes(conn, recipient, 16); 	      // send recipient
+		if (send_bytes(conn, recipient, 16) == -1) close_connect(0); 
 		
 		if (recipient[0] == '\0') {
 			msg_len = strlen(content);
 			uint64_t send_msg_len = htobe64(msg_len);
-			send_bytes(conn, (char *)& send_msg_len, 8);  // send message len
-			send_bytes(conn, content, msg_len);			  // send pub message
+			if(send_bytes(conn, (char *)& send_msg_len, 8) == -1) close_connect(0);  
+			if(send_bytes(conn, content, msg_len) 		   == -1) close_connect(0);		 
 		}
 		else {
 			// 송신 content 자체를 wprintw (가독성 개선)
@@ -198,14 +214,8 @@ void * user_thread_runner (void * arg)
 			
 			msg_len = strlen(private_content);
 			uint64_t send_msg_len = htobe64(msg_len);
-			send_bytes(conn, (char *)& send_msg_len, 8);  // send message len
-			send_bytes(conn, private_content, msg_len);	  // send priv message
-		}
-
-		if (strcmp(content, "/quit") == 0) {
-			conn_fail_or_quit = 1 ;
-			// break ;
-			exit(0);
+			if(send_bytes(conn, (char *)& send_msg_len, 8) == -1) close_connect(0);
+			if(send_bytes(conn, private_content, msg_len)  == -1) close_connect(0);
 		}
 	}
 }
@@ -322,7 +332,7 @@ int main (int argc, char ** argv)
 			recv_type = ntohs((uint16_t)send_type);
 
 	if(recv_type == FAIL) {
-		printf("login failed : wrong password or already signed in\n");
+		printf("login failed : wrong password or already signed in or rejected user\n");
 		return 1;
 	}
 

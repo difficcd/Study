@@ -4,8 +4,10 @@ struct user_node_t {
 	int conn_fd ;
 	
 	// 0: activate, 1: inactive, 2: deactivated
+	// if(!user->status) = if(user==login )
+	// if( user->status) = if(user==logout)
 	uint8_t status ;
-	uint64_t timestamp ;
+	time_t timestamp ;
 
 	struct user_node_t * next ;
 	struct user_node_t * prev ;
