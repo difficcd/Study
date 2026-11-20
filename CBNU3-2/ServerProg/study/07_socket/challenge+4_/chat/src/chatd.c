@@ -81,7 +81,6 @@ int broadcast (char * str, size_t len) // broadcast(buf, strlen(buf)) ;
         /*TO-DO(2): iterate over the user_list, and send "str" to every client*/
         send_bytes(i->conn_fd, (char *) &message.timestamp, 8);
         send_bytes(i->conn_fd, (char *) &message.length,    8);
-
         send_bytes(i->conn_fd, str, strlen(str)); // payload (data)
 
     }
