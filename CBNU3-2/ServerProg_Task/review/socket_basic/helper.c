@@ -2,16 +2,9 @@
 /// helper review/prac (while send & recv)
 
 
-// send helper
 ssize_t send_bytes (int conn, char *buf, size_t len) 
 {
-    ssize_t current_len = 0, send_bytes = 0;
-    while(current_len < len){
-        send_bytes = send(conn, buf+current_len, len-current_len, 0);
-        if(send_bytes <= 0) return -1;
-        current_len += send_bytes;
-    }
-    return current_len;
+    
 }
 
 // send helper
