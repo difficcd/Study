@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -7,7 +8,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-
+int fd;
 pthread_t recv_thread;
 pthread_t send_thread;
 
@@ -56,15 +57,25 @@ void * recv_msg(void * args){
 }
 
 void * send_msg(void * args){
-    while(1){
+    
+    while(1){   
+        char buf[16] = { 0 };
+        fgets(buf, sizeof(buf), stdin);
+        printf("entered msg : %s\n", buf);
+        
+        uint32_t msg_len = strlen(buf);
+        uint32_t msg_len_send = htons(msg_len);
+        send_bytes(fd, (char *) &msg_len_send, 4); //msglen : 0~2^16-1
+        send_bytes(fd, buf, msg_len);
+        
+        printf("send msg_len : %d\n", msg_len);
 
     }
+
 }
 
 
 int main() {
-
-    int fd;
     
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket() fails");
@@ -74,7 +85,7 @@ int main() {
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(12180);
+    addr.sin_port = htons(12189);
 
     // struct in_addr sin_addr
     if (inet_aton("127.0.0.1", &addr.sin_addr) == 0) {
@@ -86,9 +97,6 @@ int main() {
         perror("connect() fails");
         exit(EXIT_FAILURE);
     }
-
-    char buf[16] = "hellow world!\0";
-    send_bytes(fd, buf, 16);
 
     pthread_create(&recv_thread, NULL, recv_msg, NULL);
     pthread_create(&send_thread, NULL, send_msg, NULL);

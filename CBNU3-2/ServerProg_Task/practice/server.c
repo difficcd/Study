@@ -50,11 +50,19 @@ void * conn_thread_routine(void * args){
 
     int conn_fd = *((int *)args);
 
-    char buf[16] = { 0 };
-
     while(1){
-        int res = recv_bytes(conn_fd, buf, 16);
-        if(res > 0) printf("res bytes : %d \n buf: %s\n", res, buf);
+
+        uint32_t msg_len_recv ;
+        recv_bytes(conn_fd, (char *) &msg_len_recv, 4);
+
+        uint32_t msg_len = ntohs(msg_len_recv);
+        char * buf = calloc(msg_len, sizeof(char));
+        int res = recv_bytes(conn_fd, buf, msg_len_recv);
+        if(res > 0) {
+            printf("res bytes : %d \n buf: %s\n", res, buf);
+        }
+
+        if(res == 0) {close(conn_fd); return NULL;}
     }
 }
 
@@ -72,7 +80,7 @@ int main() {
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(12180);
+    addr.sin_port = htons(12189);
 
     // struct in_addr sin_addr
     if (inet_aton("127.0.0.1", &addr.sin_addr) == 0) {
