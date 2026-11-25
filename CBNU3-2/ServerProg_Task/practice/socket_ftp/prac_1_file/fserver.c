@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <endian.h>
 
 #define BACKLOG 1
 
@@ -78,8 +79,13 @@ int main(int argc, char ** argv){
 
     int conn_fd = accept(listen_fd, NULL, NULL);
 
-    
+    uint64_t recv_len;
+    recv_bytes(conn_fd, (char *) &recv_len, 8);
+    uint64_t file_len = be64toh(recv_len);
 
+    char * content = malloc(sizeof(char) * file_len + 1);
+    recv_bytes(conn_fd, content, file_len);
+    printf("recv file content : \n%s", content);
 
 
     exit(EXIT_SUCCESS);

@@ -9,9 +9,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <endian.h>
 
 // send helper
 ssize_t send_bytes(int conn_fd, char * buf, int bytes){
@@ -48,8 +50,8 @@ ssize_t recv_bytes(int conn_fd, char * buf, int bytes){
 
 int main(int argc, char ** argv){
 
-    if(argc != 2) {
-        printf("Usage: ./server <portnum> <file>");
+    if(argc != 3) {
+        printf("Usage: ./server <portnum> <file>\n");
         exit(EXIT_FAILURE);
     }
 
@@ -69,6 +71,30 @@ int main(int argc, char ** argv){
         exit(EXIT_FAILURE);
     }
 
+
+    char * filepath = argv[2];
+
+    // file len (stat, st_size)
+    struct stat s;
+    if(stat(filepath, &s) < 0){
+        perror("stat() fails");
+        exit(EXIT_FAILURE);
+    }
+    uint64_t file_len = (uint64_t) s.st_size;
+
+    // file contents (fopen + fread + string send : '\0')
+    char * content = malloc(sizeof(char) * file_len + 1);
+    FILE * fp = fopen(filepath, "rb");
+    fread(content, 1, file_len, fp);
+    content[file_len] = '\0';
+
+    printf("file content : \n%s", content);
+
+
+    // send
+    uint64_t send_len = htobe64(file_len);
+    send_bytes(conn_fd, (char *) &send_len, 8);
+    send_bytes(conn_fd,     content, file_len);
     
 
     exit(EXIT_SUCCESS);
