@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -8,7 +9,9 @@
 #include <pthread.h>
 
 
-#define MAXUSER 1
+int fd;
+pthread_t recv_thread;
+pthread_t send_thread;
 
 // send helper
 ssize_t send_bytes(int conn_fd, char * buf, int byte) {
@@ -46,41 +49,28 @@ ssize_t recv_bytes(int conn_fd, char * buf, int byte) {
     }
 }
 
-void * conn_thread_routine(void * args){
-
-    int conn_fd = *((int *)args);
-
-    while(1){
-
-        uint32_t msg_len_recv ;
-        recv_bytes(conn_fd, (char *) &msg_len_recv, 4);
-
-        uint32_t msg_len = ntohs(msg_len_recv);
-        char * buf = calloc(msg_len, sizeof(char));
-        int res = recv_bytes(conn_fd, buf, msg_len_recv);
-        if(res > 0) {
-            printf("res bytes : %d \n buf: %s\n", res, buf);
-        }
-
-        if(res == 0) {close(conn_fd); return NULL;}
+// return 1 == return NULL(thread exit)
+int check(int res, int conn_fd){
+    if (res >  0) {
+        //printf("res bytes : %d\n", res);
+        return 0;
     }
+    else if (res <  0)    perror("check fails");
+    else if (res == 0)    printf("connection refused\n");
+    return 1;
 }
 
-
-
-int main() {
-
-    int listen_fd;
+int main(int argc, char ** argv) {
     
-    if ((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         perror("socket() fails");
         exit(EXIT_FAILURE);
     }
-    printf("listen_fd: %d\n", listen_fd);
+    printf("fd: %d\n", fd);
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(12189);
+    addr.sin_port = htons(atoi(argv[1]));
 
     // struct in_addr sin_addr
     if (inet_aton("127.0.0.1", &addr.sin_addr) == 0) {
@@ -88,32 +78,22 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-        perror("bind() fails");
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        perror("connect() fails");
         exit(EXIT_FAILURE);
     }
 
-    if (listen(listen_fd, MAXUSER) == -1) {
-        perror("listen() fails");
-        exit(EXIT_FAILURE);
-    }
+    char buf[1024] = { 0 }; // buf 가 충분하면 OV 안남.
+    fgets(buf, sizeof(buf), stdin);
 
-    do {
-        pthread_t conn_thread;
-        int conn_fd = accept(listen_fd, NULL, NULL);
-        if(conn_fd == -1) {
-            perror("accept() fails");
-            exit(EXIT_FAILURE);
-        }
-        else printf("connected : %d!\n", conn_fd);
+    uint16_t msg_len = strlen(buf);
+    uint16_t msg_len_send = htons(msg_len);
+    send_bytes(fd, (char *) &msg_len_send, 2); //msglen : 0~ (2^32)-1
+    send_bytes(fd,              buf, msg_len);
 
-        int * pfd = &conn_fd;
-        pthread_create(&conn_thread, NULL, conn_thread_routine, (void *)pfd);
-        // join 할 필요가 있나? 
-        // persistant TCP 에 자기 몫 다 하고 fd끊기면 close해주면되는거아님?
+    printf("send msg_len : %d\n", msg_len);
 
-    } while(1);
+    //while(1);
 
-    close(listen_fd);
-
+    exit(EXIT_SUCCESS);
 }
