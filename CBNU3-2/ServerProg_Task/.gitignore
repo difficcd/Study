@@ -42,3 +42,7 @@ testfile
 tsp_seq
 tsp_task
 tsp_task_pre
+
+Problem*.pdf
+TEST/extra
+.obsidian

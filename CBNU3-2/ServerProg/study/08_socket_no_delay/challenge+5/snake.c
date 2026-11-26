@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <signal.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -19,8 +20,8 @@
 
 #define CELL_SIZE    4
 #define MAX_ITEM     4
+#define MAX_LEN      1024  // snake 최대 길이
 #define FRAME        30
-#define SPEED        10
 
 #define WEIGHT    13    // 4 * '13' = 52, weight 은 cell크기와 반비례할 필요 있음
 #define WIDTH     640
@@ -35,6 +36,7 @@
 
 pthread_t downstream_thread ;
 pthread_t upstream_thread ;
+pthread_t recipent_thread ;
 
 
 // initialization 
@@ -57,6 +59,51 @@ char score[30];
 bool Window_ShouldClose = false;
 pthread_mutex_t window_lock = PTHREAD_MUTEX_INITIALIZER ; 
 
+// server 에서 받은 game 상태
+uint8_t this_color;
+int num_player = 0;
+int remaining = 100;
+
+char player_name[4][9];
+
+int snake_len[4] = { 0 };
+Vector2 snake_pos[4][MAX_LEN];     // pixel 위치, [0] : head
+
+Color color_list[4] = { BLACK, BLUE, ORANGE, PURPLE };
+
+
+// send helper
+ssize_t send_bytes (int conn, char *buf, size_t len) 
+{
+    int current_len = 0, sent_bytes = 0;
+	while(current_len < len){
+		sent_bytes = send(conn, buf+current_len, len-current_len, 0);
+		if(sent_bytes <= 0){
+			return -1;
+		}
+		current_len += sent_bytes;
+	}
+	return current_len;
+}
+
+// recv helper 
+ssize_t recv_bytes (int conn, char *buf, size_t len) 
+{
+    int current_len = 0, received_bytes = 0;
+	while(current_len < len){
+		received_bytes = recv(conn, buf+current_len, len-current_len, 0) ;
+
+		if(received_bytes == -1){
+			return -1;
+		}
+		if(received_bytes == 0) {
+            return 0;
+		}  // 무한 루프 방지 
+		current_len += received_bytes;
+	}
+	return current_len;
+}    
+
 
 void constant_move(Player * player) {
     if      (player->direction == LEFT)   player->position.x -= CELL_SIZE;
@@ -67,6 +114,8 @@ void constant_move(Player * player) {
 
 void * upstream_thread_runner (void * arg)
 {
+    int conn = *((int *)arg);
+
     while (1){
         pthread_mutex_lock(&window_lock);
         if(Window_ShouldClose == true) {
@@ -97,80 +146,15 @@ void * upstream_thread_runner (void * arg)
                 framesCounter++;
                 usleep(1000000 / FRAME); 
 
-                if (IsKeyPressed(KEY_ENTER)) screen = GAMEPLAY;
+                // server 가 START 를 보내면 recipent thread 가 GAMEPLAY 로 바꿈
 
             } break;
             case GAMEPLAY:
             { 
                 if (!gamePaused)
                 {
-                    int ate_item_idx = -1; 
-
-                    if (framesCounter % (FRAME/SPEED) == 0) { // per sec
-
-                        if(player->next == NULL){ // 1개일 때
-                            for(int i = 0; i < MAX_ITEM; i++){
-                                if (player->position.x == item[i].position.x && 
-                                    player->position.y == item[i].position.y){ // 아이템 먹으면
-                                    item[i].position = (Vector2){ 
-                                        ((rand() % WIDTH  / CELL_SIZE) + 1) * CELL_SIZE - CELL_SIZE + OFFSET, 
-                                        ((rand() % HEIGHT / CELL_SIZE) + 1) * CELL_SIZE - CELL_SIZE + OFFSET 
-                                    };
-                                    Body * new_body = calloc(1, sizeof(Body));
-                                    new_body->position = player->position;
-                                    new_body->next = NULL;
-
-                                    player->next = new_body;
-                                    player->score += 1;
-                                    break;
-                                }
-                            }
-                            constant_move(player);
-                        }
-                        else { // 2개 이상일 때
-                            /* player(앞으로 감) -> new_body(기존 player 정보) -> player가 가리키는 body */
-                            Body * new_body = calloc(1, sizeof(Body));
-                            new_body->position = player->position;
-                            new_body->next = player->next;
-                            player->next = new_body;
-                            constant_move(player);
-
-                            for(int i = 0; i < MAX_ITEM; i++){
-                                if (player->position.x == item[i].position.x && 
-                                    player->position.y == item[i].position.y){
-
-                                    ate = true;
-                                    item[i].position = (Vector2){ 
-                                        ((rand() % WIDTH  / CELL_SIZE) + 1) * CELL_SIZE - CELL_SIZE + OFFSET, 
-                                        ((rand() % HEIGHT / CELL_SIZE) + 1) * CELL_SIZE - CELL_SIZE + OFFSET
-                                    };
-
-                                    player->score += 1;
-                                    break;
-                                }
-                            }
-                            if(!ate){ // 아이템 안 먹었으면 꼬리 삭제
-                                Body * before_body = NULL;
-                                for(Body * i = player->next; i != NULL; i = i->next){
-                                    if(i->next == NULL){
-                                        free(i);
-                                        before_body->next = NULL;
-                                        break;
-                                    }
-                                    before_body = i;
-                                }
-                            } // 먹었으면 삭제 안 함
-                            ate = false;
-                        }
-                    }
-
-                    // player가 필드 바깥으로 나갈 경우 게임 종료
-                    if (player->position.x < OFFSET || player->position.x >= WIDTH  + OFFSET ||
-                        player->position.y < OFFSET || player->position.y >= HEIGHT + OFFSET)
-                    {
-                        screen = ENDING;
-                        break;
-                    }
+                    // 이동, 아이템, 충돌 => server 책임으로 옮김
+                    Direction before = player->direction;
 
                     if (player->direction == UP || player->direction == DOWN){
                         if      (IsKeyDown(KEY_RIGHT))  player->direction = RIGHT;
@@ -179,6 +163,12 @@ void * upstream_thread_runner (void * arg)
                     else if (player->direction == LEFT || player->direction == RIGHT){
                         if      (IsKeyDown(KEY_UP)  )   player->direction = UP;
                         else if (IsKeyDown(KEY_DOWN))   player->direction = DOWN;
+                    }
+
+                    // 방향 1B 전송
+                    if (player->direction != before) {
+                        uint8_t key = player->direction;
+                        send_bytes(conn, (char *) &key, 1);
                     }
 
                     framesCounter++;
@@ -196,6 +186,65 @@ void * upstream_thread_runner (void * arg)
             default: break;
         }
     }
+    return NULL;
+}
+
+void * recipent_thread_runner (void * arg)
+{
+    int conn = *((int *)arg);
+
+    while (1) {
+        
+        // header : type 1B + payload len 4B
+        uint8_t msg_type;
+        uint32_t recv_len;
+        if(recv_bytes(conn, (char *) &msg_type, 1) <= 0) break;
+        if(recv_bytes(conn, (char *) &recv_len, 4) <= 0) break;
+        uint32_t len = ntohl(recv_len);
+
+        char * buf = calloc(len + 1, 1);
+        if(recv_bytes(conn, buf, len) <= 0 && len > 0) break;
+
+        if (msg_type == START) { // (username 8, color 1) * N
+            num_player = len / 9;
+            for(int p = 0; p < num_player; p++){
+                memcpy(player_name[p], buf + p * 9, 8);
+                player_name[p][8] = '\0';
+            }
+            screen = GAMEPLAY;
+            // 묶어서 보낸것 p 순회하며 정보 담아줌 (list의 모든 name set)
+        }
+        else if (msg_type == UPDATE) { // snake * N + item * 4 + time
+            int idx = 0;
+            for(int p = 0; p < num_player; p++){
+                idx++; // buf[0] : color..                                 
+                snake_len[p] = (uint8_t) buf[idx++]; //len 1B
+                for(int i = 0; i < MAX_LEN; i++){      
+                    snake_pos[p][i] = (Vector2){ OFFSET + (uint8_t) buf[idx] * CELL_SIZE, 
+                                                 OFFSET + (uint8_t) buf[idx + 1] * CELL_SIZE };
+                    idx += 2; 
+                    // buf로 (grid index) 를 보내주니까 그걸 좌표로 변환해야 함
+                    // idx 는 좌표하나당 2칸이동 (x,y)
+                } 
+            }
+            for(int i = 0; i < MAX_ITEM; i++){
+                item[i].position = (Vector2){ OFFSET + (uint8_t) buf[idx] * CELL_SIZE, 
+                                              OFFSET + (uint8_t) buf[idx + 1] * CELL_SIZE };
+                idx += 2;
+            } // 아이템도 이동할때마다 체크업해서 위치갱신
+            remaining = (uint8_t) buf[idx];
+            player->score = snake_len[this_color] - 4;
+        }
+        else if (msg_type == TERMINATE) {
+            free(buf);
+            break;
+        }
+        free(buf);
+    }
+
+    // game end || server connection refused 
+    // recv EOF, TERMINATE
+    screen = ENDING;
     return NULL;
 }
 
@@ -225,7 +274,7 @@ void * downstream_thread_runner (void * arg)
                 case TITLE: 
                 {
                     DrawText("TITLE SCREEN", 20, 20, 40, DARKGREEN);
-                    if ((framesCounter / 15 ) % 2 == 0) DrawText("PRESS [ENTER] to START", GetScreenWidth()/2 - MeasureText("PRESS [ENTER] to START", 20)/2, GetScreenHeight()/2 + 60, 20, DARKGRAY);
+                    if ((framesCounter / 15 ) % 2 == 0) DrawText("WAITING FOR PLAYERS...", GetScreenWidth()/2 - MeasureText("WAITING FOR PLAYERS...", 20)/2, GetScreenHeight()/2 + 60, 20, DARKGRAY);
                     
                 } break;
                 case GAMEPLAY:
@@ -235,10 +284,21 @@ void * downstream_thread_runner (void * arg)
                     sprintf(score, "score: %d", player->score);
                     DrawText(score, 16, 16, 20, WHITE); // 2사분면
 
+                    // time 추가
+                    sprintf(score, "time: %d", remaining);
+                    DrawText(score, 16, HEIGHT + OFFSET + 16, 20, WHITE); // 3사분면
 
-                    DrawRectangle(player->position.x, player->position.y, player->size.x, player->size.y, BLACK);   
-                    for(Body * i = player->next; i != NULL; i = i->next){
-                        DrawRectangle(i->position.x, i->position.y, player->size.x, player->size.y, BLACK);   
+                    // name: 점수(==뱀길이-4:초기값)
+                    for(int p = 0; p < num_player; p++){
+                        sprintf(score, "%s: %d", player_name[p], snake_len[p] - 4);
+                        DrawText(score, 200 + p * 130, 16, 20, color_list[p]);
+                    }
+
+                    // draw snake
+                    for(int p = 0; p < num_player; p++){
+                        for(int i = 0; i < snake_len[p]; i++){
+                            DrawRectangle(snake_pos[p][i].x, snake_pos[p][i].y, player->size.x, player->size.y, color_list[p]);   
+                        }
                     }
 
                     // draw item
@@ -252,6 +312,26 @@ void * downstream_thread_runner (void * arg)
                 case ENDING: 
                 {    
                     DrawText("ENDING SCREEN", 20, 20, 40, DARKBLUE);
+
+                    // 최종점수 출력 
+                    for(int p = 0; p < num_player; p++){
+                        sprintf(score, "%s: %d", player_name[p], snake_len[p] - 4);
+                        DrawText(score, 20, 90 + p * 30, 20, color_list[p]);
+                    }
+
+                    // winner 출력 (best 기작이라 동점시 여러명 리스트업됨.)
+                    int best = 0;
+                    for(int p = 0; p < num_player; p++){
+                        if(snake_len[p] > best) best = snake_len[p];
+                    }
+                    int y = 250;
+                    for(int p = 0; p < num_player; p++){
+                        if(snake_len[p] == best){
+                            sprintf(score, "winner: %s", player_name[p]);
+                            DrawText(score, 20, y, 30, color_list[p]);
+                            y += 40; // 동점 대비
+                        }
+                    }
                 } break;
                 default: break;
             }
@@ -305,7 +385,7 @@ int main(int argc, char ** argv)
     addr.sin_port = htons(port);
 
 	if (inet_aton(server_ip, &(addr.sin_addr)) == 0) {
-		fprintf(stderr, "inet_aton(127.0.0.1, addr.sin_addr) returns zero\n") ;
+		fprintf(stderr, "inet_aton(server_ip, addr.sin_addr) returns zero\n") ;
 		exit(EXIT_FAILURE) ;
 	}
 	if (connect(conn, (struct sockaddr *) &addr, sizeof(addr)) == -1) {
@@ -313,10 +393,20 @@ int main(int argc, char ** argv)
 		exit(EXIT_FAILURE);
 	}
 
-    // (1) color info recv 
-    uint8_t color ;
-    recv(conn, (char *) &color, 1, 0);
-    printf("debug: %d\n", color);
+    int on = 1;
+    setsockopt(conn, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+
+    // (1) username send (8B 만 보내고 초기화한 9번째칸 남겨둠)
+    send_bytes(conn, username, 8);
+
+    // (2) color info recv : header 5(type1B+payload4B) + color 1B
+    char buf[6];
+    if(recv_bytes(conn, buf, 6) <= 0 || buf[0] != ACCEPT) {
+        printf("error: can't enter\n");
+        exit(EXIT_FAILURE);
+    }
+    this_color = buf[5]; // color 1B 세팅
+    printf("debug: %d\n", this_color);
 
     
     
@@ -356,7 +446,8 @@ int main(int argc, char ** argv)
     }  
 
 
-    pthread_create(&upstream_thread, NULL, upstream_thread_runner, NULL) ;
+    pthread_create(&recipent_thread, NULL, recipent_thread_runner, &conn) ; // 
+    pthread_create(&upstream_thread, NULL, upstream_thread_runner, &conn) ;
 	pthread_create(&downstream_thread, NULL, downstream_thread_runner, NULL) ;
 	pthread_join(upstream_thread, NULL) ;
 	pthread_join(downstream_thread, NULL) ;
